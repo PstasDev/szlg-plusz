@@ -1,5 +1,4 @@
 git pull
-/root/szlg-plusz/python3 manage.py collectstatic --noinput
 /root/szlg-plusz/python3 manage.py migrate --noinput
 systemctl restart szlgplusz.service
 sleep 5

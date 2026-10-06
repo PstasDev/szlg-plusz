@@ -2,13 +2,12 @@
 WebAuthn / Passkey authentication endpoints.
 
 Exposes:
-    POST /passkey/register/options   (auth=jwt) - begin enrollment
-    POST /passkey/register/verify    (auth=jwt) - finish enrollment
-    POST /passkey/authenticate/options (auth=None) - begin login
-    POST /passkey/authenticate/verify  (auth=None) - finish login (returns JWT)
-    GET  /passkey                    (auth=jwt) - list user's passkeys
-    DELETE /passkey/{passkey_id}     (auth=jwt) - remove a passkey
-    POST /change-password            (auth=jwt) - change current user's password
+    POST /auth/passkeys/register/options   (auth=jwt) - begin enrollment
+    POST /auth/passkeys/register/verify    (auth=jwt) - finish enrollment
+    POST /auth/passkeys/login/options      (auth=None) - begin login
+    POST /auth/passkeys/login/verify       (auth=None) - finish login (returns JWT)
+    GET  /auth/passkeys                    (auth=jwt) - list user's passkeys
+    DELETE /auth/passkeys/{passkey_id}     (auth=jwt) - remove a passkey
 """
 
 from __future__ import annotations
@@ -20,7 +19,8 @@ from typing import Optional
 
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.core.cache import cache
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from ninja import Schema, Body
 from pydantic import ConfigDict
@@ -40,15 +40,12 @@ from webauthn.helpers.structs import (
 )
 from webauthn.helpers.cose import COSEAlgorithmIdentifier
 
-from .models import Passkey, Profile
+from .models import Passkey
+from .auth_challenges import consume_challenge, store_challenge
 from .schemas import ErrorResponse, TokenResponse
 from .jwt_utils import generate_jwt_token, decode_jwt_token
 
 logger = logging.getLogger(__name__)
-
-# Challenge TTL: 5 minutes.
-CHALLENGE_TTL = 300
-
 
 # ---------- helpers ----------
 
@@ -66,7 +63,7 @@ def _rp_id() -> str:
 
 
 def _rp_name() -> str:
-    return getattr(settings, "WEBAUTHN_RP_NAME", "Igazoláskezelő")
+    return getattr(settings, "WEBAUTHN_RP_NAME", "SZLG+")
 
 
 def _expected_origins() -> list[str]:
@@ -79,7 +76,6 @@ def _expected_origins() -> list[str]:
     return [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://igazolas.szlg.info",
     ]
 
 
@@ -144,7 +140,7 @@ def register_passkey_endpoints(api, jwt_auth):
     """Attach passkey + change-password endpoints to the provided NinjaAPI."""
 
     @api.get(
-        "/passkey",
+        "/auth/passkeys",
         response={200: PasskeyListResponse, 401: ErrorResponse},
         auth=jwt_auth,
         tags=["Passkey"],
@@ -164,7 +160,7 @@ def register_passkey_endpoints(api, jwt_auth):
         return 200, {"has_passkey": bool(data), "passkeys": data}
 
     @api.delete(
-        "/passkey/{passkey_id}",
+        "/auth/passkeys/{passkey_id}",
         response={200: SimpleMessageResponse, 401: ErrorResponse, 404: ErrorResponse},
         auth=jwt_auth,
         tags=["Passkey"],
@@ -179,7 +175,7 @@ def register_passkey_endpoints(api, jwt_auth):
         return 200, {"message": "Passkey törölve."}
 
     @api.post(
-        "/passkey/register/options",
+        "/auth/passkeys/register/options",
         response={200: dict, 401: ErrorResponse},
         auth=jwt_auth,
         tags=["Passkey"],
@@ -209,23 +205,22 @@ def register_passkey_endpoints(api, jwt_auth):
             ],
         )
 
-        cache.set(
+        store_challenge(
             _reg_cache_key(user.id),
-            {"challenge": _b64url_encode(opts.challenge)},
-            CHALLENGE_TTL,
+            _b64url_encode(opts.challenge),
         )
 
         return 200, json.loads(options_to_json(opts))
 
     @api.post(
-        "/passkey/register/verify",
+        "/auth/passkeys/register/verify",
         response={200: SimpleMessageResponse, 400: ErrorResponse, 401: ErrorResponse},
         auth=jwt_auth,
         tags=["Passkey"],
     )
     def passkey_register_verify(request, data: PasskeyRegisterVerifyRequest):
         user = request.auth
-        cached = cache.get(_reg_cache_key(user.id))
+        cached = consume_challenge(_reg_cache_key(user.id))
         if not cached:
             return 400, {
                 "error": "Bad request",
@@ -242,14 +237,14 @@ def register_passkey_endpoints(api, jwt_auth):
         except Exception as exc:  # noqa: BLE001 - WebAuthn lib raises various
             logger.warning("Passkey registration verify failed: %s", exc)
             return 400, {"error": "Verification failed", "detail": str(exc)}
-        finally:
-            cache.delete(_reg_cache_key(user.id))
 
-        transports = []
-        try:
-            raw_response = data.response.get("response", {}) if isinstance(data.response, dict) else {}
-            transports = raw_response.get("transports") or []
-        except Exception:  # noqa: BLE001
+        raw_response = data.response.get("response")
+        transports = (
+            raw_response.get("transports", [])
+            if isinstance(raw_response, dict)
+            else []
+        )
+        if not isinstance(transports, list):
             transports = []
 
         Passkey.objects.create(
@@ -263,7 +258,7 @@ def register_passkey_endpoints(api, jwt_auth):
         return 200, {"message": "Passkey sikeresen rögzítve."}
 
     @api.post(
-        "/passkey/authenticate/options",
+        "/auth/passkeys/login/options",
         response={200: PasskeyAuthOptionsResponse, 400: ErrorResponse},
         auth=None,
         tags=["Passkey"],
@@ -288,13 +283,10 @@ def register_passkey_endpoints(api, jwt_auth):
             user_verification=UserVerificationRequirement.PREFERRED,
         )
         challenge_id = _b64url_encode(opts.challenge)[:32]
-        cache.set(
+        store_challenge(
             _auth_cache_key(challenge_id),
-            {
-                "challenge": _b64url_encode(opts.challenge),
-                "user_id": user_id,
-            },
-            CHALLENGE_TTL,
+            _b64url_encode(opts.challenge),
+            user_id=user_id,
         )
         return 200, {
             "options": json.loads(options_to_json(opts)),
@@ -302,20 +294,18 @@ def register_passkey_endpoints(api, jwt_auth):
         }
 
     @api.post(
-        "/passkey/authenticate/verify",
+        "/auth/passkeys/login/verify",
         response={200: TokenResponse, 400: ErrorResponse, 401: ErrorResponse},
         auth=None,
         tags=["Passkey"],
     )
     def passkey_auth_verify(request, data: PasskeyAuthVerifyRequest):
-        cached = cache.get(_auth_cache_key(data.challenge_id))
+        cached = consume_challenge(_auth_cache_key(data.challenge_id))
         if not cached:
             return 400, {
                 "error": "Bad request",
                 "detail": "A bejelentkezési kérés lejárt, próbáld újra.",
             }
-        cache.delete(_auth_cache_key(data.challenge_id))
-
         raw_id_b64 = data.response.get("rawId") if isinstance(data.response, dict) else None
         if not raw_id_b64:
             return 400, {"error": "Bad request", "detail": "Hibás passkey válasz."}
@@ -354,10 +344,6 @@ def register_passkey_endpoints(api, jwt_auth):
 
         user.last_login = timezone.now()
         user.save(update_fields=["last_login"])
-        profile, _ = Profile.objects.get_or_create(user=user)
-        profile.login_count = (profile.login_count or 0) + 1
-        profile.save(update_fields=["login_count"])
-
         token = generate_jwt_token(user)
         payload = decode_jwt_token(token)
         return 200, {
@@ -369,7 +355,7 @@ def register_passkey_endpoints(api, jwt_auth):
         }
 
     @api.post(
-        "/change-password",
+        "/auth/password/change",
         response={200: SimpleMessageResponse, 400: ErrorResponse, 401: ErrorResponse},
         auth=jwt_auth,
         tags=["Account"],
@@ -378,8 +364,13 @@ def register_passkey_endpoints(api, jwt_auth):
         user = request.auth
         if not user.check_password(data.old_password):
             return 401, {"error": "Unauthorized", "detail": "A jelenlegi jelszó hibás."}
-        if len(data.new_password or "") < 8:
-            return 400, {"error": "Bad request", "detail": "Az új jelszó legalább 8 karakter legyen."}
+        try:
+            validate_password(data.new_password, user=user)
+        except ValidationError as exc:
+            return 400, {
+                "error": "Bad request",
+                "detail": " ".join(exc.messages),
+            }
         user.set_password(data.new_password)
         user.save(update_fields=["password"])
         return 200, {"message": "Jelszó sikeresen módosítva."}
