@@ -1,0 +1,49 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Import sikeres{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Főoldal</a> &rsaquo;
+  <a href="{% url 'admin:auth_user_changelist' %}">Felhasználók</a> &rsaquo;
+  Osztály importálása – kész
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>✅ Import sikeres</h1>
+<p>Osztály: <strong>{{ osztaly }}</strong></p>
+<p>{{ created_count }} új felhasználó létrehozva, {{ updated_count }} meglévő frissítve.</p>
+
+{% if passwords %}
+<h2>🔑 Létrehozott jelszavak</h2>
+<p style="color:#b94a48;"><strong>Figyelem!</strong> Ez az oldal csak egyszer jelenik meg. Mentse el a jelszavakat biztonságos helyre!</p>
+<table>
+  <thead>
+    <tr>
+      <th>Név</th>
+      <th>E-mail</th>
+      <th>Jelszó</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for entry in passwords %}
+    <tr>
+      <td>{{ entry.name }}</td>
+      <td>{{ entry.email }}</td>
+      <td><code>{{ entry.password }}</code></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p><em>A tanulók a "Még nincs jelszavam" funkcióval új jelszót igényelhetnek bejelentkezéskor.</em></p>
+{% else %}
+<p>Minden felhasználó már korábban létezett, jelszó nem változott.</p>
+{% endif %}
+
+<div class="submit-row" style="margin-top:1em">
+  <a href="{% url 'admin:auth_user_changelist' %}" class="default button">Vissza a felhasználók listájához</a>
+  <a href="{% url 'admin:auth_user_import_email_list_step1' %}" class="button">Új importálás</a>
+</div>
+{% endblock %}

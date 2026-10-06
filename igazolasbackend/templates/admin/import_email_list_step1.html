@@ -1,0 +1,42 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Osztály importálása e-mail lista alapján – 1. lépés{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Főoldal</a> &rsaquo;
+  <a href="{% url 'admin:auth_user_changelist' %}">Felhasználók</a> &rsaquo;
+  Osztály importálása e-mail lista – 1. lépés
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>📥 Osztály importálása e-mail lista alapján</h1>
+<p><strong>1. lépés:</strong> Adja meg az e-mail listát és válassza ki az osztályt.</p>
+
+<form method="post">
+  {% csrf_token %}
+  <fieldset class="module aligned">
+    {% for field in form %}
+    <div class="form-row">
+      <div>
+        <label{% if field.field.required %} class="required"{% endif %}>{{ field.label }}:</label>
+        {{ field }}
+        {% if field.help_text %}
+        <p class="help">{{ field.help_text }}</p>
+        {% endif %}
+        {% for error in field.errors %}
+        <p class="errornote">{{ error }}</p>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </fieldset>
+
+  <div class="submit-row">
+    <input type="submit" value="Tovább »" class="default">
+    <a href="{% url 'admin:auth_user_changelist' %}" class="closelink">Mégse</a>
+  </div>
+</form>
+{% endblock %}

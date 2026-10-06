@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hiánypótlás szükséges</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f97316;
+        }
+        .header h1 {
+            color: #f97316;
+            margin: 0;
+            font-size: 26px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .details-box {
+            background-color: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #7c2d12;
+        }
+        .details-box table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .details-box td {
+            padding: 4px 0;
+            vertical-align: top;
+        }
+        .details-box td:first-child {
+            font-weight: bold;
+            width: 140px;
+            white-space: nowrap;
+        }
+        .cta-wrapper {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #f97316;
+            color: #ffffff !important;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            padding: 14px 32px;
+            border-radius: 8px;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+        }
+        .no-reply {
+            background-color: #fdecea;
+            border: 1px solid #f5c2c7;
+            border-radius: 5px;
+            padding: 12px 15px;
+            margin: 20px 0;
+            color: #842029;
+            font-weight: bold;
+            text-align: center;
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+        .important {
+            font-weight: bold;
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Hiánypótlás szükséges</h1>
+            <p>Igazoláskezelő Rendszer</p>
+        </div>
+
+        <div class="content">
+            <p>Kedves <strong>{{ user.get_full_name|default:user.username }}</strong>!</p>
+
+            <p>Az osztályfőnököd <strong>hiánypótlásra visszaküldte</strong> az alábbi igazolásodat. Kérjük, jelentkezz be, javítsd/egészítsd ki az igazolást, majd <strong>küldd be újra</strong>.</p>
+
+            <div class="details-box">
+                <table>
+                    <tr><td>Típus:</td><td>{{ tipus_nev }}</td></tr>
+                    <tr><td>Időszak:</td><td>{{ eleje|date:"Y. F j. H:i" }} – {{ vege|date:"Y. F j. H:i" }}</td></tr>
+                    {% if megjegyzes_tanar %}
+                    <tr><td>Osztályfőnök megjegyzése:</td><td>{{ megjegyzes_tanar }}</td></tr>
+                    {% endif %}
+                </table>
+            </div>
+
+            <div class="cta-wrapper">
+                <a href="{{ login_url }}" class="cta-button">Bejelentkezés és szerkesztés</a>
+            </div>
+
+            <div class="warning">
+                <strong>⚠️ Fontos:</strong>
+                <p style="margin: 10px 0 0 0;">A szerkesztés elvégzése <span class="important">után</span> ne felejtsd el megnyomni a <strong>„Visszaállítás függőben állapotra / beküldés újból”</strong> gombot, különben az osztályfőnököd nem fogja látni, hogy elkészültél a javítással!</p>
+            </div>
+
+            <div class="no-reply">
+                ⛔ Erre az e-mailre kérjük, ne válaszolj – ez egy automatikusan generált értesítés.
+            </div>
+
+            <p>Ha kérdésed van, keresd az osztályfőnöködet.</p>
+        </div>
+
+        <div class="footer">
+            <p>Ez egy automatikusan generált email. Kérjük ne válaszoljon rá.</p>
+            <p>© {{ current_year }} Igazoláskezelő Rendszer. Minden jog fenntartva.</p>
+            <p><small>Email elküldve: {{ timestamp|date:"Y. F j. H:i" }}</small></p>
+        </div>
+    </div>
+</body>
+</html>

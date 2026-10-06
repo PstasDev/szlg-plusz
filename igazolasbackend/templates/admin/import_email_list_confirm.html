@@ -1,0 +1,52 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Osztály importálása – Megerősítés{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Főoldal</a> &rsaquo;
+  <a href="{% url 'admin:auth_user_changelist' %}">Felhasználók</a> &rsaquo;
+  Osztály importálása e-mail lista – Megerősítés
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>📥 Osztály importálása e-mail lista alapján</h1>
+<p><strong>3. lépés – Megerősítés.</strong> Ellenőrizze az adatokat, majd kattintson az Importálás gombra.</p>
+<p>Osztály: <strong>{{ osztaly }}</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>E-mail</th>
+      <th>Vezetéknév</th>
+      <th>Keresztnév</th>
+      <th>Státusz</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr style="background: {% if row.exists %}#fffbe6{% else %}#f0fff0{% endif %}">
+      <td>{{ forloop.counter }}</td>
+      <td>{{ row.email }}</td>
+      <td>{{ row.last_name }}</td>
+      <td>{{ row.first_name }}</td>
+      <td>
+        {% if row.exists %}⚠️ Frissítés{% else %}🆕 Létrehozás{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<form method="post" style="margin-top:1em">
+  {% csrf_token %}
+  <div class="submit-row">
+    <input type="submit" value="✅ Importálás elvégzése" class="default">
+    <a href="{% url 'admin:auth_user_import_email_list_step2' %}" class="button">« Vissza (nevek szerkesztése)</a>
+    <a href="{% url 'admin:auth_user_changelist' %}" class="closelink">Mégse</a>
+  </div>
+</form>
+{% endblock %}

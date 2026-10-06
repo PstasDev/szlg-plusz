@@ -1,0 +1,61 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Osztály importálása e-mail lista alapján – 2. lépés{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Főoldal</a> &rsaquo;
+  <a href="{% url 'admin:auth_user_changelist' %}">Felhasználók</a> &rsaquo;
+  Osztály importálása e-mail lista – 2. lépés
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>📥 Osztály importálása e-mail lista alapján</h1>
+<p><strong>2. lépés:</strong> Adja meg a teljes neveket. Osztály: <strong>{{ osztaly }}</strong></p>
+
+<form method="post">
+  {% csrf_token %}
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>E-mail</th>
+        <th>Státusz</th>
+        <th>Vezetéknév <span style="color:red">*</span></th>
+        <th>Keresztnév <span style="color:red">*</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr style="background: {% if row.exists %}#fffbe6{% else %}#f0fff0{% endif %}">
+        <td>{{ forloop.counter }}</td>
+        <td>{{ row.email }}</td>
+        <td>
+          {% if row.exists %}
+            ⚠️ Már létezik
+          {% else %}
+            🆕 Új
+          {% endif %}
+        </td>
+        <td>
+          <input type="text" name="last_name_{{ forloop.counter0 }}"
+                 value="{{ row.last_name }}" required style="width:140px">
+        </td>
+        <td>
+          <input type="text" name="first_name_{{ forloop.counter0 }}"
+                 value="{{ row.first_name }}" required style="width:140px">
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="submit-row" style="margin-top:1em">
+    <input type="submit" value="Tovább az ellenőrzéshez »" class="default">
+    <a href="{% url 'admin:auth_user_import_email_list_step1' %}" class="button">« Vissza</a>
+    <a href="{% url 'admin:auth_user_changelist' %}" class="closelink">Mégse</a>
+  </div>
+</form>
+{% endblock %}
