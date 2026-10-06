@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Fiók · SZLG+{% endblock %}
+{% block content %}
+  <div class="row">
+    <h2>Fiók</h2>
+    <form method="post" action="{% url 'logout' %}">
+      {% csrf_token %}
+      <button class="secondary" type="submit">Kilépés</button>
+    </form>
+  </div>
+  <p>Bejelentkezve: <strong>{{ request.user.email }}</strong></p>
+  <hr class="divider">
+  <h3>Passkey-ek</h3>
+  {% if passkeys %}
+    <ul>
+      {% for passkey in passkeys %}
+        <li>
+          <div class="row">
+            <span>{{ passkey.name }} <span class="muted">· {{ passkey.created_at|date:"Y-m-d" }}</span></span>
+            <form method="post" action="{% url 'passkey-delete' passkey.id %}">
+              {% csrf_token %}
+              <button class="danger" type="submit" aria-label="{{ passkey.name }} törlése">Törlés</button>
+            </form>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Még nincs passkey regisztrálva.</p>
+  {% endif %}
+  <label for="passkey-name">Új passkey neve</label>
+  <input id="passkey-name" type="text" maxlength="80" value="Saját eszköz">
+  <button id="passkey-register" type="button">Passkey regisztrálása</button>
+  <p id="passkey-error" class="error" role="alert" hidden></p>
+  <p id="passkey-success" class="success" role="status" hidden></p>
+{% endblock %}
+{% block scripts %}
+  <script src="{% static 'js/webauthn.js' %}" defer></script>
+{% endblock %}

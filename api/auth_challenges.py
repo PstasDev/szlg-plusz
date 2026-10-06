@@ -13,9 +13,15 @@ CHALLENGE_TTL_SECONDS = 300
 class ChallengeData(TypedDict):
     challenge: str
     user_id: int | None
+    account_hint_provided: bool
 
 
-def store_challenge(key: str, challenge: str, user_id: int | None = None) -> None:
+def store_challenge(
+    key: str,
+    challenge: str,
+    user_id: int | None = None,
+    account_hint_provided: bool = False,
+) -> None:
     now = timezone.now()
     WebAuthnChallenge.objects.filter(expires_at__lte=now).delete()
     WebAuthnChallenge.objects.update_or_create(
@@ -23,6 +29,7 @@ def store_challenge(key: str, challenge: str, user_id: int | None = None) -> Non
         defaults={
             "challenge": challenge,
             "user_id": user_id,
+            "account_hint_provided": account_hint_provided,
             "expires_at": now + timedelta(seconds=CHALLENGE_TTL_SECONDS),
         },
     )
@@ -41,6 +48,7 @@ def consume_challenge(key: str) -> ChallengeData | None:
         result: ChallengeData = {
             "challenge": record.challenge,
             "user_id": record.user_id,
+            "account_hint_provided": record.account_hint_provided,
         }
         record.delete()
         return result

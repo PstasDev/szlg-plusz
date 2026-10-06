@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Bejelentkezés · SZLG+{% endblock %}
+{% block content %}
+  <h2>Bejelentkezés</h2>
+  <p>Folytasd a jelszavaddal vagy egy regisztrált passkey-jel.</p>
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="{% url 'password-login' %}">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <label for="email">E-mail-cím</label>
+    <input id="email" name="email" type="email" autocomplete="username" value="{{ email|default:'' }}" required>
+    <label for="password">Jelszó</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <button type="submit">Belépés jelszóval</button>
+  </form>
+  <hr class="divider">
+  <label for="passkey-email">Passkey e-mail-cím (opcionális)</label>
+  <input id="passkey-email" type="email" autocomplete="username webauthn">
+  <button class="secondary" id="passkey-login" type="button">Belépés passkey-jel</button>
+  <p id="passkey-error" class="error" role="alert" hidden></p>
+{% endblock %}
+{% block scripts %}
+  <script src="{% static 'js/webauthn.js' %}" defer></script>
+{% endblock %}

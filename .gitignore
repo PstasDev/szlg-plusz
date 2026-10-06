@@ -1,6 +1,10 @@
 /.vscode
+/.venv
+/.secrets
 /db.sqlite3
+/staticfiles
 /venv
+/.venv
 
 __pycache__/
 api/migrations/__pycache__/
