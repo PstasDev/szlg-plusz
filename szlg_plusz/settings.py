@@ -161,9 +161,12 @@ try:
     OIDC_RSA_PRIVATE_KEY = private_key_path.read_text(encoding="ascii")
 except FileNotFoundError as exc:
     raise ImproperlyConfigured(
-        "OIDC signing key not found. Generate an RSA private key and configure "
-        "OIDC_RSA_PRIVATE_KEY_FILE."
+        f"OIDC signing key not found at {private_key_path}. Generate it with "
+        "`python scripts/generate_oidc_key.py` or point OIDC_RSA_PRIVATE_KEY_FILE "
+        "to an existing key."
     ) from exc
+
+OAUTH2_PROVIDER_APPLICATION_MODEL = "oauth2_provider.Application"
 
 OAUTH2_PROVIDER = {
     "OIDC_ENABLED": True,

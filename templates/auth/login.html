@@ -1,23 +1,30 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Bejelentkezés · SZLG+{% endblock %}
+{% block head_text %}
+  <h1>Bejelentkezés</h1>
+  <p class="subtitle">Használd a SZLG+ fiókodat</p>
+{% endblock %}
 {% block content %}
-  <h2>Bejelentkezés</h2>
-  <p>Folytasd a jelszavaddal vagy egy regisztrált passkey-jel.</p>
   {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
   <form method="post" action="{% url 'password-login' %}">
     {% csrf_token %}
     <input type="hidden" name="next" value="{{ next_url }}">
-    <label for="email">E-mail-cím</label>
-    <input id="email" name="email" type="email" autocomplete="username" value="{{ email|default:'' }}" required>
-    <label for="password">Jelszó</label>
-    <input id="password" name="password" type="password" autocomplete="current-password" required>
-    <button type="submit">Belépés jelszóval</button>
+    <div class="field">
+      <input id="email" name="email" type="email" placeholder=" " autocomplete="username" value="{{ email|default:'' }}" required>
+      <label for="email">E-mail-cím</label>
+    </div>
+    <div class="field">
+      <input id="password" name="password" type="password" placeholder=" " autocomplete="current-password" required>
+      <label for="password">Jelszó</label>
+    </div>
+    <div class="actions"><button class="btn" type="submit">Bejelentkezés</button></div>
   </form>
-  <hr class="divider">
-  <label for="passkey-email">Passkey e-mail-cím (opcionális)</label>
-  <input id="passkey-email" type="email" autocomplete="username webauthn">
-  <button class="secondary" id="passkey-login" type="button">Belépés passkey-jel</button>
+  <div class="or">vagy</div>
+  <button class="btn outline block" id="passkey-login" type="button" style="margin-top:1.5rem">
+    {% include "partials/icon.html" with name="fingerprint" %}
+    Bejelentkezés passkey-jel
+  </button>
   <p id="passkey-error" class="error" role="alert" hidden></p>
 {% endblock %}
 {% block scripts %}

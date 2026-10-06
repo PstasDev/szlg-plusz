@@ -22,11 +22,18 @@ a client application.
    `http://localhost:8002/o/.well-known/openid-configuration`; development
    configuration does not redirect discovery to the deployed IdP. An
    explicitly supplied `runserver` address/port is respected.
-3. Generate an RSA signing key on the provider host and protect it as a secret:
+3. Generate an RSA signing key on the provider host and protect it as a secret
+   (run this before the first start; the settings refuse to load without it):
 
    ```text
-   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out .secrets/oidc-private.pem
+   python scripts/generate_oidc_key.py
    ```
+
+   The script writes `.secrets/oidc-private.pem` (or the path in
+   `OIDC_RSA_PRIVATE_KEY_FILE`), refuses to overwrite an existing key unless
+   `--force` is given, and needs only the project's Python dependencies. The
+   equivalent OpenSSL command is
+   `openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out .secrets/oidc-private.pem`.
 
    Set `OIDC_RSA_PRIVATE_KEY_FILE` to that file. The private key is never
    published; SZLG+ exposes the public key through its JWKS endpoint.

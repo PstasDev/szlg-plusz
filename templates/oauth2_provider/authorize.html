@@ -1,16 +1,43 @@
 {% extends "base.html" %}
-{% block title %}Alkalmazásengedély · SZLG+{% endblock %}
+{% load szlg_extras %}
+{% block title %}{{ application.name }} · Hozzáférés engedélyezése · SZLG+{% endblock %}
+{% block shell_class %}wide{% endblock %}
+{% block head_text %}
+  <h1>Hozzáférés engedélyezése</h1>
+  <div class="user-chip"><span class="avatar" aria-hidden="true">{{ request.user.email|slice:":1"|upper }}</span>{{ request.user.email }}</div>
+{% endblock %}
 {% block content %}
-  <h2>Alkalmazásengedély</h2>
-  <p><strong>{{ application.name }}</strong> hozzáférést kér a SZLG+ fiókodhoz.</p>
-  <p>Az alkalmazás ezeket az adatokat kérte:</p>
-  <ul>
-    {% for description in scopes_descriptions %}
-      <li>{{ description }}</li>
+  <div class="app">
+    <div class="app-logo">
+      {% if application.profile.logo %}
+        <img src="{{ application.profile.logo.url }}" alt="">
+      {% else %}
+        {{ application.name|slice:":1"|upper }}
+      {% endif %}
+    </div>
+    <div>
+      <div class="app-name">{{ application.name }}</div>
+      {% if application.profile.short_description %}<p class="app-desc">{{ application.profile.short_description }}</p>{% endif %}
+      {% if application.profile.developer %}<p class="app-dev">Fejlesztő: {{ application.profile.developer }}</p>{% endif %}
+    </div>
+  </div>
+
+  <h2>A(z) {{ application.name }} hozzáférést kér a következőkhöz:</h2>
+  <ul class="scopes">
+    {% for item in scopes|default:request.GET.scope|scope_details %}
+      <li>
+        {% include "partials/icon.html" with name=item.icon %}
+        <div><b>{{ item.title }}</b><span class="desc">{{ item.description }}</span></div>
+      </li>
     {% empty %}
-      <li>Alapvető bejelentkezés</li>
+      <li>
+        {% include "partials/icon.html" with name="fingerprint" %}
+        <div><b>Alapvető bejelentkezés</b><span class="desc">Az alkalmazás megtudja, hogy sikeresen bejelentkeztél.</span></div>
+      </li>
     {% endfor %}
   </ul>
+  <p class="note muted">Csak olyan alkalmazásnak engedélyezd, amelyben megbízol. A jelszavadat az alkalmazás nem kapja meg.</p>
+
   <form method="post" action="{{ request.get_full_path }}">
     {% csrf_token %}
     {% if form.errors %}
@@ -30,7 +57,9 @@
     <input type="hidden" name="claims" value="{% if claims %}{{ claims }}{% elif 'claims' in request.GET %}{{ request.GET.claims }}{% endif %}">
     <input type="hidden" name="resource" value="{% if resource %}{{ resource }}{% elif 'resource' in request.GET %}{{ request.GET.resource }}{% endif %}">
     {{ form.allow.errors }}
-    <button type="submit" name="allow" value="true">Engedélyezem</button>
-    <button class="secondary" type="submit" name="allow" value="false">Elutasítom</button>
+    <div class="actions">
+      <button class="btn text" type="submit" name="allow" value="false">Mégse</button>
+      <button class="btn" type="submit" name="allow" value="true">Engedélyezés</button>
+    </div>
   </form>
 {% endblock %}

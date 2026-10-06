@@ -11,8 +11,9 @@ from oauth2_provider.models import Application
 from jwcrypto.jwt import JWT
 
 from .auth_challenges import consume_challenge
-from .models import CustomUser, ManualGroup, StudentProfile
+from .models import ApplicationProfile, CustomUser, ManualGroup, StudentProfile
 from .oauth import SZLGPlusOAuth2Validator
+from .scopes import describe_scopes
 
 
 class RunserverDefaultTests(TestCase):
@@ -310,3 +311,75 @@ class LoginAndOIDCTests(TestCase):
         self.assertEqual(claims["nonce"], "test-nonce")
         self.assertTrue(claims["smart_groups"]["student"])
         self.assertEqual(claims["manual_groups"], ["studiosok"])
+
+@override_settings(
+    SECURE_SSL_REDIRECT=False,
+    SESSION_COOKIE_SECURE=False,
+    CSRF_COOKIE_SECURE=False,
+)
+class ConsentScreenTests(TestCase):
+    def setUp(self):
+        self.user = CustomUser.objects.create_user(
+            email="student@example.org",
+            password="test-password-123",
+        )
+        self.application = Application.objects.create(
+            name="Igazoláskezelő",
+            user=self.user,
+            client_type=Application.CLIENT_PUBLIC,
+            authorization_grant_type=Application.GRANT_AUTHORIZATION_CODE,
+            redirect_uris="https://client.example/callback",
+            algorithm=Application.RS256_ALGORITHM,
+        )
+        self.authorize_url = "/o/authorize/?" + urlencode(
+            {
+                "response_type": "code",
+                "client_id": self.application.client_id,
+                "redirect_uri": "https://client.example/callback",
+                "scope": "openid profile email groups",
+                "state": "s",
+                "nonce": "n",
+                "code_challenge": "c" * 43,
+                "code_challenge_method": "S256",
+            }
+        )
+        self.client.force_login(self.user)
+
+    def test_consent_screen_shows_app_profile_and_hungarian_scopes(self):
+        ApplicationProfile.objects.create(
+            application=self.application,
+            developer="Balla Botond",
+            short_description="Az F-tagozat Igazoláskezelő webappja",
+            logo="app-logos/igazolas.png",
+        )
+
+        response = self.client.get(self.authorize_url)
+
+        self.assertContains(response, "Igazoláskezelő")
+        self.assertContains(response, "Az F-tagozat Igazoláskezelő webappja")
+        self.assertContains(response, "Balla Botond")
+        self.assertContains(response, "/media/app-logos/igazolas.png")
+        for title in ("Személyazonosítás", "Alapadatok", "E-mail-cím", "Szerepkör és csoportok"):
+            self.assertContains(response, title)
+        self.assertNotContains(response, "Telefonszám")
+
+    def test_consent_screen_works_without_app_profile(self):
+        response = self.client.get(self.authorize_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Igazoláskezelő")
+        self.assertNotContains(response, "Fejlesztő:")
+
+    def test_pages_are_dark_by_default(self):
+        self.client.logout()
+
+        response = self.client.get("/login/")
+
+        self.assertContains(response, 'data-theme="dark"')
+
+    def test_unknown_scope_gets_a_generic_hungarian_description(self):
+        details = describe_scopes(["openid", "custom"])
+
+        self.assertEqual(details[0]["title"], "Személyazonosítás")
+        self.assertEqual(details[1]["title"], "custom")
+        self.assertIn("Az alkalmazás", details[1]["description"])
