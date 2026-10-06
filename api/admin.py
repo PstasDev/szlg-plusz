@@ -1,8 +1,34 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from mptt.admin import DraggableMPTTAdmin
+from oauth2_provider.admin import application_admin_class
+from oauth2_provider.models import get_application_model
 
-from .models import CustomUser, ManualGroup, Passkey, StudentProfile, TeacherProfile
+from .models import (
+    ApplicationProfile,
+    CustomUser,
+    ManualGroup,
+    Passkey,
+    StudentProfile,
+    TeacherProfile,
+)
+
+Application = get_application_model()
+
+
+class ApplicationProfileInline(admin.StackedInline):
+    model = ApplicationProfile
+    extra = 0
+    max_num = 1
+    can_delete = False
+
+
+admin.site.unregister(Application)
+
+
+@admin.register(Application)
+class SZLGApplicationAdmin(application_admin_class):
+    inlines = (ApplicationProfileInline,)
 
 
 class StudentProfileInline(admin.StackedInline):

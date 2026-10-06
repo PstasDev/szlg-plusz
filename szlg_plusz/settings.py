@@ -4,6 +4,8 @@ from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
+from api.scopes import SCOPE_SHORT_DESCRIPTIONS
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
@@ -107,6 +109,8 @@ LOGOUT_REDIRECT_URL = "/login/"
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
@@ -165,13 +169,7 @@ OAUTH2_PROVIDER = {
     "OIDC_ENABLED": True,
     "OIDC_RSA_PRIVATE_KEY": OIDC_RSA_PRIVATE_KEY,
     "OAUTH2_VALIDATOR_CLASS": "api.oauth.SZLGPlusOAuth2Validator",
-    "SCOPES": {
-        "openid": "Authenticate with SZLG+",
-        "profile": "Read basic profile claims",
-        "email": "Read email claims",
-        "phone": "Read phone number claims",
-        "groups": "Read SZLG+ role and manual group claims",
-    },
+    "SCOPES": SCOPE_SHORT_DESCRIPTIONS,
     "DEFAULT_SCOPES": ["openid"],
     "ACCESS_TOKEN_EXPIRE_SECONDS": 3600,
     "ID_TOKEN_EXPIRE_SECONDS": 3600,

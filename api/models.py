@@ -210,3 +210,27 @@ class WebAuthnChallenge(models.Model):
     )
     account_hint_provided = models.BooleanField(default=False)
     expires_at = models.DateTimeField(db_index=True)
+
+class ApplicationProfile(models.Model):
+    """Public details about an OAuth application, shown on the consent screen."""
+
+    application = models.OneToOneField(
+        "oauth2_provider.Application",
+        on_delete=models.CASCADE,
+        related_name="profile",
+    )
+    developer = models.CharField("fejlesztő", max_length=120)
+    short_description = models.CharField("rövid leírás", max_length=160)
+    logo = models.ImageField(
+        "logó",
+        upload_to="app-logos/",
+        blank=True,
+        help_text="Négyzet alakú PNG, JPEG vagy WebP kép (SVG nem engedélyezett).",
+    )
+
+    class Meta:
+        verbose_name = "alkalmazásprofil"
+        verbose_name_plural = "alkalmazásprofilok"
+
+    def __str__(self) -> str:
+        return f"{self.application.name} ({self.developer})"
