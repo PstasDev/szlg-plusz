@@ -1,6 +1,7 @@
 git pull
-/root/szlg-plusz/python3 manage.py collectstatic --noinput
-/root/szlg-plusz/python3 manage.py migrate --noinput
+/root/szlg-plusz/venv/bin/python3 -m pip install -r /root/szlg-plusz/requirements.txt
+/root/szlg-plusz/venv/bin/python3 manage.py collectstatic --noinput
+/root/szlg-plusz/venv/bin/python3 manage.py migrate --noinput
 systemctl restart szlgplusz.service
 sleep 5
 systemctl status szlgplusz.service
