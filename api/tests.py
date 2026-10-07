@@ -32,6 +32,7 @@ from .models import (
     ManualGroup,
     Passkey,
     StudentProfile,
+    email_info,
 )
 from .oauth import SZLGPlusOAuth2Validator
 from .scopes import describe_scopes
@@ -765,6 +766,14 @@ class GlobalConfigTests(TestCase):
         self.assertEqual(GlobalConfig.objects.count(), 1)
         self.assertEqual(GlobalConfig.get_solo().pk, 1)
         self.assertTrue(GlobalConfig.get_solo().promote_passkey)
+
+    def test_email_classification_uses_configured_school_domain(self):
+        config = GlobalConfig.get_solo()
+        config.school_domain = "@example.org"
+        config.save()
+
+        self.assertTrue(email_info("student@example.org").is_in_school_domain)
+        self.assertFalse(email_info("student@szlgbp.hu").is_in_school_domain)
 
     def test_only_one_record_can_exist_and_it_cannot_be_deleted(self):
         with self.assertRaises(IntegrityError), transaction.atomic():

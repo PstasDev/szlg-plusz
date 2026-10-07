@@ -58,7 +58,7 @@ def class_str_to_year_szekcio(class_str: str) -> tuple[int, str]:
 class email_info:
     def __init__(self, email: str):
         self.email = email
-        self.is_student = self._determine_if_student()
+        self.school_domain = get_school_domain()
 
     # E-mail formats:
     # Group: group@szlgbp.hu
@@ -69,7 +69,7 @@ class email_info:
 
     @property
     def is_in_school_domain(self) -> bool:
-        return self.email.endswith(school_domain)
+        return self.email.endswith(self.school_domain)
 
     @property
     def is_student(self) -> bool:
@@ -422,8 +422,6 @@ class GlobalConfig(SingletonModel):
         return "Globális beállítások"
 
 
-school_domain = (
-    GlobalConfig.objects.first().school_domain
-    if GlobalConfig.objects.first() and GlobalConfig.objects.first().school_domain
-    else "@szlgbp.hu"
-)
+def get_school_domain() -> str:
+    config = GlobalConfig.objects.only("school_domain").first()
+    return config.school_domain if config and config.school_domain else "@szlgbp.hu"
