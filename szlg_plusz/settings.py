@@ -107,6 +107,7 @@ LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/login/"
 PASSWORD_RESET_TIMEOUT = 60 * 60
+CSRF_FAILURE_VIEW = "api.web_views.csrf_failure"
 
 EMAIL_BACKEND = os.environ.get(
     "EMAIL_BACKEND",

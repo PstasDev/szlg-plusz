@@ -1,4 +1,5 @@
 import json
+import logging
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -15,6 +16,8 @@ from .webauthn_services import (
     verify_authentication,
     verify_registration,
 )
+
+logger = logging.getLogger(__name__)
 
 PASSKEY_PROMO_SESSION_KEY = "passkey_promo_next"
 
@@ -215,3 +218,9 @@ def passkey_delete(request, passkey_id: int):
 def logout_view(request):
     logout(request)
     return redirect("login")
+
+
+def csrf_failure(request, reason=""):
+    """A readable 403 for failed CSRF checks, with the technical reason for admins."""
+    logger.warning("CSRF check failed on %s: %s", request.path, reason)
+    return render(request, "csrf_failure.html", {"reason": reason}, status=403)

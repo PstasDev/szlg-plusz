@@ -5,12 +5,55 @@ they would let any signed-in user register clients with arbitrary grant
 types. Applications are managed through the SZLG+ dashboard instead.
 """
 
+import logging
+
+from django.urls import path
 from oauth2_provider import urls as dot_urls
+from oauth2_provider.models import get_application_model
+from oauth2_provider.views import AuthorizationView
+
+logger = logging.getLogger(__name__)
 
 app_name = "oauth2_provider"
 
+
+class SZLGAuthorizationView(AuthorizationView):
+    """Keeps the application in the consent page when an approval POST is re-rendered.
+
+    The toolkit only puts the application and scopes into the template context
+    on GET. When the submitted approval form is invalid, the page is rendered
+    again without them, so the app details and the "verified" state vanish.
+    """
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        data = self.request.POST if self.request.method == "POST" else self.request.GET
+        if context.get("application") is None:
+            client_id = data.get("client_id")
+            context["application"] = (
+                get_application_model()
+                .objects.select_related("profile")
+                .filter(client_id=client_id)
+                .first()
+                if client_id
+                else None
+            )
+        if not context.get("scopes"):
+            context["scopes"] = data.get("scope", "").split()
+        return context
+
+    def form_invalid(self, form):
+        # Field names only: the values include one-time codes and state.
+        logger.warning(
+            "Authorization approval rejected, invalid fields: %s",
+            {name: [error.code for error in errors.data] for name, errors in form.errors.items()},
+        )
+        return super().form_invalid(form)
+
+
 urlpatterns = (
     dot_urls.metadata_urlpatterns
-    + dot_urls.base_urlpatterns
+    + [path("authorize/", SZLGAuthorizationView.as_view(), name="authorize")]
+    + [pattern for pattern in dot_urls.base_urlpatterns if pattern.name != "authorize"]
     + dot_urls.oidc_urlpatterns
 )

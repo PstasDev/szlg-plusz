@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}A kérés nem teljesíthető · SZLG+{% endblock %}
+{% block head_text %}
+  <h1>A kérés nem teljesíthető</h1>
+  <p class="subtitle">Az oldal lejárt, vagy a böngésző nem küldte el a biztonsági ellenőrzéshez szükséges adatokat.</p>
+{% endblock %}
+{% block content %}
+  <p>Töltsd újra az oldalt (vagy lépj vissza az alkalmazásba, és indítsd újra a bejelentkezést), majd próbáld meg még egyszer. Ellenőrizd, hogy a böngészőben engedélyezve vannak a sütik.</p>
+  {% if reason %}
+    <p class="muted">Ha a hiba ismétlődik, add meg ezt az adminisztrátornak:</p>
+    <p class="muted"><code>{{ reason }}</code></p>
+  {% endif %}
+  <div class="actions"><a class="btn" href="{% url 'login' %}">Vissza a bejelentkezéshez</a></div>
+{% endblock %}
