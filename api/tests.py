@@ -15,6 +15,7 @@ from urllib.parse import parse_qs, urlencode, urlparse
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.core import mail
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
 from django.test import TestCase, override_settings
@@ -800,6 +801,7 @@ class PasskeyPromoTests(TestCase):
     PASSWORD = "promo-password-123!x"
 
     def setUp(self):
+        cache.clear()  # the login rate limit is keyed by e-mail and shared across tests
         self.user = CustomUser.objects.create_user(
             email="student@example.org", password=self.PASSWORD
         )
