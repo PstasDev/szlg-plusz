@@ -42,9 +42,5 @@ urlpatterns = [
     ),
     path("logout/", logout_view, name="logout"),
     path("o/", include("oauth2_provider.urls", namespace="oauth2_provider")),
-]
-
-urlpatterns += [
-    re_path(r"^static/(?P<path>.*)$", views.serve_static, name="static"),
-    re_path(r"^media/(?P<path>.*)$", views.serve_media, name="media"),
+    path('', include('statichandler.views')),
 ]
