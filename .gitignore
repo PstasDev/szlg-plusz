@@ -15,3 +15,5 @@ api/migrations/__pycache__/
 .env
 
 media/
+
+app.log
