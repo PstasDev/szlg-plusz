@@ -197,6 +197,51 @@ def oidc_issuer() -> str:
         return ""
     return f"https://{host}/o"
 
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+# oauthlib sanitises codes, secrets and Authorization headers in its request dumps.
+OAUTH_LOG_LEVEL = os.environ.get("OAUTH_LOG_LEVEL", "DEBUG").upper()
+LOG_FILE = os.environ.get("LOG_FILE", "").strip()
+
+_log_handlers = ["console"] + (["file"] if LOG_FILE else [])
+
+# Without this, Django prints no 500 tracebacks when DEBUG=False (they only go to
+# mail_admins), so gunicorn/journald never see the cause of a failed token exchange.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "%(asctime)s %(levelname)s %(name)s [pid %(process)d] %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "verbose"},
+        **(
+            {
+                "file": {
+                    "class": "logging.handlers.RotatingFileHandler",
+                    "filename": LOG_FILE,
+                    "maxBytes": 10 * 1024 * 1024,
+                    "backupCount": 5,
+                    "encoding": "utf-8",
+                    "formatter": "verbose",
+                }
+            }
+            if LOG_FILE
+            else {}
+        ),
+    },
+    "root": {"handlers": _log_handlers, "level": LOG_LEVEL},
+    "loggers": {
+        "django.request": {"handlers": _log_handlers, "level": "WARNING", "propagate": False},
+        "django.security": {"handlers": _log_handlers, "level": "WARNING", "propagate": False},
+        "oauthlib": {"handlers": _log_handlers, "level": OAUTH_LOG_LEVEL, "propagate": False},
+        "oauth2_provider": {"handlers": _log_handlers, "level": OAUTH_LOG_LEVEL, "propagate": False},
+        "szlg_plusz": {"handlers": _log_handlers, "level": LOG_LEVEL, "propagate": False},
+        "api": {"handlers": _log_handlers, "level": LOG_LEVEL, "propagate": False},
+    },
+}
+
 OAUTH2_PROVIDER_APPLICATION_MODEL = "oauth2_provider.Application"
 
 OAUTH2_PROVIDER = {
