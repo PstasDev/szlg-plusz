@@ -18,7 +18,7 @@ from django.core import mail
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
-from django.test import TestCase, override_settings
+from django.test import Client, TestCase, override_settings
 from django.utils import timezone
 from oauth2_provider.models import AccessToken, Application, RefreshToken
 from jwcrypto.jwt import JWT
@@ -980,3 +980,67 @@ class PasskeyPromoTests(TestCase):
             )
 
         self.assertEqual(response.json(), {"redirect": "/security/"})
+
+
+@override_settings(
+    SECURE_SSL_REDIRECT=False,
+    SESSION_COOKIE_SECURE=False,
+    CSRF_COOKIE_SECURE=False,
+)
+class ConsentRerenderTests(TestCase):
+    """The approval page after a rejected POST must still show the application."""
+
+    def setUp(self):
+        self.user = CustomUser.objects.create_user(email="student@example.org", password="x-Pass-123456!")
+        self.application = Application.objects.create(
+            name="Igazoláskezelő",
+            user=self.user,
+            client_type=Application.CLIENT_CONFIDENTIAL,
+            authorization_grant_type=Application.GRANT_AUTHORIZATION_CODE,
+            redirect_uris="https://client.example/callback",
+            algorithm=Application.RS256_ALGORITHM,
+        )
+        ApplicationProfile.objects.create(
+            application=self.application,
+            developer="Balla Botond",
+            short_description="Az F-tagozat webappja",
+            verified=True,
+        )
+        self.client.force_login(self.user)
+
+    def test_rejected_approval_keeps_application_details_and_verified_state(self):
+        with self.assertLogs("szlg_plusz.oidc_urls", level="WARNING") as logs:
+            response = self.client.post(
+                "/o/authorize/",
+                {"allow": "true", "client_id": self.application.client_id, "scope": "openid email"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Igazoláskezelő")
+        self.assertContains(response, "Balla Botond")
+        self.assertContains(response, "Az F-tagozat webappja")
+        self.assertContains(response, "ellenőrzött alkalmazás")
+        self.assertNotContains(response, "nem ellenőrizte az iskola")
+        self.assertContains(response, "A jóváhagyási kérés adatai nem voltak érvényesek.")
+        self.assertContains(response, "E-mail-cím")
+        self.assertIn("redirect_uri", logs.output[0])
+        self.assertNotIn(self.application.client_id, logs.output[0])
+
+    def test_unknown_client_shows_no_verification_notice(self):
+        response = self.client.post("/o/authorize/", {"allow": "true", "client_id": "does-not-exist"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "nem ellenőrizte az iskola")
+        self.assertNotContains(response, "ellenőrzött alkalmazás")
+
+
+class CsrfFailurePageTests(TestCase):
+    def test_failed_csrf_check_shows_a_readable_page_with_the_reason(self):
+        client = Client(enforce_csrf_checks=True)
+
+        with self.assertLogs("api.web_views", level="WARNING"):
+            response = client.post("/login/password/", {"email": "a@example.org", "password": "x"})
+
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(response, "A kérés nem teljesíthető", status_code=403)
+        self.assertContains(response, "CSRF", status_code=403)
