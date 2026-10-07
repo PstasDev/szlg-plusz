@@ -9,6 +9,7 @@ from mptt.fields import TreeForeignKey
 from mptt.models import MPTTModel
 from solo.models import SingletonModel
 
+
 def year_szekcio_to_str(startYear: int, szekcio: str) -> str:
     current_year = datetime.date.today().year
     current_month = datetime.date.today().month
@@ -53,6 +54,58 @@ def class_str_to_year_szekcio(class_str: str) -> tuple[int, str]:
         return (int(class_str), "")
     # If none of the above conditions are met, we cannot parse the class string.
     raise ValueError(f"Cannot parse class string: {class_str}")
+
+class email_info:
+    def __init__(self, email: str):
+        self.email = email
+        self.is_student = self._determine_if_student()
+
+    # E-mail formats:
+    # Group: group@szlgbp.hu
+    # Teacher/School employee: lastname.firstname@szlgbp.hu
+    # Full-time Student: lastname.firstname.23a@szlgbp.hu (23 - start year, a - szekció)
+    # Part-time Student: lastname.firstname.23af@szlgbp.hu (23 - start year, a - szekció, f - part-time)
+    # Computer test accounts: x.y.12g@szlgbp.hu (if there is any numbering g, it indicates test account)
+
+    @property
+    def is_in_school_domain(self) -> bool:
+        return self.email.endswith(school_domain)
+
+    @property
+    def is_student(self) -> bool:
+        return self.is_in_school_domain and ".f" not in self.email and not self.email.startswith("x.")
+
+    @property
+    def is_part_time_student(self) -> bool:
+        return self.is_in_school_domain and ".f" in self.email and not self.email.startswith("x.")
+
+    @property
+    def is_computer_test_account(self) -> bool:
+        return self.is_in_school_domain and self.email.startswith("x.") and any(char.isdigit() for char in self.email.split(".")[-1])
+    
+    @property
+    def is_group_email(self) -> bool:
+        return self.is_in_school_domain and not self.email.startswith("x.") and not any(char.isdigit() for char in self.email.split(".")[-1])
+
+    @property
+    def is_teacher_or_school_employee(self) -> bool:
+        return self.is_in_school_domain and not self.email.startswith("x.") and not any(char.isdigit() for char in self.email.split(".")[-1]) and ".f" not in self.email
+
+    @property
+    def what_am_i(self) -> str:
+
+        account_types = [
+            (self.is_student, "Nappali tagozatos diák"),
+            (self.is_part_time_student, "Esti tagozatos diák"),
+            (self.is_computer_test_account, "Számítógéptermi teszt fiók"),
+            (self.is_group_email, "Csoportos e-mail"),
+            (self.is_teacher_or_school_employee, "Tanár/iskolai alkalmazott"),
+        ]
+
+        for attr_value, description in account_types:
+            if attr_value   :
+                return description
+        return "Ismeretlen"
 
 
 class CustomUserManager(BaseUserManager):
@@ -113,7 +166,26 @@ class CustomUser(AbstractUser):
 
     @property
     def is_student(self) -> bool:
-        return hasattr(self, "student_profile")
+        """Check if the user has a student profile."""
+        if hasattr(self, "student_profile"):
+            return True
+        if email_info(self.email).is_student:
+            return True
+        return False
+
+    @property
+    def account_type(self) -> str:
+        account_types = [
+            (self.is_student, "Nappali tagozatos diák"),
+            (self.is_part_time_student, "Esti tagozatos diák"),
+            (self.is_computer_test_account, "Számítógéptermi teszt fiók"),
+            (self.is_group_email, "Csoportos e-mail"),
+            (self.is_teacher_or_school_employee, "Tanár/iskolai alkalmazott"),
+        ]
+        for attr_value, description in account_types:
+            if attr_value:
+                return description
+        return "Ismeretlen"
 
     @property
     def is_teacher(self) -> bool:
@@ -125,6 +197,10 @@ class CustomUser(AbstractUser):
             "student": self.is_student,
             "teacher": self.is_teacher,
             "staff": self.is_staff,
+            "part_time_student": self.is_part_time_student,
+            "computer_test_account": self.is_computer_test_account,
+            "group_email": self.is_group_email,
+            "teacher_or_school_employee": self.is_teacher_or_school_employee,
         }
 
     def get_full_name(self) -> str:
@@ -326,6 +402,15 @@ class GlobalConfig(SingletonModel):
         ),
     )
 
+    school_domain = models.CharField(
+        "iskolai domain",
+        max_length=255,
+        default="@szlgbp.hu",
+        help_text="Az iskola által használt e-mail domain.",
+        blank=True,
+        null=True,
+    )
+
     class Meta:
         verbose_name = "globális beállítások"
 
@@ -335,3 +420,10 @@ class GlobalConfig(SingletonModel):
 
     def __str__(self) -> str:
         return "Globális beállítások"
+
+
+school_domain = (
+    GlobalConfig.objects.first().school_domain
+    if GlobalConfig.objects.first() and GlobalConfig.objects.first().school_domain
+    else "@szlgbp.hu"
+)
