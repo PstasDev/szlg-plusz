@@ -41,5 +41,5 @@ urlpatterns = [
     ),
     path("logout/", logout_view, name="logout"),
     path("o/", include("oauth2_provider.urls", namespace="oauth2_provider")),
-    path('', include('statichandler.views')),
+    path('', include('statichandler.urls')),
 ]
