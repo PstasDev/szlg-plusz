@@ -174,6 +174,42 @@ class CustomUser(AbstractUser):
         return False
 
     @property
+    def is_part_time_student(self) -> bool:
+        """Check if the user has a part-time student profile."""
+        if hasattr(self, "part_time_student_profile"):
+            return True
+        if email_info(self.email).is_part_time_student:
+            return True
+        return False
+
+    @property
+    def is_computer_test_account(self) -> bool:
+        """Check if the user has a computer test account profile."""
+        if hasattr(self, "computer_test_account_profile"):
+            return True
+        if email_info(self.email).is_computer_test_account:
+            return True
+        return False
+
+    @property
+    def is_group_email(self) -> bool:
+        """Check if the user has a group email profile."""
+        if hasattr(self, "group_email_profile"):
+            return True
+        if email_info(self.email).is_group_email:
+            return True
+        return False
+
+    @property
+    def is_teacher_or_school_employee(self) -> bool:
+        """Check if the user has a teacher or school employee profile."""
+        if hasattr(self, "teacher_or_school_employee_profile"):
+            return True
+        if email_info(self.email).is_teacher_or_school_employee:
+            return True
+        return False
+
+    @property
     def account_type(self) -> str:
         account_types = [
             (self.is_student, "Nappali tagozatos diák"),
