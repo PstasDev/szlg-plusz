@@ -175,6 +175,16 @@ class Tagozat(models.Model):
     name = models.CharField(max_length=100, verbose_name="Tagozat", help_text="A diák iskolai tagozata.")
     slug = models.SlugField(max_length=120, unique=True)
 
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "tagozat"
+        verbose_name_plural = "tagozatok"
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)   
+
     def __str__(self) -> str:
         return self.name
 
