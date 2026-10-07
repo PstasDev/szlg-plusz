@@ -48,8 +48,8 @@ class TeacherProfileInline(admin.StackedInline):
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
     ordering = ("email",)
-    list_display = ("email", "first_name", "last_name", "is_active", "is_staff")
-    search_fields = ("email", "first_name", "last_name")
+    list_display = ("email", "last_name", "first_name", "is_active", "is_staff")
+    search_fields = ("email", "last_name", "first_name")
     filter_horizontal = ("groups", "user_permissions", "manual_groups")
     fieldsets = (
         (None, {"fields": ("email", "password")}),
@@ -57,8 +57,8 @@ class CustomUserAdmin(UserAdmin):
             "Személyes adatok",
             {
                 "fields": (
-                    "first_name",
                     "last_name",
+                    "first_name",
                     "phone",
                     "date_of_birth",
                     "email_verified",
@@ -87,8 +87,8 @@ class CustomUserAdmin(UserAdmin):
                 "classes": ("wide",),
                 "fields": (
                     "email",
-                    "first_name",
                     "last_name",
+                    "first_name",
                     "password1",
                     "password2",
                     "is_active",
