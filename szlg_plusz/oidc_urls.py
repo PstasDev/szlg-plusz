@@ -12,6 +12,8 @@ from oauth2_provider import urls as dot_urls
 from oauth2_provider.models import get_application_model
 from oauth2_provider.views import AuthorizationView
 
+from api.scopes import describe_scopes
+
 logger = logging.getLogger(__name__)
 
 app_name = "oauth2_provider"
@@ -40,6 +42,7 @@ class SZLGAuthorizationView(AuthorizationView):
             )
         if not context.get("scopes"):
             context["scopes"] = data.get("scope", "").split()
+        context["scope_items"] = describe_scopes(context["scopes"])
         return context
 
     def form_invalid(self, form):

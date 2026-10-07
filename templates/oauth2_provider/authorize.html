@@ -31,7 +31,7 @@
   {% endif %}
   <h2>A(z) {{ application.name }} hozzáférést kér a következőkhöz:</h2>
   <ul class="scopes">
-    {% for item in scopes|default:request.GET.scope|scope_details %}
+    {% for item in scope_items %}
       <li>
         {% include "partials/icon.html" with name=item.icon %}
         <div><b>{{ item.title }}</b><span class="desc">{{ item.description }}</span></div>
