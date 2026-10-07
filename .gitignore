@@ -13,3 +13,5 @@ api/migrations/__pycache__/
 *.pyd
 
 .env
+
+media/
