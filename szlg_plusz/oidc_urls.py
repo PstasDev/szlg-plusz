@@ -45,6 +45,19 @@ class SZLGAuthorizationView(AuthorizationView):
         context["scope_items"] = describe_scopes(context["scopes"])
         return context
 
+    def error_response(self, error, application, **kwargs):
+        # Fatal errors (unknown client, mismatching redirect URI, ...) render a 400 page.
+        oauth_error = error.oauthlib_error
+        data = self.request.POST if self.request.method == "POST" else self.request.GET
+        logger.warning(
+            "Authorization request rejected: %s (%s) client_id=%s redirect_uri=%s",
+            oauth_error.error,
+            oauth_error.description,
+            data.get("client_id"),
+            data.get("redirect_uri"),
+        )
+        return super().error_response(error, application, **kwargs)
+
     def form_invalid(self, form):
         # Field names only: the values include one-time codes and state.
         logger.warning(

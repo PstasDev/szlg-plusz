@@ -1068,3 +1068,66 @@ class OidcIssuerTests(TestCase):
         for debug, hosts in ((False, ["sso.szlg.info"]), (True, ["localhost", "127.0.0.1", "0.0.0.0"])):
             with self.settings(DEBUG=debug, ALLOWED_HOSTS=hosts):
                 self.assertEqual(debug_on_public_host(None), [])
+
+
+@override_settings(
+    SECURE_SSL_REDIRECT=False,
+    SESSION_COOKIE_SECURE=False,
+    CSRF_COOKIE_SECURE=False,
+)
+class ConsentErrorPageTests(TestCase):
+    """Invalid authorization requests must explain themselves instead of looking like a consent page."""
+
+    def setUp(self):
+        self.user = CustomUser.objects.create_user(email="student@example.org", password="x-Pass-123456!")
+        self.application = Application.objects.create(
+            name="Igazoláskezelő",
+            user=self.user,
+            client_type=Application.CLIENT_CONFIDENTIAL,
+            authorization_grant_type=Application.GRANT_AUTHORIZATION_CODE,
+            redirect_uris="https://ikapi.example/api/auth/sso/callback",
+            algorithm=Application.RS256_ALGORITHM,
+        )
+        self.client.force_login(self.user)
+
+    def _authorize(self, **overrides):
+        params = {
+            "response_type": "code",
+            "client_id": self.application.client_id,
+            "redirect_uri": "https://ikapi.example/api/auth/sso/callback",
+            "scope": "openid profile",
+            "state": "s",
+            "nonce": "n",
+            "code_challenge": "c" * 43,
+            "code_challenge_method": "S256",
+        }
+        params.update(overrides)
+        return self.client.get("/o/authorize/?" + urlencode(params))
+
+    def test_mismatching_redirect_uri_is_explained_and_logged(self):
+        wrong = "https://sso.example/api/auth/sso/callback"
+
+        with self.assertLogs("szlg_plusz.oidc_urls", level="WARNING") as logs:
+            response = self._authorize(redirect_uri=wrong)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(response, "nem egyezik az alkalmazás regisztrált URI", status_code=400)
+        self.assertContains(response, "Mismatching redirect URI.", status_code=400)
+        self.assertContains(response, wrong, status_code=400)
+        self.assertNotContains(response, "Engedélyezés", status_code=400)
+        self.assertNotContains(response, "Alapvető bejelentkezés", status_code=400)
+        self.assertIn(wrong, logs.output[0])
+
+    def test_unknown_client_is_explained(self):
+        response = self._authorize(client_id="does-not-exist")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(response, "Ismeretlen alkalmazás", status_code=400)
+        self.assertNotContains(response, "Engedélyezés", status_code=400)
+
+    def test_a_valid_request_still_shows_the_consent_page(self):
+        response = self._authorize()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Engedélyezés")
+        self.assertNotContains(response, "Hibakód")

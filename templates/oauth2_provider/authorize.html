@@ -1,12 +1,30 @@
 {% extends "base.html" %}
 {% load szlg_extras %}
-{% block title %}{{ application.name }} · Hozzáférés engedélyezése · SZLG+{% endblock %}
+{% block title %}{% if error %}Hibás kérés{% else %}{{ application.name }} · Hozzáférés engedélyezése{% endif %} · SZLG+{% endblock %}
 {% block shell_class %}wide{% endblock %}
 {% block head_text %}
+  {% if error %}
+  <h1>Az alkalmazás nem kérhet hozzáférést</h1>
+  {% else %}
   <h1>Hozzáférés engedélyezése</h1>
   <div class="user-chip"><span class="avatar" aria-hidden="true">{{ request.user.email|slice:":1"|upper }}</span>{{ request.user.email }}</div>
+  {% endif %}
 {% endblock %}
 {% block content %}
+  {% if error %}
+    <p class="error" role="alert">
+      <strong>
+        {% if error.description == "Mismatching redirect URI." %}A kérésben szereplő átirányítási URI nem egyezik az alkalmazás regisztrált URI-jaival.
+        {% elif error.error == "invalid_client" or error.description == "Invalid client_id parameter value." %}Ismeretlen alkalmazás: a kliensazonosító nem létezik.
+        {% else %}Az alkalmazás kérése hibás, ezért nem folytatható.{% endif %}
+      </strong>
+    </p>
+    <p class="muted">Hibakód: <code>{{ error.error }}</code>{% if error.description %} · {{ error.description }}{% endif %}</p>
+    <p>Ha az alkalmazás neked is ismerős, ne engedélyezd tovább, és jelezd a fejlesztőnek. Ha te fejlesztetted, vesd össze a kérésben küldött értékeket az SZLG+ alkalmazásbeállításaival:</p>
+    <p class="muted">Kliensazonosító: <code>{{ request.GET.client_id|default:"–" }}</code></p>
+    <p class="muted">Átirányítási URI: <code>{{ request.GET.redirect_uri|default:"–" }}</code></p>
+    <div class="actions"><a class="btn" href="{% url 'dashboard' %}">Vissza a fiókomhoz</a></div>
+  {% else %}
   <div class="app">
     <div class="app-logo">
       {% if application.profile.logo %}
@@ -69,4 +87,5 @@
       <button class="btn" type="submit" name="allow" value="true">Engedélyezés</button>
     </div>
   </form>
+  {% endif %}
 {% endblock %}
