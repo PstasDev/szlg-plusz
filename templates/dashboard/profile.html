@@ -1,0 +1,87 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Profil{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>Profil</h1>
+      <p class="muted">Az SZLG+ fiókodhoz tárolt összes adat egy helyen. Az adatokat az iskola adminisztrátora kezeli; módosításért fordulj hozzá.</p>
+    </div>
+  </div>
+
+  <div class="stats">
+    <a class="stat" href="{% url 'security' %}"><b>{{ passkey_count }}</b><span>jelkulcs</span></a>
+    <a class="stat" href="{% url 'grants' %}"><b>{{ grant_count }}</b><span>engedélyezett alkalmazás</span></a>
+    <a class="stat" href="{% url 'applications' %}"><b>{{ application_count }}</b><span>saját alkalmazás</span></a>
+    <a class="stat" href="{% url 'security' %}"><b>{% if has_password %}Beállítva{% else %}Nincs{% endif %}</b><span>jelszó</span></a>
+  </div>
+
+  <div class="two">
+    <section class="panel">
+      <h2>Személyes adatok</h2>
+      <dl class="data">
+        <div><dt>Vezetéknév</dt><dd>{{ request.user.last_name|default:"–" }}</dd></div>
+        <div><dt>Keresztnév</dt><dd>{{ request.user.first_name|default:"–" }}</dd></div>
+        <div><dt>Telefonszám</dt><dd>{{ request.user.phone|default:"–" }}</dd></div>
+        <div><dt>Születési dátum</dt><dd>{% if request.user.date_of_birth %}{{ request.user.date_of_birth|date:"Y. F j." }}{% else %}–{% endif %}</dd></div>
+        <div>
+          <dt>E-mail-cím</dt>
+          <dd>{{ request.user.email }}
+            {% if request.user.email_verified %}<span class="badge ok">Megerősítve</span>{% else %}<span class="badge warn">Nincs megerősítve</span>{% endif %}
+          </dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="panel">
+      <h2>Fiókadatok</h2>
+      <dl class="data">
+        <div>
+          <dt>Szerepkör</dt>
+          <dd>
+            <div class="badges">
+              {% if student_profile %}<span class="badge">Diák</span>{% endif %}
+              {% if teacher_profile %}<span class="badge">Tanár</span>{% endif %}
+              {% if request.user.is_staff %}<span class="badge">Munkatárs</span>{% endif %}
+              {% if request.user.is_superuser %}<span class="badge">Adminisztrátor</span>{% endif %}
+              {% if not student_profile and not teacher_profile and not request.user.is_staff %}<span class="muted">Nincs hozzárendelve</span>{% endif %}
+            </div>
+          </dd>
+        </div>
+        {% if student_profile %}
+          {% if student_profile.om_id %}<div><dt>OM azonosító</dt><dd>{{ student_profile.om_id }}</dd></div>{% endif %}
+          {% if student_profile.tagozat %}<div><dt>Tagozat</dt><dd>{{ student_profile.tagozat.name }}</dd></div>{% endif %}
+          {% if student_profile.kezdes_eve and student_profile.szekcio %}
+            <div><dt>Osztály</dt><dd>{{ student_profile.osztaly }} <span class="muted">({{ student_profile.kezdes_eve }}, {{ student_profile.szekcio }} szekció)</span></dd></div>
+          {% endif %}
+        {% endif %}
+        {% if teacher_profile and teacher_profile.employee_number %}
+          <div><dt>Munkatársi azonosító</dt><dd>{{ teacher_profile.employee_number }}</dd></div>
+        {% endif %}
+        <div>
+          <dt>Iskolai csoportok</dt>
+          <dd>
+            {% if school_groups %}
+              <div class="badges">{% for group in school_groups %}<span class="badge" title="{{ group.full_path }}">{{ group.name }}</span>{% endfor %}</div>
+            {% else %}<span class="muted">Nem tartozol iskolai csoporthoz</span>{% endif %}
+            <div class="muted">Osztály, szakkör stb.; az alkalmazások ezt látják.</div>
+          </dd>
+        </div>
+        <div>
+          <dt>Jogosultsági körök</dt>
+          <dd>
+            {% if permission_groups %}
+              <div class="badges">{% for group in permission_groups %}<span class="badge">{{ group.name }}</span>{% endfor %}</div>
+            {% else %}<span class="muted">Nincs jogosultsági körben</span>{% endif %}
+            <div class="muted">Az SZLG+ adminisztrációs felületén szerzett jogosultságokat adják; az alkalmazásokhoz nem jutnak el.</div>
+          </dd>
+        </div>
+        <div>
+          <dt>Egyedi azonosító</dt>
+          <dd><code>{{ request.user.oidc_subject }}</code><div class="muted">Ezt kapják az alkalmazások <code>sub</code> néven; nem változik.</div></dd>
+        </div>
+        <div><dt>Regisztráció</dt><dd>{{ request.user.date_joined|date:"Y. F j. H:i" }}</dd></div>
+        <div><dt>Utolsó belépés</dt><dd>{% if request.user.last_login %}{{ request.user.last_login|date:"Y. F j. H:i" }}{% else %}–{% endif %}</dd></div>
+      </dl>
+    </section>
+  </div>
+{% endblock %}

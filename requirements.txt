@@ -7,4 +7,4 @@ jwcrypto==1.6.1
 python-dotenv==1.0.1
 webauthn==2.2.0
 pillow==12.3.0
-
+django-solo==2.5.1

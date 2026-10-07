@@ -79,10 +79,10 @@ def create_registration_options(user) -> dict:
     return json.loads(options_to_json(options))
 
 
-def verify_registration(user, credential: dict, name: str = "Passkey") -> Passkey:
+def verify_registration(user, credential: dict, name: str = "Jelkulcs") -> Passkey:
     challenge = consume_challenge(_registration_key(user.pk))
     if challenge is None or challenge["user_id"] != user.pk:
-        raise ValueError("Passkey registration has expired. Start again.")
+        raise ValueError("A jelkulcs-regisztráció lejárt. Kezdd újra.")
     try:
         verification = verify_registration_response(
             credential=credential,
@@ -93,7 +93,7 @@ def verify_registration(user, credential: dict, name: str = "Passkey") -> Passke
         )
     except Exception as exc:
         logger.warning("Passkey registration verification failed for user %s", user.pk)
-        raise ValueError("Passkey registration failed.") from exc
+        raise ValueError("A jelkulcs regisztrálása nem sikerült.") from exc
     response = credential.get("response")
     transports = response.get("transports", []) if isinstance(response, dict) else []
     if not isinstance(transports, list):
@@ -107,11 +107,11 @@ def verify_registration(user, credential: dict, name: str = "Passkey") -> Passke
             transports=",".join(
                 value for value in transports if isinstance(value, str)
             )[:200],
-            name=(name.strip() or "Passkey")[:80],
+            name=(name.strip() or "Jelkulcs")[:80],
         )
     except IntegrityError as exc:
         logger.warning("Duplicate passkey registration for user %s", user.pk)
-        raise ValueError("This passkey is already registered.") from exc
+        raise ValueError("Ez a jelkulcs már regisztrálva van.") from exc
 
 
 def create_authentication_options(email: str = "") -> tuple[dict, str]:
@@ -139,15 +139,15 @@ def create_authentication_options(email: str = "") -> tuple[dict, str]:
 def verify_authentication(challenge_id: str, credential: dict):
     challenge = consume_challenge(f"passkey:authentication:{challenge_id}")
     if challenge is None:
-        raise ValueError("Passkey login has expired. Start again.")
+        raise ValueError("A jelkulcsos bejelentkezés lejárt. Kezdd újra.")
 
     raw_id = credential.get("rawId")
     if not isinstance(raw_id, str):
-        raise ValueError("Invalid passkey credential.")
+        raise ValueError("Érvénytelen jelkulcs.")
     try:
         credential_id = _b64url_decode(raw_id)
     except (ValueError, TypeError) as exc:
-        raise ValueError("Invalid passkey credential.") from exc
+        raise ValueError("Érvénytelen jelkulcs.") from exc
 
     passkey = (
         Passkey.objects.select_related("user")
@@ -155,11 +155,11 @@ def verify_authentication(challenge_id: str, credential: dict):
         .first()
     )
     if passkey is None or not passkey.user.is_active:
-        raise ValueError("Passkey authentication failed.")
+        raise ValueError("A jelkulcsos azonosítás nem sikerült.")
     if challenge["account_hint_provided"] and (
         challenge["user_id"] is None or challenge["user_id"] != passkey.user_id
     ):
-        raise ValueError("Passkey authentication failed.")
+        raise ValueError("A jelkulcsos azonosítás nem sikerült.")
 
     try:
         verification = verify_authentication_response(
@@ -173,7 +173,7 @@ def verify_authentication(challenge_id: str, credential: dict):
         )
     except Exception as exc:
         logger.warning("Passkey authentication verification failed for credential %s", passkey.pk)
-        raise ValueError("Passkey authentication failed.") from exc
+        raise ValueError("A jelkulcsos azonosítás nem sikerült.") from exc
 
     passkey.sign_count = verification.new_sign_count
     passkey.last_used_at = timezone.now()

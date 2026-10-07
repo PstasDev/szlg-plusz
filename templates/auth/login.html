@@ -18,12 +18,15 @@
       <input id="password" name="password" type="password" placeholder=" " autocomplete="current-password" required>
       <label for="password">Jelszó</label>
     </div>
-    <div class="actions"><button class="btn" type="submit">Bejelentkezés</button></div>
+    <div class="actions">
+      <a class="btn text" href="{% url 'password-reset' %}">Elfelejtett jelszó?</a>
+      <button class="btn" type="submit">Bejelentkezés</button>
+    </div>
   </form>
   <div class="or">vagy</div>
   <button class="btn outline block" id="passkey-login" type="button" style="margin-top:1.5rem">
     {% include "partials/icon.html" with name="fingerprint" %}
-    Bejelentkezés passkey-jel
+    Bejelentkezés jelkulccsal
   </button>
   <p id="passkey-error" class="error" role="alert" hidden></p>
 {% endblock %}

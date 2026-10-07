@@ -1,0 +1,59 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block title %}Biztonság{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>Biztonság</h1>
+      <p class="muted">Jelszó és jelkulcsok kezelése.</p>
+    </div>
+  </div>
+
+  <div class="two">
+    <section class="panel">
+      <h2>{% if has_password %}Jelszó módosítása{% else %}Jelszó beállítása{% endif %}</h2>
+      <p class="lead muted">{% if has_password %}Add meg a jelenlegi jelszavadat, majd válassz újat.{% else %}Még nincs jelszavad, csak jelkulccsal tudsz belépni. Beállíthatsz egyet is.{% endif %}</p>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "partials/form_fields.html" %}
+        <div class="form-actions">
+          <button type="submit" class="btn">{% if has_password %}Jelszó módosítása{% else %}Jelszó beállítása{% endif %}</button>
+          <a class="btn text" href="{% url 'password-reset' %}">Elfelejtett jelszó?</a>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Jelkulcsok</h2>
+      <p class="lead muted">Jelszó nélküli belépés ujjlenyomattal, arcfelismeréssel vagy biztonsági kulccsal.</p>
+      {% if passkeys %}
+        <ul class="items">
+          {% for passkey in passkeys %}
+            <li>
+              <div>
+                <div>{{ passkey.name }}</div>
+                <div class="muted">Létrehozva: {{ passkey.created_at|date:"Y. m. d." }}{% if passkey.last_used_at %} · utoljára használva: {{ passkey.last_used_at|date:"Y. m. d." }}{% endif %}</div>
+              </div>
+              <form method="post" action="{% url 'passkey-delete' passkey.id %}" data-confirm="Biztosan törlöd ezt a jelkulcsot?">
+                {% csrf_token %}
+                <button class="btn danger" type="submit" aria-label="{{ passkey.name }} törlése">Törlés</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty">Még nincs jelkulcs regisztrálva.</p>
+      {% endif %}
+      <div class="fld" style="margin-top:1.25rem">
+        <label for="passkey-name">Új jelkulcs neve</label>
+        <input id="passkey-name" type="text" maxlength="80" value="Saját eszköz">
+      </div>
+      <div class="form-actions"><button id="passkey-register" type="button" class="btn outline">Jelkulcs regisztrálása</button></div>
+      <p id="passkey-error" class="error" role="alert" hidden></p>
+      <p id="passkey-success" class="success" role="status" hidden></p>
+    </section>
+  </div>
+{% endblock %}
+{% block scripts %}
+  <script src="{% static 'js/webauthn.js' %}" defer></script>
+{% endblock %}

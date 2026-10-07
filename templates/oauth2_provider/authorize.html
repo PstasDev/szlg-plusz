@@ -22,6 +22,11 @@
     </div>
   </div>
 
+  {% if application.profile.verified %}
+    <p class="note muted" style="text-align:center">Az iskola által ellenőrzött alkalmazás.</p>
+  {% else %}
+    <p class="error" role="alert">Ezt az alkalmazást nem ellenőrizte az iskola. Csak akkor engedélyezd, ha ismered a fejlesztőjét.</p>
+  {% endif %}
   <h2>A(z) {{ application.name }} hozzáférést kér a következőkhöz:</h2>
   <ul class="scopes">
     {% for item in scopes|default:request.GET.scope|scope_details %}

@@ -1,0 +1,38 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Alkalmazásaim{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>Alkalmazásaim</h1>
+      <p class="muted">Az általad regisztrált alkalmazások, amelyek SZLG+ bejelentkezést használnak.</p>
+    </div>
+    {% if limit_reached %}
+      <span class="muted">Elérted a regisztrálható alkalmazások maximumát.</span>
+    {% else %}
+      <a class="btn" href="{% url 'application-new' %}">Új alkalmazás</a>
+    {% endif %}
+  </div>
+
+  {% if applications %}
+    <div class="cards">
+      {% for application in applications %}
+        <a class="card-link" href="{% url 'application-detail' application.pk %}">
+          <div class="top">
+            {% include "partials/app_logo.html" with profile=application.profile name=application.name %}
+            <div>
+              <div class="name">{{ application.name }}</div>
+              {% if application.profile.developer %}<div class="muted">{{ application.profile.developer }}</div>{% endif %}
+            </div>
+          </div>
+          {% if application.profile.short_description %}<p class="desc">{{ application.profile.short_description }}</p>{% endif %}
+          <div class="meta">{% include "partials/app_badges.html" %}</div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <section class="panel">
+      <p class="empty">Még nem regisztráltál alkalmazást.</p>
+      <div class="form-actions end" style="justify-content:center"><a class="btn" href="{% url 'application-new' %}">Első alkalmazás regisztrálása</a></div>
+    </section>
+  {% endif %}
+{% endblock %}

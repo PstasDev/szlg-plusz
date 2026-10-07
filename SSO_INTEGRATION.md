@@ -56,8 +56,9 @@ a client application.
    with a protected secret), the registered callback URI, and **RS256** for
    OIDC signing. Exact callback URI matching is required. PKCE is required by
    the provider.
-7. Create `StudentProfile` / `TeacherProfile` rows and assign `ManualGroup`
-   memberships from the user/group admin screens as appropriate.
+7. Create `StudentProfile` / `TeacherProfile` rows and assign school groups (`ManualGroup`, shown as *iskolai csoport*) from the user
+   admin screen. Django's built-in groups are shown as *jogosultsági kör* and only
+   control access to this admin site; they are never sent to client applications.
 
 This MVP uses a new `AUTH_USER_MODEL`. Install and migrate it before creating
 real accounts. Replacing the user model in a database that has already applied
@@ -78,7 +79,7 @@ For local development, use the equivalent endpoints on
 
 Use the `jwks_uri` published by discovery instead of copying the signing key.
 The `groups` scope adds `smart_groups` (role booleans) and `manual_groups`
-(hierarchical slug paths) to the signed ID token. `openid`, `profile`, `email`,
+(hierarchical slug paths of the user's school groups) to the signed ID token. `openid`, `profile`, `email`,
 and `phone` control their corresponding standard OIDC claims.
 
 ## Node.js / Express client outline

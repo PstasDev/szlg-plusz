@@ -1,0 +1,20 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{% if editing %}{{ application.name }} szerkesztése{% else %}Új alkalmazás{% endif %}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>{% if editing %}Alkalmazás szerkesztése{% else %}Új alkalmazás{% endif %}</h1>
+      <p class="muted">Ezeket az adatokat látják a felhasználók, amikor engedélyt adnak az alkalmazásnak.</p>
+    </div>
+  </div>
+  <section class="panel" style="max-width:40rem">
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      {% include "partials/form_fields.html" %}
+      <div class="form-actions">
+        <button type="submit" class="btn">{% if editing %}Mentés{% else %}Regisztrálás{% endif %}</button>
+        <a class="btn text" href="{% if editing %}{% url 'application-detail' application.pk %}{% else %}{% url 'applications' %}{% endif %}">Mégse</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

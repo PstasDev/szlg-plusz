@@ -1,0 +1,2 @@
+{% if application.profile.verified %}<span class="badge ok">Ellenőrzött</span>{% else %}<span class="badge warn">Nem ellenőrzött</span>{% endif %}
+<span class="badge">{% if application.client_type == "confidential" %}Bizalmas{% else %}Nyilvános{% endif %}</span>

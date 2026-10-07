@@ -1,0 +1,43 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Engedélyek{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>Engedélyek</h1>
+      <p class="muted">Azok az alkalmazások, amelyeknek hozzáférést adtál a fiókodhoz.</p>
+    </div>
+  </div>
+
+  {% for grant in grants %}
+    <section class="panel grant">
+      <div class="top">
+        {% include "partials/app_logo.html" with profile=grant.application.profile name=grant.application.name %}
+        <div class="grow">
+          <div class="name"><strong>{{ grant.application.name }}</strong>
+            {% if grant.application.profile.verified %}<span class="badge ok">Ellenőrzött</span>{% else %}<span class="badge warn">Nem ellenőrzött</span>{% endif %}
+          </div>
+          <div class="muted">{% if grant.application.profile.developer %}Fejlesztő: {{ grant.application.profile.developer }}{% endif %}{% if grant.application.profile.short_description %}{% if grant.application.profile.developer %} · {% endif %}{{ grant.application.profile.short_description }}{% endif %}</div>
+        </div>
+        <form method="post" action="{% url 'grant-revoke' grant.application.pk %}" data-confirm="Visszavonod a(z) {{ grant.application.name }} hozzáférését?">
+          {% csrf_token %}
+          <button type="submit" class="btn danger">Visszavonás</button>
+        </form>
+      </div>
+      {% if grant.scopes %}
+        <ul class="scopes-mini">
+          {% for scope in grant.scopes %}<li class="badge" title="{{ scope.description }}">{{ scope.title }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+      <div class="when">
+        {% if grant.authorized_at %}Első engedélyezés: {{ grant.authorized_at|date:"Y. m. d. H:i" }}{% endif %}
+        {% if grant.last_used %} · legutóbbi belépés: {{ grant.last_used|date:"Y. m. d. H:i" }}{% endif %}
+      </div>
+    </section>
+  {% empty %}
+    <section class="panel"><p class="empty">Egyetlen alkalmazásnak sem adtál hozzáférést.</p></section>
+  {% endfor %}
+
+  {% if grants %}
+    <p class="muted">A visszavonás után az alkalmazás nem kér le több adatot a fiókodról, és új belépéskor újra engedélyt kér. Az alkalmazás saját, már megkezdett munkamenetét ez nem szünteti meg.</p>
+  {% endif %}
+{% endblock %}

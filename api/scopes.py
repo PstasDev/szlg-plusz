@@ -25,9 +25,9 @@ SCOPE_DETAILS = {
         "icon": "phone",
     },
     "groups": {
-        "title": "Szerepkör és csoportok",
+        "title": "Szerepkör és iskolai csoportok",
         "description": (
-            "Hogy diák vagy tanár vagy-e, és mely csoportokhoz (például osztály "
+            "Hogy diák vagy tanár vagy-e, és mely iskolai csoportokhoz (például osztály "
             "vagy szakkör) tartozol."
         ),
         "icon": "users",

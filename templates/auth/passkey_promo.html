@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Jelkulcs · SZLG+{% endblock %}
+{% block head_text %}
+  <span class="promo-icon" aria-hidden="true">{% include "partials/icon.html" with name="fingerprint" %}</span>
+  {% if has_passkeys %}
+    <h1>Jelkulcs ezen az eszközön is?</h1>
+    <p class="subtitle">Jelszóval léptél be. Hozz létre jelkulcsot erre az eszközre is, és legközelebb jelszó nélkül, egy érintéssel beléphetsz.</p>
+  {% else %}
+    <h1>Lépj be gyorsabban</h1>
+    <p class="subtitle">Állíts be egy jelkulcsot, és legközelebb jelszó nélkül jelentkezhetsz be.</p>
+  {% endif %}
+{% endblock %}
+{% block content %}
+  <div data-promo-screen>
+    {% if not has_passkeys %}
+      <ul class="scopes">
+        <li>
+          {% include "partials/icon.html" with name="fingerprint" %}
+          <div><b>Egy érintés vagy egy pillantás</b><span class="desc">Ujjlenyomattal, arcfelismeréssel vagy az eszköz PIN-kódjával lépsz be.</span></div>
+        </li>
+        <li>
+          {% include "partials/icon.html" with name="lock" %}
+          <div><b>Nem kell jelszót megjegyezned</b><span class="desc">A kulcs az eszközödön marad, a jelszavad nem utazik sehová.</span></div>
+        </li>
+        <li>
+          {% include "partials/icon.html" with name="shield" %}
+          <div><b>Adathalászat ellen is véd</b><span class="desc">Hamis oldalon a jelkulcs egyszerűen nem működik.</span></div>
+        </li>
+      </ul>
+    {% endif %}
+
+    <button id="passkey-register" class="btn block" type="button" data-promo="1" style="margin-top:{% if has_passkeys %}.5rem{% else %}1.5rem{% endif %}">{% if has_passkeys %}Jelkulcs létrehozása ezen az eszközön{% else %}Jelkulcs beállítása{% endif %}</button>
+    <p class="muted" style="text-align:center;margin:.6rem 0 0">Ezen az eszközön: <strong id="device-name">–</strong></p>
+    <p id="passkey-error" class="error" role="alert" hidden></p>
+
+    <form id="passkey-skip-form" method="post" action="{% url 'passkey-promo' %}">
+      {% csrf_token %}
+      <button class="btn text block" type="submit" style="margin-top:.6rem">Majd legközelebb</button>
+      {% if has_passkeys %}
+        <button class="btn text block" type="submit" name="device_ready" value="1">Ezen az eszközön már van jelkulcsom</button>
+      {% endif %}
+    </form>
+    <p class="note muted" style="text-align:center">Később a Biztonság oldalon is beállíthatod.</p>
+  </div>
+{% endblock %}
+{% block scripts %}
+  <script src="{% static 'js/webauthn.js' %}" defer></script>
+{% endblock %}

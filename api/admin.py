@@ -1,14 +1,18 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.admin import GroupAdmin, UserAdmin
+from django.contrib.auth.models import Group
 from mptt.admin import DraggableMPTTAdmin
 from oauth2_provider.admin import application_admin_class
 from oauth2_provider.models import get_application_model
+from solo.admin import SingletonModelAdmin
 
 from .models import (
     ApplicationProfile,
     CustomUser,
+    GlobalConfig,
     ManualGroup,
     Passkey,
+    PermissionGroup,
     StudentProfile,
     TeacherProfile,
 )
@@ -50,7 +54,7 @@ class CustomUserAdmin(UserAdmin):
     fieldsets = (
         (None, {"fields": ("email", "password")}),
         (
-            "Personal information",
+            "Személyes adatok",
             {
                 "fields": (
                     "first_name",
@@ -61,9 +65,9 @@ class CustomUserAdmin(UserAdmin):
                 )
             },
         ),
-        ("Membership", {"fields": ("manual_groups",)}),
+        ("Iskolai csoportok", {"fields": ("manual_groups",)}),
         (
-            "Permissions",
+            "Jogosultságok",
             {
                 "fields": (
                     "is_active",
@@ -74,7 +78,7 @@ class CustomUserAdmin(UserAdmin):
                 )
             },
         ),
-        ("Important dates", {"fields": ("last_login", "date_joined")}),
+        ("Fontos dátumok", {"fields": ("last_login", "date_joined")}),
     )
     add_fieldsets = (
         (
@@ -97,6 +101,16 @@ class CustomUserAdmin(UserAdmin):
     inlines = (StudentProfileInline, TeacherProfileInline)
 
 
+# The built-in Group is shown as "Jogosultsági kör" (access-rights circle) so it
+# cannot be confused with the school groups (ManualGroup).
+admin.site.unregister(Group)
+
+
+@admin.register(PermissionGroup)
+class PermissionGroupAdmin(GroupAdmin):
+    pass
+
+
 @admin.register(ManualGroup)
 class ManualGroupAdmin(DraggableMPTTAdmin):
     mptt_indent_field = "name"
@@ -110,3 +124,8 @@ class PasskeyAdmin(admin.ModelAdmin):
     list_display = ("name", "user", "created_at", "last_used_at")
     search_fields = ("name", "user__email")
     readonly_fields = ("credential_id", "public_key", "sign_count")
+
+
+@admin.register(GlobalConfig)
+class GlobalConfigAdmin(SingletonModelAdmin):
+    """Single-row settings: no add or delete, the list page opens the form directly."""

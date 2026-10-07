@@ -1,0 +1,80 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{{ application.name }}{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div class="app-title">
+      {% include "partials/app_logo.html" with profile=application.profile name=application.name %}
+      <div>
+        <h1>{{ application.name }}</h1>
+        <div class="badges" style="margin-top:.35rem">{% include "partials/app_badges.html" %}</div>
+      </div>
+    </div>
+    <div class="form-actions" style="margin:0">
+      <a class="btn outline" href="{% url 'application-edit' application.pk %}">Szerkesztés</a>
+      <form method="post" action="{% url 'application-delete' application.pk %}" data-confirm="Biztosan törlöd a(z) {{ application.name }} alkalmazást? Minden felhasználó hozzáférése megszűnik.">
+        {% csrf_token %}
+        <button type="submit" class="btn danger">Törlés</button>
+      </form>
+    </div>
+  </div>
+
+  {% if new_secret %}
+    <section class="panel highlight">
+      <h2>Kliensjelszó</h2>
+      <p class="lead muted">Másold ki most: biztonsági okból később már nem látható. Ha elveszted, újat kell generálnod.</p>
+      <div class="copy">
+        <input id="client-secret" type="text" value="{{ new_secret }}" readonly aria-label="Kliensjelszó">
+        <button type="button" class="btn outline" data-copy="client-secret">Másolás</button>
+      </div>
+    </section>
+  {% endif %}
+
+  {% if not application.profile.verified %}
+    <div class="flash error" role="note">Ez az alkalmazás még nem ellenőrzött: az engedélyezéskor a felhasználók figyelmeztetést látnak. Ellenőrzést az iskola adminisztrátorától kérhetsz.</div>
+  {% endif %}
+
+  <div class="two">
+    <section class="panel">
+      <h2>Alkalmazás</h2>
+      <dl class="data">
+        <div><dt>Leírás</dt><dd>{{ application.profile.short_description|default:"–" }}</dd></div>
+        <div><dt>Fejlesztő</dt><dd>{{ application.profile.developer|default:"–" }}</dd></div>
+        <div>
+          <dt>Átirányítási URI-k</dt>
+          <dd>{% for uri in redirect_uris %}<div><code>{{ uri }}</code></div>{% endfor %}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="panel">
+      <h2>Integráció</h2>
+      <p class="lead muted">Authorization Code + PKCE (S256), aláírt RS256 ID token.</p>
+      <div class="fld">
+        <label for="client-id">Kliensazonosító</label>
+        <div class="copy">
+          <input id="client-id" type="text" value="{{ application.client_id }}" readonly>
+          <button type="button" class="btn outline" data-copy="client-id">Másolás</button>
+        </div>
+      </div>
+      <div class="fld">
+        <label for="issuer-url">Discovery URL</label>
+        <div class="copy">
+          <input id="issuer-url" type="text" value="{{ request.scheme }}://{{ request.get_host }}/o/.well-known/openid-configuration" readonly>
+          <button type="button" class="btn outline" data-copy="issuer-url">Másolás</button>
+        </div>
+      </div>
+      <div class="fld">
+        <label>Kliensjelszó</label>
+        {% if application.client_type == "confidential" %}
+          <p class="muted" style="margin:0 0 .6rem">Titkosítva tárolódik, nem jeleníthető meg újra.</p>
+          <form method="post" action="{% url 'application-rotate-secret' application.pk %}" data-confirm="Új kliensjelszót generálsz, a régi azonnal érvénytelen lesz. Folytatod?">
+            {% csrf_token %}
+            <button type="submit" class="btn outline sm">Új kliensjelszó generálása</button>
+          </form>
+        {% else %}
+          <p class="muted" style="margin:0">Nyilvános alkalmazásnak nincs kliensjelszava, a PKCE védi a folyamatot.</p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+{% endblock %}

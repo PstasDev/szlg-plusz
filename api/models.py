@@ -2,13 +2,14 @@ import uuid
 import datetime
 
 from django.contrib.auth.base_user import BaseUserManager
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, Group
 from django.db import models
 from django.utils.text import slugify
 from mptt.fields import TreeForeignKey
 from mptt.models import MPTTModel
+from solo.models import SingletonModel
 
-def year_tagozat_to_str(startYear: int, tagozat: str) -> str:
+def year_szekcio_to_str(startYear: int, szekcio: str) -> str:
     current_year = datetime.date.today().year
     current_month = datetime.date.today().month
     school_year = current_year
@@ -16,28 +17,28 @@ def year_tagozat_to_str(startYear: int, tagozat: str) -> str:
         school_year -= 1
 
     graduation_year = startYear + 4
-    if tagozat in ['A', 'E', 'F']:
+    if szekcio in ['A', 'E', 'F']:
         graduation_year += 1
 
     if school_year >= graduation_year:
-        return f"{startYear}{tagozat}"
+        return f"{startYear}{szekcio}"
     else:
         years_passed = school_year - startYear
-        if tagozat in ['A', 'E', 'F']:
+        if szekcio in ['A', 'E', 'F']:
             if years_passed == 0:
-                return f"KNY{tagozat}" if tagozat == 'A' else f"NY{tagozat}"
+                return f"KNY{szekcio}" if szekcio == 'A' else f"NY{szekcio}"
             else:
                 # years_passed 1 = 9. F, years_passed 2 = 10. F, etc.
-                return f"{8 + years_passed}. {tagozat}"
+                return f"{8 + years_passed}. {szekcio}"
         else:
             # B, C, D classes: years_passed 0 = 9., years_passed 1 = 10., etc.
-            return f"{9 + years_passed}. {tagozat}"
+            return f"{9 + years_passed}. {szekcio}"
 
-def class_str_to_year_tagozat(class_str: str) -> tuple[int, str]:
+def class_str_to_year_szekcio(class_str: str) -> tuple[int, str]:
     # Smart function that can convert from any typo if there is a valid class: 
     # KNYA, knya, nya, NYA, 0.a, 0.A, 0A, 9.NYA, 9. KNYA -> KNYA
     # 10F, 2023F, 10. F, 10.f -> 10F
-    # post-graduate classes, are tricky, drop an error if there are certainly two valid answers (for example 2000A can be a class that either refers to the class starting in 2000 with tagozat A or a class graduated in 2000 with tagozat A)
+    # post-graduate classes, are tricky, drop an error if there are certainly two valid answers (for example 2000A can be a class that either refers to the class starting in 2000 with szekcio A or a class graduated in 2000 with szekcio A)
     class_str = class_str.strip().upper().replace(" ", "")
     if class_str.startswith("KNY"):
         return (0, "A")
@@ -75,7 +76,6 @@ class CustomUserManager(BaseUserManager):
             raise ValueError("A superuser must have is_superuser=True.")
         return self.create_user(email, password, **extra_fields)
 
-
 class CustomUser(AbstractUser):
     username = None
     email = models.EmailField(unique=True)
@@ -83,9 +83,26 @@ class CustomUser(AbstractUser):
     date_of_birth = models.DateField(null=True, blank=True)
     email_verified = models.BooleanField(default=False)
     oidc_subject = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    # Overrides PermissionsMixin.groups only to give it a clear, Hungarian name.
+    groups = models.ManyToManyField(
+        Group,
+        verbose_name="jogosultsági körök",
+        blank=True,
+        help_text=(
+            "A felhasználó jogosultsági körei: ezek határozzák meg, mit tehet az SZLG+ "
+            "adminisztrációs felületén. Az alkalmazásoknak nem kerülnek át."
+        ),
+        related_name="user_set",
+        related_query_name="user",
+    )
     manual_groups = models.ManyToManyField(
         "api.ManualGroup",
+        verbose_name="iskolai csoportok",
         blank=True,
+        help_text=(
+            "A felhasználó iskolai csoportjai (osztály, szakkör stb.): ezeket az "
+            "alkalmazások az ID tokenben megkapják."
+        ),
         related_name="members",
     )
 
@@ -110,6 +127,9 @@ class CustomUser(AbstractUser):
             "staff": self.is_staff,
         }
 
+    def get_full_name(self) -> str:
+        return f"{self.last_name} {self.first_name}".strip()
+
     def save(self, *args, **kwargs):
         self.email = self.email.strip().lower()
         super().save(*args, **kwargs)
@@ -124,11 +144,38 @@ class StudentProfile(models.Model):
         on_delete=models.CASCADE,
         related_name="student_profile",
     )
-    student_number = models.CharField(max_length=32, blank=True)
+    om_id = models.CharField(max_length=32, blank=True, verbose_name="OM azonosító", help_text="A diák OM azonosítója.")
+
+    kezdes_eve = models.PositiveIntegerField(blank=True, null=True, verbose_name="Kezdés éve", help_text="A diák iskolai tanulmányainak kezdési éve.")
+
+    szekcio = models.CharField(max_length=10, blank=True, verbose_name="Szekció", help_text="A diák iskolai szekciója.")
+
+    tagozat = models.ForeignKey(
+        "api.Tagozat",
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        verbose_name="Tagozat",
+        help_text="A diák iskolai tagozata.",
+    )
+
+    @property
+    def osztaly(self) -> str:
+        return year_szekcio_to_str(self.kezdes_eve, self.szekcio)
+
+    class Meta:
+        verbose_name = "diák profil"
+        verbose_name_plural = "diák profilok"
+        ordering = ["user__last_name", "user__first_name"]
 
     def __str__(self) -> str:
-        return f"Student: {self.user.email}"
+        return f"Student: {self.user.get_full_name() if self.user.get_full_name() else self.user.email}"
 
+class Tagozat(models.Model):
+    name = models.CharField(max_length=100, verbose_name="Tagozat", help_text="A diák iskolai tagozata.")
+
+    def __str__(self) -> str:
+        return self.name
 
 class TeacherProfile(models.Model):
     user = models.OneToOneField(
@@ -139,7 +186,7 @@ class TeacherProfile(models.Model):
     employee_number = models.CharField(max_length=32, blank=True)
 
     def __str__(self) -> str:
-        return f"Teacher: {self.user.email}"
+        return f"Teacher: {self.user.get_full_name() if self.user.get_full_name() else self.user.email}"
 
 
 class ManualGroup(MPTTModel):
@@ -159,8 +206,8 @@ class ManualGroup(MPTTModel):
 
     class Meta:
         ordering = ["tree_id", "lft"]
-        verbose_name = "manual group"
-        verbose_name_plural = "manual groups"
+        verbose_name = "iskolai csoport"
+        verbose_name_plural = "iskolai csoportok"
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -177,6 +224,15 @@ class ManualGroup(MPTTModel):
         return self.full_path
 
 
+class PermissionGroup(Group):
+    """Django's built-in Group, shown in the admin as an access-rights circle."""
+
+    class Meta:
+        proxy = True
+        verbose_name = "jogosultsági kör"
+        verbose_name_plural = "jogosultsági körök"
+
+
 class Passkey(models.Model):
     user = models.ForeignKey(
         CustomUser,
@@ -187,15 +243,17 @@ class Passkey(models.Model):
     public_key = models.BinaryField()
     sign_count = models.BigIntegerField(default=0)
     transports = models.CharField(max_length=200, blank=True, default="")
-    name = models.CharField(max_length=80, blank=True, default="Passkey")
+    name = models.CharField("név", max_length=80, blank=True, default="Jelkulcs")
     created_at = models.DateTimeField(auto_now_add=True)
     last_used_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = "jelkulcs"
+        verbose_name_plural = "jelkulcsok"
 
     def __str__(self) -> str:
-        return f"{self.user.email} - {self.name}"
+        return f"Jelkulcs: {self.name} ({self.user.get_full_name() or self.user.email})"
 
 
 class WebAuthnChallenge(models.Model):
@@ -210,6 +268,9 @@ class WebAuthnChallenge(models.Model):
     )
     account_hint_provided = models.BooleanField(default=False)
     expires_at = models.DateTimeField(db_index=True)
+
+    def __str__(self) -> str:
+        return f"WebAuthnChallenge: {self.key} for {self.user.get_full_name() if self.user.get_full_name() else self.user.email}"
 
 class ApplicationProfile(models.Model):
     """Public details about an OAuth application, shown on the consent screen."""
@@ -227,6 +288,11 @@ class ApplicationProfile(models.Model):
         blank=True,
         help_text="Négyzet alakú PNG, JPEG vagy WebP kép (SVG nem engedélyezett).",
     )
+    verified = models.BooleanField(
+        "ellenőrzött",
+        default=False,
+        help_text="Az iskola által ellenőrzött alkalmazás. Csak adminisztrátor állíthatja.",
+    )
 
     class Meta:
         verbose_name = "alkalmazásprofil"
@@ -234,3 +300,27 @@ class ApplicationProfile(models.Model):
 
     def __str__(self) -> str:
         return f"{self.application.name} ({self.developer})"
+
+
+class GlobalConfig(SingletonModel):
+    """Site-wide settings. Exactly one row exists; it is created by a migration."""
+
+    promote_passkey = models.BooleanField(
+        "jelkulcs ajánlása",
+        default=True,
+        help_text=(
+            "Ha be van kapcsolva, a jelszavas bejelentkezés után egy képernyő felajánlja "
+            "a jelkulcs gyors beállítását azoknak, akiknek még nincs, illetve azoknak, "
+            "akik jelszóval léptek be egy olyan eszközön, ahol még nincs jelkulcsuk."
+        ),
+    )
+
+    class Meta:
+        verbose_name = "globális beállítások"
+
+    def delete(self, *args, **kwargs):
+        # The single configuration row must always exist.
+        return 0, {}
+
+    def __str__(self) -> str:
+        return "Globális beállítások"
