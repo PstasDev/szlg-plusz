@@ -15,6 +15,7 @@ from .models import (
     PermissionGroup,
     StudentProfile,
     TeacherProfile,
+    Tagozat,
 )
 
 Application = get_application_model()
@@ -129,3 +130,9 @@ class PasskeyAdmin(admin.ModelAdmin):
 @admin.register(GlobalConfig)
 class GlobalConfigAdmin(SingletonModelAdmin):
     """Single-row settings: no add or delete, the list page opens the form directly."""
+
+@admin.register(Tagozat)
+class TagozatAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug")
+    prepopulated_fields = {"slug": ("name",)}
+    search_fields = ("name", "slug")
