@@ -182,10 +182,26 @@ except FileNotFoundError as exc:
         "to an existing key."
     ) from exc
 
+def oidc_issuer() -> str:
+    """The public issuer URL advertised in discovery and set as the ID token `iss`.
+
+    Behind a TLS-terminating proxy the request itself looks like plain HTTP, so
+    the toolkit would otherwise advertise an http:// issuer that clients reject.
+    Set OIDC_ISSUER explicitly; in production it defaults to https://<first host>/o.
+    """
+    explicit = os.environ.get("OIDC_ISSUER", "").strip().rstrip("/")
+    if explicit:
+        return explicit
+    host = ALLOWED_HOSTS[0] if ALLOWED_HOSTS else ""
+    if DEBUG or not host or host.startswith((".", "*")) or host in {"localhost", "127.0.0.1"}:
+        return ""
+    return f"https://{host}/o"
+
 OAUTH2_PROVIDER_APPLICATION_MODEL = "oauth2_provider.Application"
 
 OAUTH2_PROVIDER = {
     "OIDC_ENABLED": True,
+    "OIDC_ISS_ENDPOINT": oidc_issuer(),
     "OIDC_RSA_PRIVATE_KEY": OIDC_RSA_PRIVATE_KEY,
     "OAUTH2_VALIDATOR_CLASS": "api.oauth.SZLGPlusOAuth2Validator",
     "SCOPES": SCOPE_SHORT_DESCRIPTIONS,

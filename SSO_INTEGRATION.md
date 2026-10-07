@@ -42,6 +42,9 @@ a client application.
 4. Configure `SECRET_KEY`, `ALLOWED_HOSTS`, `WEBAUTHN_RP_ID`,
    `WEBAUTHN_ORIGINS`, and the production HTTPS/cookie settings from
    `.env.example`. The deployed provider is `https://sso.szlg.info`.
+   Production must run with `DEBUG=False` (a warning is shown otherwise). The discovery
+   document and ID tokens use `OIDC_ISSUER` (default `https://<first host>/o`), so clients
+   see the `https` issuer even behind a proxy; it must equal the client's `SSO_ISSUER`.
    If TLS terminates at a reverse proxy, set `USE_X_FORWARDED_PROTO=True`
    only when the proxy overwrites the forwarded-protocol header.
 5. Apply migrations and create an administrator:

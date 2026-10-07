@@ -1044,3 +1044,27 @@ class CsrfFailurePageTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertContains(response, "A kérés nem teljesíthető", status_code=403)
         self.assertContains(response, "CSRF", status_code=403)
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class OidcIssuerTests(TestCase):
+    def test_discovery_advertises_the_configured_https_issuer_even_over_http(self):
+        provider = {**settings.OAUTH2_PROVIDER, "OIDC_ISS_ENDPOINT": "https://sso.example.test/o"}
+
+        with self.settings(OAUTH2_PROVIDER=provider):
+            document = self.client.get("/o/.well-known/openid-configuration").json()
+
+        self.assertEqual(document["issuer"], "https://sso.example.test/o")
+        for key in ("authorization_endpoint", "token_endpoint", "userinfo_endpoint", "jwks_uri"):
+            self.assertTrue(document[key].startswith("https://sso.example.test/o/"), key)
+
+    def test_debug_with_a_public_host_raises_a_warning(self):
+        from .checks import debug_on_public_host
+
+        with self.settings(DEBUG=True, ALLOWED_HOSTS=["sso.szlg.info"]):
+            warnings = debug_on_public_host(None)
+        self.assertEqual([warning.id for warning in warnings], ["szlgplus.W001"])
+
+        for debug, hosts in ((False, ["sso.szlg.info"]), (True, ["localhost", "127.0.0.1", "0.0.0.0"])):
+            with self.settings(DEBUG=debug, ALLOWED_HOSTS=hosts):
+                self.assertEqual(debug_on_public_host(None), [])
