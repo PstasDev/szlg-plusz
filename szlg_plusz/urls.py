@@ -2,7 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.views.generic.base import RedirectView
-from django.urls import include, path
+from django.urls import include, path, re_path
 
 from api.web_views import (
     account_page,
@@ -43,5 +43,7 @@ urlpatterns = [
     path("o/", include("oauth2_provider.urls", namespace="oauth2_provider")),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+urlpatterns += [
+    re_path(r"^static/(?P<path>.*)$", views.serve_static, name="static"),
+    re_path(r"^media/(?P<path>.*)$", views.serve_media, name="media"),
+]
