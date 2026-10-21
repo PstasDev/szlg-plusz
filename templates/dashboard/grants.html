@@ -32,6 +32,17 @@
         {% if grant.authorized_at %}Első engedélyezés: {{ grant.authorized_at|date:"Y. m. d. H:i" }}{% endif %}
         {% if grant.last_used %} · legutóbbi belépés: {{ grant.last_used|date:"Y. m. d. H:i" }}{% endif %}
       </div>
+      {% if grant.has_connection %}
+        <form method="post" action="{% url 'grant-interaction-update' grant.application.pk %}" class="grant-interaction">
+          {% csrf_token %}
+          <label for="interaction-{{ grant.application.pk }}">Következő belépések</label>
+          <select id="interaction-{{ grant.application.pk }}" name="interaction_mode">
+            <option value="auto" {% if grant.interaction_mode == "auto" %}selected{% endif %}>Automatikus átirányítás</option>
+            <option value="confirm" {% if grant.interaction_mode == "confirm" %}selected{% endif %}>Megerősítés és fiókváltás</option>
+          </select>
+          <button type="submit" class="btn outline">Mentés</button>
+        </form>
+      {% endif %}
     </section>
   {% empty %}
     <section class="panel"><p class="empty">Egyetlen alkalmazásnak sem adtál hozzáférést.</p></section>

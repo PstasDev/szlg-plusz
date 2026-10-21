@@ -37,6 +37,11 @@ urlpatterns = [
     path("apps/<int:pk>/delete/", dashboard_views.application_delete, name="application-delete"),
     path("grants/", dashboard_views.grants, name="grants"),
     path("grants/<int:pk>/revoke/", dashboard_views.grant_revoke, name="grant-revoke"),
+    path(
+        "grants/<int:pk>/interaction/",
+        dashboard_views.grant_interaction_update,
+        name="grant-interaction-update",
+    ),
     path("password/reset/", password_reset_views.PasswordResetRequestView.as_view(), name="password-reset"),
     path("password/reset/sent/", password_reset_views.PasswordResetSentView.as_view(), name="password-reset-done"),
     path(

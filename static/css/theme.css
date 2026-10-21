@@ -229,6 +229,21 @@ a:hover { text-decoration: underline; }
   font-size: .75rem; font-weight: 600;
 }
 
+.account-list { display: grid; gap: .6rem; margin-top: 1rem; }
+.account-choice {
+  display: flex; align-items: center; gap: .8rem;
+  padding: .8rem; border: 1px solid var(--border); border-radius: .75rem;
+  color: var(--text); text-decoration: none;
+}
+.account-choice:hover { border-color: var(--primary); background: var(--tint); }
+.account-choice .avatar {
+  width: 2.4rem; height: 2.4rem; border-radius: 50%;
+  display: grid; place-items: center; flex: 0 0 auto;
+  background: var(--primary); color: var(--on-primary); font-weight: 600;
+}
+.account-choice strong, .account-choice small { display: block; }
+.account-choice small { color: var(--muted); }
+
 .scopes { list-style: none; margin: .25rem 0 0; padding: 0; }
 .scopes li {
   display: flex; gap: 1rem; align-items: flex-start;

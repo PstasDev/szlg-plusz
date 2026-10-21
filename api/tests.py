@@ -32,6 +32,7 @@ from .models import (
     ManualGroup,
     Passkey,
     StudentProfile,
+    UserAppConnection,
     email_info,
 )
 from .oauth import SZLGPlusOAuth2Validator
@@ -63,16 +64,27 @@ class HiddenInputParser(HTMLParser):
         super().__init__()
         self.values = {}
         self.form_action = None
+        self.seen_form = False
+        self.in_first_form = False
 
     def handle_starttag(self, tag, attrs):
         attributes = dict(attrs)
         if tag == "form":
-            self.form_action = attributes.get("action")
+            if not self.seen_form:
+                self.form_action = attributes.get("action")
+                self.seen_form = True
+                self.in_first_form = True
+            else:
+                self.in_first_form = False
             return
-        if tag != "input":
+        if tag != "input" or not self.in_first_form:
             return
         if attributes.get("type") == "hidden":
             self.values[attributes["name"]] = attributes.get("value", "")
+
+    def handle_endtag(self, tag):
+        if tag == "form":
+            self.in_first_form = False
 
 
 class IdentityModelTests(TestCase):
@@ -92,7 +104,15 @@ class IdentityModelTests(TestCase):
         self.assertTrue(self.user.is_student)
         self.assertEqual(
             self.user.smart_groups,
-            {"student": True, "teacher": False, "staff": False},
+            {
+                "student": True,
+                "teacher": False,
+                "staff": False,
+                "part_time_student": False,
+                "computer_test_account": False,
+                "group_email": False,
+                "teacher_or_school_employee": False,
+            },
         )
 
     def test_nested_manual_group_paths_appear_in_oidc_claims(self):
@@ -1043,6 +1063,11 @@ class ConsentRerenderTests(TestCase):
         self.assertNotContains(response, "ellenőrzött alkalmazás")
 
 
+@override_settings(
+    SECURE_SSL_REDIRECT=False,
+    SESSION_COOKIE_SECURE=False,
+    CSRF_COOKIE_SECURE=False,
+)
 class CsrfFailurePageTests(TestCase):
     def test_failed_csrf_check_shows_a_readable_page_with_the_reason(self):
         client = Client(enforce_csrf_checks=True)
@@ -1140,3 +1165,209 @@ class ConsentErrorPageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Engedélyezés")
         self.assertNotContains(response, "Hibakód")
+
+
+@override_settings(
+    SECURE_SSL_REDIRECT=False,
+    SESSION_COOKIE_SECURE=False,
+    CSRF_COOKIE_SECURE=False,
+)
+class AccountChooserTests(TestCase):
+    PASSWORD = "chooser-password-123!x"
+
+    def setUp(self):
+        cache.clear()
+        config = GlobalConfig.get_solo()
+        config.promote_passkey = False
+        config.save()
+        self.first = CustomUser.objects.create_user(
+            email="first@example.org",
+            password=self.PASSWORD,
+            first_name="Anna",
+            last_name="Minta",
+        )
+        self.second = CustomUser.objects.create_user(
+            email="second@example.org",
+            password=self.PASSWORD,
+            first_name="Béla",
+            last_name="Példa",
+        )
+
+    def _password_login(self, email, **extra):
+        return self.client.post(
+            "/login/password/",
+            {"email": email, "password": self.PASSWORD, **extra},
+        )
+
+    def test_signed_account_cookie_survives_logout_and_populates_chooser(self):
+        self.assertRedirects(self._password_login(self.first.email), "/", fetch_redirect_response=False)
+        self.client.post("/logout/")
+
+        self.assertIn("szlg_accounts", self.client.cookies)
+        chooser = self.client.get("/login/")
+
+        self.assertContains(chooser, "Fiókválasztó")
+        self.assertContains(chooser, self.first.email)
+        self.assertContains(chooser, "Minta Anna")
+        self.assertNotContains(chooser, 'id="email"')
+
+    def test_selected_account_skips_identifier_and_is_bound_to_cookie_identity(self):
+        self._password_login(self.first.email)
+        self.client.post("/logout/")
+        selected = self.client.get(f"/login/?account={self.first.pk}")
+        self.assertContains(selected, 'name="account_id"')
+        self.assertNotContains(selected, 'id="email"')
+
+        response = self.client.post(
+            "/login/password/",
+            {
+                "account_id": self.first.pk,
+                "email": self.second.email,
+                "password": self.PASSWORD,
+            },
+        )
+
+        self.assertRedirects(response, "/", fetch_redirect_response=False)
+        self.assertEqual(str(self.client.session["_auth_user_id"]), str(self.first.pk))
+
+    def test_adding_an_account_keeps_recent_accounts_and_tampering_is_ignored(self):
+        self._password_login(self.first.email)
+        self.client.post("/logout/")
+        self.client.get("/login/?add_account=1")
+        self._password_login(self.second.email, add_account="1")
+        self.client.post("/logout/")
+
+        chooser = self.client.get("/login/")
+        self.assertContains(chooser, self.first.email)
+        self.assertContains(chooser, self.second.email)
+
+        self.client.cookies["szlg_accounts"] = str(self.first.pk)
+        tampered = self.client.get("/login/")
+        self.assertNotContains(tampered, "Fiókválasztó")
+        self.assertContains(tampered, 'id="email"')
+
+
+@override_settings(
+    SECURE_SSL_REDIRECT=False,
+    SESSION_COOKIE_SECURE=False,
+    CSRF_COOKIE_SECURE=False,
+)
+class DurableOAuthGrantTests(TestCase):
+    def setUp(self):
+        self.user = CustomUser.objects.create_user(
+            email="oauth-user@example.org", password="oauth-password-123!x"
+        )
+        self.application = Application.objects.create(
+            name="Fiókportál",
+            user=self.user,
+            client_type=Application.CLIENT_PUBLIC,
+            authorization_grant_type=Application.GRANT_AUTHORIZATION_CODE,
+            redirect_uris="https://client.example/callback",
+            algorithm=Application.RS256_ALGORITHM,
+        )
+        self.authorization = {
+            "response_type": "code",
+            "client_id": self.application.client_id,
+            "redirect_uri": "https://client.example/callback",
+            "scope": "openid profile email",
+            "state": "chooser-test-state",
+            "nonce": "chooser-test-nonce",
+            "code_challenge": "c" * 43,
+            "code_challenge_method": "S256",
+        }
+        self.client.force_login(self.user)
+
+    def _authorization_url(self, **overrides):
+        params = {**self.authorization, **overrides}
+        return "/o/authorize/?" + urlencode(params)
+
+    def _approve_first_grant(self):
+        consent = self.client.get(self._authorization_url())
+        self.assertEqual(consent.status_code, 200)
+        parser = HiddenInputParser()
+        parser.feed(consent.content.decode())
+        return self.client.post(parser.form_action, {**parser.values, "allow": "true"})
+
+    def test_approved_grant_is_persistent_and_returns_to_confirmation_not_consent(self):
+        approval = self._approve_first_grant()
+        self.assertEqual(approval.status_code, 302)
+        connection = UserAppConnection.objects.get(user=self.user, application=self.application)
+        self.assertEqual(set(connection.scopes), {"openid", "profile", "email"})
+        self.assertEqual(connection.interaction_mode, UserAppConnection.InteractionMode.CONFIRM)
+
+        confirmation = self.client.get(self._authorization_url(state="second-state"))
+        self.assertEqual(confirmation.status_code, 200)
+        self.assertContains(confirmation, "A következő applikációba tervezel újra bejelentkezni")
+        self.assertContains(confirmation, "Fiókportál")
+        self.assertNotContains(confirmation, "Hozzáférés engedélyezése")
+
+        parser = HiddenInputParser()
+        parser.feed(confirmation.content.decode())
+        resumed = self.client.post(
+            parser.form_action,
+            {**parser.values, "state": "second-state", "allow": "true"},
+        )
+        self.assertEqual(resumed.status_code, 302)
+        self.assertIn("code", parse_qs(urlparse(resumed["Location"]).query), resumed["Location"])
+        replay = self.client.post(
+            parser.form_action,
+            {**parser.values, "state": "second-state", "allow": "true"},
+        )
+        self.assertEqual(replay.status_code, 400)
+
+    def test_automatic_mode_skips_confirmation_but_new_scopes_need_consent(self):
+        UserAppConnection.objects.create(
+            user=self.user,
+            application=self.application,
+            scopes=["openid", "profile", "email"],
+            interaction_mode=UserAppConnection.InteractionMode.AUTOMATIC,
+        )
+
+        automatic = self.client.get(self._authorization_url())
+        self.assertEqual(automatic.status_code, 302)
+        self.assertIn("code", parse_qs(urlparse(automatic["Location"]).query))
+
+        expanded = self.client.get(self._authorization_url(scope="openid profile groups"))
+        self.assertEqual(expanded.status_code, 200)
+        self.assertContains(expanded, "Hozzáférés engedélyezése")
+
+    def test_confirmation_can_return_interaction_required_without_ui_for_prompt_none(self):
+        UserAppConnection.objects.create(
+            user=self.user,
+            application=self.application,
+            scopes=["openid", "profile", "email"],
+            interaction_mode=UserAppConnection.InteractionMode.CONFIRM,
+        )
+
+        response = self.client.get(self._authorization_url(prompt="none"))
+
+        self.assertEqual(response.status_code, 302)
+        query = parse_qs(urlparse(response["Location"]).query)
+        self.assertEqual(query["error"], ["interaction_required"])
+        self.assertEqual(query["state"], [self.authorization["state"]])
+
+    def test_dashboard_can_change_and_revoke_a_durable_grant(self):
+        connection = UserAppConnection.objects.create(
+            user=self.user,
+            application=self.application,
+            scopes=["openid", "profile"],
+        )
+
+        updated = self.client.post(
+            f"/grants/{self.application.pk}/interaction/",
+            {"interaction_mode": UserAppConnection.InteractionMode.AUTOMATIC},
+        )
+        self.assertRedirects(updated, "/grants/", fetch_redirect_response=False)
+        connection.refresh_from_db()
+        self.assertEqual(
+            connection.interaction_mode,
+            UserAppConnection.InteractionMode.AUTOMATIC,
+        )
+
+        revoked = self.client.post(f"/grants/{self.application.pk}/revoke/")
+        self.assertRedirects(revoked, "/grants/", fetch_redirect_response=False)
+        self.assertFalse(
+            UserAppConnection.objects.filter(
+                user=self.user, application=self.application
+            ).exists()
+        )

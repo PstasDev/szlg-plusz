@@ -122,7 +122,8 @@
       loginButton.disabled = true;
       try {
         if (!window.PublicKeyCredential) throw new Error("Ez a böngésző nem támogatja a jelkulcsot.");
-        const emailInput = document.getElementById("passkey-email");
+        const emailInput =
+          document.getElementById("passkey-email") || document.getElementById("email");
         const email = emailInput ? emailInput.value : "";
         const { options, challenge_id: challengeId } = await post(
           "/login/passkey/options/",

@@ -425,6 +425,58 @@ class ApplicationProfile(models.Model):
         return f"{self.application.name} ({self.developer})"
 
 
+class UserAppConnection(models.Model):
+    """A user's durable consent and sign-in preference for one OAuth app."""
+
+    class InteractionMode(models.TextChoices):
+        AUTOMATIC = "auto", "Automatikus átirányítás"
+        CONFIRM = "confirm", "Megerősítés és fiókváltás"
+
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="app_connections",
+        verbose_name="felhasználó",
+    )
+    application = models.ForeignKey(
+        "oauth2_provider.Application",
+        on_delete=models.CASCADE,
+        related_name="user_connections",
+        verbose_name="alkalmazás",
+    )
+    scopes = models.JSONField(
+        default=list,
+        verbose_name="engedélyezett jogosultságok",
+        help_text="Az alkalmazás által korábban jóváhagyott OAuth-jogosultságok.",
+    )
+    interaction_mode = models.CharField(
+        "belépési mód",
+        max_length=8,
+        choices=InteractionMode.choices,
+        default=InteractionMode.CONFIRM,
+        help_text=(
+            "Automatikus módban a korábban engedélyezett alkalmazás azonnal továbbirányít; "
+            "megerősítésnél belépés előtt egy fiókválasztó oldal jelenik meg."
+        ),
+    )
+    created_at = models.DateTimeField("első engedélyezés", auto_now_add=True)
+    last_used_at = models.DateTimeField("utolsó belépés", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "alkalmazáskapcsolat"
+        verbose_name_plural = "alkalmazáskapcsolatok"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user", "application"),
+                name="api_unique_user_app_connection",
+            )
+        ]
+        ordering = ("-created_at",)
+
+    def __str__(self) -> str:
+        return f"{self.user.email} · {self.application.name}"
+
+
 class GlobalConfig(SingletonModel):
     """Site-wide settings. Exactly one row exists; it is created by a migration."""
 

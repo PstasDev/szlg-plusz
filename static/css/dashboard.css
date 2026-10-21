@@ -177,6 +177,10 @@ dl.data code { font-size: .85rem; }
 .grant .top .grow { flex: 1; min-width: 0; }
 .grant .scopes-mini { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .4rem; }
 .grant .when { color: var(--muted); font-size: .85rem; }
+.grant-interaction { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; }
+.grant-interaction label { color: var(--muted); font-size: .9rem; }
+.grant-interaction select { min-width: 15rem; padding: .55rem .7rem; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: .55rem; }
+.grant-interaction .btn { margin: 0; }
 
 @media (max-width: 52rem) {
   .layout { grid-template-columns: minmax(0, 1fr); gap: 1.25rem; padding-top: 1rem; }

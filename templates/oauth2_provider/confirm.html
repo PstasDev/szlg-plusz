@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ application.name }} · Bejelentkezés megerősítése · SZLG+{% endblock %}
+{% block head_text %}
+  <h1>Bejelentkezés megerősítése</h1>
+  <div class="user-chip">
+    <span class="avatar" aria-hidden="true">{{ request.user.get_full_name|default:request.user.email|slice:":1"|upper }}</span>
+    {{ request.user.get_full_name|default:request.user.email }} · {{ request.user.email }}
+  </div>
+{% endblock %}
+{% block content %}
+  <p>A következő applikációba tervezel újra bejelentkezni:</p>
+  <div class="app">
+    <div class="app-logo">
+      {% if application.profile.logo %}<img src="{{ application.profile.logo.url }}" alt="">
+      {% else %}{{ application.name|slice:":1"|upper }}{% endif %}
+    </div>
+    <div>
+      <div class="app-name">{{ application.name }}</div>
+      {% if application.profile.short_description %}<p class="app-desc">{{ application.profile.short_description }}</p>{% endif %}
+      {% if application.profile.developer %}<p class="app-dev">Fejlesztő: {{ application.profile.developer }}</p>{% endif %}
+    </div>
+  </div>
+  <p class="note muted">Az alkalmazás korábban már megkapta a kért hozzáférést. A jelszavadat az alkalmazás nem kapja meg.</p>
+
+  <form method="post" action="{{ request.get_full_path }}">
+    {% csrf_token %}
+    <input type="hidden" name="redirect_uri" value="{{ form.redirect_uri.value|default:'' }}">
+    <input type="hidden" name="scope" value="{{ form.scope.value|default:'' }}">
+    <input type="hidden" name="nonce" value="{{ form.nonce.value|default:'' }}">
+    <input type="hidden" name="client_id" value="{{ form.client_id.value|default:'' }}">
+    <input type="hidden" name="state" value="{{ form.state.value|default:'' }}">
+    <input type="hidden" name="response_type" value="{{ form.response_type.value|default:'' }}">
+    <input type="hidden" name="code_challenge" value="{{ form.code_challenge.value|default:'' }}">
+    <input type="hidden" name="code_challenge_method" value="{{ form.code_challenge_method.value|default:'' }}">
+    <input type="hidden" name="claims" value="{{ form.claims.value|default:'' }}">
+    <input type="hidden" name="resource" value="{{ form.resource.value|default:'' }}">
+    <input type="hidden" name="interaction_ticket" value="{{ interaction_ticket }}">
+    <div class="actions">
+      <button class="btn text" type="submit" name="allow" value="false">Mégse</button>
+      <button class="btn" type="submit" name="allow" value="true">Folytatás</button>
+    </div>
+  </form>
+  <form method="post" action="{% url 'logout' %}" class="actions">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next_url }}">
+    <button class="btn outline" type="submit">Másik fiók használata</button>
+  </form>
+{% endblock %}

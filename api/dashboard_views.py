@@ -18,7 +18,7 @@ from oauth2_provider.models import (
 )
 
 from .forms import ApplicationForm
-from .models import Passkey
+from .models import Passkey, UserAppConnection
 from .scopes import describe_scopes
 
 MAX_APPLICATIONS_PER_USER = 10
@@ -207,27 +207,48 @@ def application_delete(request, pk):
 
 
 def _active_grants(user):
-    """Applications the user has authorized and that still hold usable tokens."""
+    """Durable consents, including expired tokens and legacy token-only grants."""
     now = timezone.now()
+    grants = []
+    connections = {
+        connection.application_id: connection
+        for connection in UserAppConnection.objects.filter(user=user).select_related(
+            "application", "application__profile"
+        )
+    }
     token_filter = Q(user=user)
-    application_ids = set(
-        AccessToken.objects.filter(token_filter, expires__gt=now).values_list("application_id", flat=True)
+    application_ids = set(connections) | set(
+        AccessToken.objects.filter(token_filter, expires__gt=now).values_list(
+            "application_id", flat=True
+        )
     ) | set(
         RefreshToken.objects.filter(token_filter, revoked__isnull=True).values_list(
             "application_id", flat=True
         )
     )
-    grants = []
     for application in Application.objects.filter(pk__in=application_ids).select_related("profile"):
         tokens = AccessToken.objects.filter(user=user, application=application).order_by("-created")
         latest = tokens.first()
+        connection = connections.get(application.pk)
         first = tokens.last()
         grants.append(
             {
                 "application": application,
-                "scopes": describe_scopes(latest.scope.split()) if latest else [],
-                "authorized_at": first.created if first else None,
-                "last_used": latest.created if latest else None,
+                "scopes": describe_scopes(
+                    connection.scopes if connection else (latest.scope.split() if latest else [])
+                ),
+                "authorized_at": (
+                    connection.created_at if connection else (first.created if first else None)
+                ),
+                "last_used": (
+                    connection.last_used_at if connection else None
+                ) or (latest.created if latest else None),
+                "interaction_mode": (
+                    connection.interaction_mode
+                    if connection
+                    else UserAppConnection.InteractionMode.CONFIRM
+                ),
+                "has_connection": connection is not None,
             }
         )
     return sorted(grants, key=lambda grant: grant["last_used"] or now, reverse=True)
@@ -250,5 +271,27 @@ def grant_revoke(request, pk):
     with transaction.atomic():
         for model in (RefreshToken, AccessToken, IDToken, Grant):
             model.objects.filter(user=user, application=application).delete()
+        UserAppConnection.objects.filter(user=user, application=application).delete()
     messages.success(request, f"A(z) „{application.name}” hozzáférését visszavontuk.")
+    return redirect("grants")
+
+
+@login_required
+@require_POST
+def grant_interaction_update(request, pk):
+    connection = get_object_or_404(
+        UserAppConnection.objects.select_related("application"),
+        user=request.user,
+        application_id=pk,
+    )
+    mode = request.POST.get("interaction_mode")
+    if mode not in UserAppConnection.InteractionMode.values:
+        messages.error(request, "Érvénytelen belépési mód.")
+    else:
+        connection.interaction_mode = mode
+        connection.save(update_fields=["interaction_mode"])
+        messages.success(
+            request,
+            f"A(z) „{connection.application.name}” belépési beállítását frissítettük.",
+        )
     return redirect("grants")
