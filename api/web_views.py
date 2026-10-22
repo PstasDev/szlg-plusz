@@ -11,6 +11,7 @@ from django_ratelimit.decorators import ratelimit
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .models import GlobalConfig, Passkey
+from .privacy import privacy_context
 from .webauthn_services import (
     create_authentication_options,
     create_registration_options,
@@ -169,6 +170,8 @@ def login_page(request):
             and selected_account is None
             and request.GET.get("add_account") != "1",
             "add_account": request.GET.get("add_account") == "1",
+            "confirmed": request.GET.get("confirmed") == "1",
+            **privacy_context(),
         },
     )
 
@@ -204,6 +207,7 @@ def password_login(request):
                 "show_account_chooser": False,
                 "add_account": not selected_account and bool(request.POST.get("add_account")),
                 "error": "A megadott e-mail-cím vagy jelszó nem megfelelő.",
+                **privacy_context(),
             },
             status=401,
         )

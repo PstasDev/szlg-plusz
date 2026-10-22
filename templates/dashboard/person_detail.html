@@ -1,0 +1,22 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{{ person.get_full_name|default:person.email }}{% endblock %}
+{% block content %}
+  <div class="page-head"><div><p class="welcome-kicker" style="color:var(--primary)">Iskolai címtár</p><h1>{{ person.get_full_name|default:person.email }}</h1>{% if person.is_group_mailbox %}<span class="badge">Csoportos postafiók</span>{% endif %}</div><a class="btn outline" href="{% url 'dashboard' %}">Vissza a címtárhoz</a></div>
+  <div class="two">
+    <section class="panel">
+      <h2>Alapadatok</h2>
+      <dl class="data">
+        <div><dt>Teljes név</dt><dd>{{ person.get_full_name|default:"Nincs megadva" }}</dd></div>
+        {% if student_profile and student_profile.kezdes_eve and student_profile.szekcio %}<div><dt>Osztály</dt><dd>{{ student_profile.osztaly }}</dd></div>{% endif %}
+        {% if student_profile and student_profile.tagozat %}<div><dt>Tagozat</dt><dd>{{ student_profile.tagozat.name }}</dd></div>{% endif %}
+        <div><dt>E-mail-cím</dt><dd><a href="mailto:{{ person.email }}">{{ person.email }}</a></dd></div>
+        {% if person.is_group_mailbox %}<div><dt>Fióktípus</dt><dd>Csoportos postafiók</dd></div>{% endif %}
+      </dl>
+    </section>
+    <section class="panel">
+      <h2>Iskolai csoportok</h2>
+      {% if groups %}<ul class="items">{% for group in groups %}<li><a href="{% url 'group-detail' group_key=group.key %}">{{ group.name }}</a><span class="badge">{{ group.type_label }}</span></li>{% endfor %}</ul>{% else %}<p class="muted">Nincs megjeleníthető iskolai csoport.</p>{% endif %}
+      {% if mailbox_groups %}<h3 class="directory-subheading">Kapcsolt csoportok</h3><ul class="items">{% for group in mailbox_groups %}<li><a href="{% url 'group-detail' group_key=group.key %}">{{ group.name }}</a><span class="badge">Postafiók-kapcsolat</span></li>{% endfor %}</ul>{% endif %}
+    </section>
+  </div>
+{% endblock %}

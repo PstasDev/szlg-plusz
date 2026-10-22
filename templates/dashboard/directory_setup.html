@@ -1,0 +1,54 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Címtár teendők{% endblock %}
+{% block content %}
+  <div class="page-head"><div><p class="welcome-kicker" style="color:var(--primary)">Staff és adminisztrátorok</p><h1>Címtár teendők</h1><p class="muted">Az iskolai szerepkörök és az osztályok tagsága nem kapcsolódik az SZLG+ adminisztrációs jogosultságaihoz.</p></div><a class="btn outline" href="{% url 'groups' %}">Csoportok megtekintése</a></div>
+
+  <section class="panel highlight">
+    <h2>Hiányzó iskolai adatok</h2>
+    {% if required_roles_missing or incomplete_classes or unlinked_mailboxes %}
+      <ul class="items">
+        {% for role in required_roles_missing %}<li><span><strong>{{ role.name }}</strong><br><small class="muted">Nincs betöltője</small></span><a class="btn outline sm" href="#role-{{ role.pk }}">Beállítás</a></li>{% endfor %}
+        {% for school_class in incomplete_classes %}<li><span><strong>{{ school_class.name }}</strong><br><small class="muted">{% if not school_class.homeroom_teacher_id %}Hiányzik az osztályfőnök{% endif %}{% if not school_class.homeroom_teacher_id and not school_class.deputy_teacher_id %} · {% endif %}{% if not school_class.deputy_teacher_id %}Hiányzik az osztályfőnök-helyettes{% endif %}</small></span><a class="btn outline sm" href="#class-{{ school_class.pk }}">Beállítás</a></li>{% endfor %}
+        {% for mailbox in unlinked_mailboxes %}<li><span><strong>{{ mailbox.email }}</strong><br><small class="muted">Nincs címtárcsoporthoz kapcsolva</small></span><a class="btn outline sm" href="#mailboxes">Kapcsolás</a></li>{% endfor %}
+      </ul>
+    {% else %}<p class="muted">Nincs hiányzó, kötelező címtáradat. Új osztályt vagy szerepkört később is rögzíthetsz.</p>{% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Intézményi szerepkör felvétele</h2>
+    <p class="lead muted">Például intézményvezető vagy intézményvezető-helyettes. A szerepkörök különállnak a Django jogosultsági köröktől.</p>
+    <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="action" value="create-role">{% include "partials/form_fields.html" with form=role_form %}<div class="form-actions"><button class="btn" type="submit">Szerepkör mentése</button></div></form>
+  </section>
+
+  <section class="panel">
+    <h2>Intézményi szerepkörök</h2>
+    {% for role, form in role_forms %}
+      <div class="setup-card" id="role-{{ role.pk }}">
+        <h3>{{ role.name }}</h3>
+        <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="action" value="assign-role"><input type="hidden" name="role_id" value="{{ role.pk }}">{% include "partials/form_fields.html" with form=form %}<div class="form-actions"><button class="btn outline sm" type="submit">Betöltők mentése</button></div></form>
+      </div>
+    {% empty %}<p class="empty">Még nincs intézményi szerepkör.</p>{% endfor %}
+  </section>
+
+  <section class="panel">
+    <h2>Osztályok</h2>
+    <p class="lead muted">A rendszer az osztályokat a diákprofilok kezdési éve és szekciója alapján automatikusan létrehozza. Üres vagy jövőbeli osztályt itt is rögzíthetsz.</p>
+    <form method="post" class="setup-inline-form" novalidate>{% csrf_token %}<input type="hidden" name="action" value="create-class">{% include "partials/form_fields.html" with form=class_form %}<div class="form-actions"><button class="btn outline sm" type="submit">Osztály felvétele</button></div></form>
+    {% for school_class, form in school_classes %}
+      <div class="setup-card" id="class-{{ school_class.pk }}">
+        <h3>{{ school_class.name }}</h3>
+        <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="action" value="assign-class"><input type="hidden" name="class_id" value="{{ school_class.pk }}">{% include "partials/form_fields.html" with form=form %}<div class="form-actions"><button class="btn outline sm" type="submit">Osztály szerepköreinek mentése</button></div></form>
+      </div>
+    {% empty %}<p class="empty">Még nincs rögzített osztály.</p>{% endfor %}
+  </section>
+
+  <section class="panel" id="mailboxes">
+    <h2>Csoportos postafiókok</h2>
+    <p class="lead muted">Jelölj meg egy már létező fiókot csoportos postafiókként, majd rendeld hozzá egy vagy több címtárcsoporthoz.</p>
+    <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="action" value="mark-mailbox">{% include "partials/form_fields.html" with form=mailbox_flag_form %}<div class="form-actions"><button class="btn outline sm" type="submit">Fiók megjelölése</button></div></form>
+    {% if group_mailboxes %}<h3 class="directory-subheading">Megjelölt fiókok</h3><ul class="items">{% for mailbox in group_mailboxes %}<li><span>{{ mailbox.email }}</span><form method="post" data-confirm="Csoportos postafiók jelölés törlése?">{% csrf_token %}<input type="hidden" name="action" value="unmark-mailbox"><input type="hidden" name="mailbox_id" value="{{ mailbox.pk }}"><button class="btn text sm" type="submit">Jelölés törlése</button></form></li>{% endfor %}</ul>{% endif %}
+    <h3 class="directory-subheading">Csoporthoz kapcsolás</h3>
+    <form method="post" novalidate>{% csrf_token %}<input type="hidden" name="action" value="link-mailbox">{% include "partials/form_fields.html" with form=mailbox_form %}<div class="form-actions"><button class="btn" type="submit">Kapcsolat mentése</button></div></form>
+    {% if mailbox_links %}<h3 class="directory-subheading">Meglévő kapcsolatok</h3><ul class="items">{% for link, group in mailbox_links %}<li><span>{{ link.mailbox.email }} → {% if group %}{{ group.name }}{% else %}{{ link.group_key }} (hiányzó csoport){% endif %}</span><form method="post" data-confirm="Biztosan törlöd ezt a postafiók-kapcsolatot?">{% csrf_token %}<input type="hidden" name="action" value="unlink-mailbox"><input type="hidden" name="link_id" value="{{ link.pk }}"><button class="btn text sm" type="submit">Kapcsolat törlése</button></form></li>{% endfor %}</ul>{% endif %}
+  </section>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Regisztráció · SZLG+{% endblock %}
+{% block head_text %}
+  <h1>SZLG+ regisztráció</h1>
+  <p class="subtitle">Külsős felhasználói fiók létrehozása</p>
+{% endblock %}
+{% block content %}
+  <p class="muted">A regisztráció után e-mailben küldünk megerősítő hivatkozást. A fiók a cím megerősítéséig nem használható bejelentkezésre.</p>
+  {% if form.non_field_errors %}<div class="error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+  <form method="post" action="{% url 'register' %}">
+    {% csrf_token %}
+    {% for field in form %}
+      {% if field.name != "privacy_consent" %}
+        <div class="field">
+          {{ field }}
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        </div>
+        {% if field.errors %}<div class="field-errors" role="alert">{{ field.errors }}</div>{% endif %}
+        {% if field.help_text %}<p class="muted">{{ field.help_text }}</p>{% endif %}
+      {% endif %}
+    {% endfor %}
+
+    <details class="privacy-notice">
+      <summary>Adatkezelési Tájékoztató megtekintése</summary>
+      {% include "partials/privacy_policy.html" %}
+    </details>
+    <div class="check-row">
+      {{ form.privacy_consent }}
+      <label for="{{ form.privacy_consent.id_for_label }}">{{ form.privacy_consent.label }}</label>
+    </div>
+    {% if form.privacy_consent.errors %}<div class="field-errors" role="alert">{{ form.privacy_consent.errors }}</div>{% endif %}
+
+    <div class="actions">
+      <a class="btn text" href="{% url 'login' %}">Már van fiókom</a>
+      <button class="btn" type="submit">Regisztráció</button>
+    </div>
+  </form>
+
+  <aside class="contact-box">
+    <strong>{{ school_domain }} e-mail-címed van?</strong>
+    <p>Iskolai címmel ne regisztrálj ezen az oldalon; kérjük, fordulj az SZLG+ rendszergazdáihoz.</p>
+    {% if administrator_contacts %}
+      <ul class="list">
+        {% for contact in administrator_contacts %}
+          <li><a href="mailto:{{ contact.email }}">{{ contact.get_full_name|default:contact.email }} · {{ contact.email }}</a></li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p><a href="mailto:molnar.attila@szlgbp.hu">molnar.attila@szlgbp.hu</a></p>
+    {% endif %}
+  </aside>
+  <p class="muted privacy-link">A tájékoztató külön oldalon: <a href="{% url 'privacy' %}">Adatkezelési Tájékoztató</a>.</p>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Csoportok{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div><p class="welcome-kicker" style="color:var(--primary)">Iskolai közösségek</p><h1>Csoportok</h1><p class="muted">Böngéssz a tagozatok, osztályok, szerepkörök és közösségek között.</p></div>
+    <a class="btn" href="{% url 'group-new' %}">Új csoport</a>
+  </div>
+
+  <section class="panel">
+    <form method="get" class="directory-search-form group-search-form">
+      <label class="sr-only" for="group-query">Csoport keresése</label>
+      <input id="group-query" type="search" name="q" value="{{ query }}" placeholder="Csoport neve, leírása vagy típusa">
+      <button class="btn" type="submit">Keresés</button>
+    </form>
+    {% if query %}<p class="muted">Kereséskor a nem közérdekű csoportok is megjelennek.</p>{% endif %}
+  </section>
+
+  {% if my_manual_groups %}
+    <section class="panel">
+      <h2>Saját csoportjaid</h2>
+      <ul class="directory-list group-list">
+        {% for group in my_manual_groups %}
+          <li><a href="{% url 'group-detail' group_key=group.directory_key %}"><span class="directory-person-name">{{ group.name }}</span><span class="directory-person-meta">{% if group.is_public %}Közérdekű{% else %}Nem közérdekű{% endif %}{% if group.parent %} · {{ group.parent.full_path }}{% endif %}</span><span class="directory-person-email">{{ group.members.count }} tag</span></a></li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  <section class="panel">
+    <div class="launcher-heading"><div><h2>{% if query %}Találatok{% else %}Böngészhető csoportok{% endif %}</h2><p class="muted">A rendszerből képzett csoportok automatikusan frissülnek a profiladatokból.</p></div><span class="launcher-count">{{ groups|length }} csoport</span></div>
+    {% if groups %}
+      <div class="directory-group-grid">
+        {% for group in groups %}
+          <a class="directory-group-card" href="{% url 'group-detail' group_key=group.key %}">
+            <span class="badge">{{ group.type_label }}</span>
+            <strong>{{ group.name }}</strong>
+            <span class="directory-group-description">{{ group.description|default:"Nincs leírás." }}</span>
+            <span class="directory-group-meta">{{ group.member_count }} tag{% if not group.is_public %} · Nem közérdekű{% endif %}</span>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}<p class="empty">Nincs megjeleníthető csoport. Próbálj másik keresést, vagy hozz létre egyet.</p>{% endif %}
+  </section>
+
+  {% if can_manage_directory %}<p class="muted"><a href="{% url 'directory-setup' %}">Iskolai szerepkörök, osztályok és csoportos postafiókok beállítása →</a></p>{% endif %}
+{% endblock %}

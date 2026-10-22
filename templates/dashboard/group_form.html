@@ -1,0 +1,12 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Új csoport{% endblock %}
+{% block content %}
+  <div class="page-head"><div><h1>Új csoport</h1><p class="muted">Bármelyik bejelentkezett felhasználó létrehozhat csoportot. A tagságot a csoportkezelők állítják be.</p></div></div>
+  <section class="panel" style="max-width:48rem">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "partials/form_fields.html" %}
+      <div class="form-actions"><button class="btn" type="submit">Csoport létrehozása</button><a class="btn text" href="{% url 'groups' %}">Mégse</a></div>
+    </form>
+  </section>
+{% endblock %}

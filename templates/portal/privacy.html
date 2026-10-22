@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Az SZLG+ és a kapcsolódó webes szolgáltatások adatkezelési tájékoztatója.">
+  <title>Adatkezelési Tájékoztató · SZLG+</title>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/privacy.css' %}">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{ink:'#102a2b',forest:'#174746',mint:'#c8f0df',copper:'#c98454',paper:'#f7f8f4'}}}}</script>
+</head>
+<body class="min-h-screen bg-paper font-sans text-ink antialiased">
+  <header class="flex items-center justify-between border-b border-ink/10 bg-white px-5 py-4 sm:px-8">
+    <a href="{% url 'home' %}" class="font-bold">SZLG<span class="text-copper">+</span></a>
+    <a class="rounded-lg bg-forest px-4 py-2 text-sm font-semibold text-white" href="{% if request.user.is_authenticated %}{% url 'dashboard' %}{% else %}{% url 'login' %}{% endif %}">{% if request.user.is_authenticated %}Dashboard{% else %}Bejelentkezés{% endif %}</a>
+  </header>
+  <main class="mx-auto my-8 max-w-5xl rounded-2xl border border-ink/10 bg-white px-6 py-8 sm:px-10 sm:py-10">
+    {% include "partials/privacy_policy.html" %}
+  </main>
+  <footer class="border-t border-ink/10 px-5 py-6 text-center text-sm text-ink/50">Kőbányai Szent László Gimnázium · SZLG+</footer>
+</body>
+</html>

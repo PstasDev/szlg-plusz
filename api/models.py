@@ -1,8 +1,10 @@
 import uuid
 import datetime
+import re
 
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser, Group
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.text import slugify
 from mptt.fields import TreeForeignKey
@@ -57,8 +59,12 @@ def class_str_to_year_szekcio(class_str: str) -> tuple[int, str]:
 
 class email_info:
     def __init__(self, email: str):
-        self.email = email
+        self.email = email.strip().lower()
         self.school_domain = get_school_domain()
+
+    @property
+    def local_part(self) -> str:
+        return self.email.partition("@")[0]
 
     # E-mail formats:
     # Group: group@szlgbp.hu
@@ -69,27 +75,52 @@ class email_info:
 
     @property
     def is_in_school_domain(self) -> bool:
-        return self.email.endswith(self.school_domain)
+        domain = (self.school_domain or "").strip().lower()
+        if not domain:
+            return False
+        if not domain.startswith("@"):
+            domain = "@" + domain.lstrip("@")
+        return self.email.endswith(domain)
 
     @property
     def is_student(self) -> bool:
-        return self.is_in_school_domain and ".f" not in self.email and not self.email.startswith("x.")
+        match = re.search(r"\.\d{2,4}[a-z](f)?$", self.local_part)
+        return self.is_in_school_domain and not self.local_part.startswith("x.") and bool(match and not match.group(1))
 
     @property
     def is_part_time_student(self) -> bool:
-        return self.is_in_school_domain and ".f" in self.email and not self.email.startswith("x.")
+        return (
+            self.is_in_school_domain
+            and not self.local_part.startswith("x.")
+            and bool(re.search(r"\.\d{2,4}[a-z]f$", self.local_part))
+        )
 
     @property
     def is_computer_test_account(self) -> bool:
-        return self.is_in_school_domain and self.email.startswith("x.") and any(char.isdigit() for char in self.email.split(".")[-1])
+        return (
+            self.is_in_school_domain
+            and self.local_part.startswith("x.")
+            and any(char.isdigit() for char in self.local_part.split(".")[-1])
+        )
     
     @property
     def is_group_email(self) -> bool:
-        return self.is_in_school_domain and not self.email.startswith("x.") and not any(char.isdigit() for char in self.email.split(".")[-1])
+        return (
+            self.is_in_school_domain
+            and not self.local_part.startswith("x.")
+            and "." not in self.local_part
+            and not any(char.isdigit() for char in self.local_part)
+        )
 
     @property
     def is_teacher_or_school_employee(self) -> bool:
-        return self.is_in_school_domain and not self.email.startswith("x.") and not any(char.isdigit() for char in self.email.split(".")[-1]) and ".f" not in self.email
+        return (
+            self.is_in_school_domain
+            and not self.local_part.startswith("x.")
+            and "." in self.local_part
+            and not bool(re.search(r"\.\d{2,4}[a-z]f?$", self.local_part))
+            and not any(char.isdigit() for char in self.local_part)
+        )
 
     @property
     def what_am_i(self) -> str:
@@ -135,6 +166,17 @@ class CustomUser(AbstractUser):
     phone = models.CharField(max_length=32, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
     email_verified = models.BooleanField(default=False)
+    privacy_consent_at = models.DateTimeField(
+        "adatkezelési hozzájárulás időpontja",
+        null=True,
+        blank=True,
+        editable=False,
+    )
+    is_group_mailbox = models.BooleanField(
+        "csoportos postafiók",
+        default=False,
+        help_text="A címtár külön csoportos postafiókként jeleníti meg; ezt ne az e-mail-címből következtesd.",
+    )
     oidc_subject = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     # Overrides PermissionsMixin.groups only to give it a clear, Hungarian name.
     groups = models.ManyToManyField(
@@ -167,6 +209,8 @@ class CustomUser(AbstractUser):
     @property
     def is_student(self) -> bool:
         """Check if the user has a student profile."""
+        if self.is_group_mailbox:
+            return False
         if hasattr(self, "student_profile"):
             return True
         if email_info(self.email).is_student:
@@ -176,6 +220,8 @@ class CustomUser(AbstractUser):
     @property
     def is_part_time_student(self) -> bool:
         """Check if the user has a part-time student profile."""
+        if self.is_group_mailbox:
+            return False
         if hasattr(self, "part_time_student_profile"):
             return True
         if email_info(self.email).is_part_time_student:
@@ -185,6 +231,8 @@ class CustomUser(AbstractUser):
     @property
     def is_computer_test_account(self) -> bool:
         """Check if the user has a computer test account profile."""
+        if self.is_group_mailbox:
+            return False
         if hasattr(self, "computer_test_account_profile"):
             return True
         if email_info(self.email).is_computer_test_account:
@@ -194,15 +242,13 @@ class CustomUser(AbstractUser):
     @property
     def is_group_email(self) -> bool:
         """Check if the user has a group email profile."""
-        if hasattr(self, "group_email_profile"):
-            return True
-        if email_info(self.email).is_group_email:
-            return True
-        return False
+        return self.is_group_mailbox
 
     @property
     def is_teacher_or_school_employee(self) -> bool:
         """Check if the user has a teacher or school employee profile."""
+        if self.is_group_mailbox:
+            return False
         if hasattr(self, "teacher_or_school_employee_profile"):
             return True
         if email_info(self.email).is_teacher_or_school_employee:
@@ -211,6 +257,8 @@ class CustomUser(AbstractUser):
 
     @property
     def account_type(self) -> str:
+        if self.is_group_mailbox:
+            return "Csoportos e-mail"
         account_types = [
             (self.is_student, "Nappali tagozatos diák"),
             (self.is_part_time_student, "Esti tagozatos diák"),
@@ -225,7 +273,7 @@ class CustomUser(AbstractUser):
 
     @property
     def is_teacher(self) -> bool:
-        return hasattr(self, "teacher_profile")
+        return not self.is_group_mailbox and hasattr(self, "teacher_profile")
 
     @property
     def smart_groups(self) -> dict[str, bool]:
@@ -316,6 +364,25 @@ class ManualGroup(MPTTModel):
     name = models.CharField(max_length=100)
     slug = models.SlugField(max_length=120, unique=True)
     description = models.TextField(blank=True)
+    is_public = models.BooleanField(
+        "közérdekű",
+        default=False,
+        help_text="A közérdekű csoport megjelenik a böngészhető csoportlistában.",
+    )
+    created_by = models.ForeignKey(
+        "api.CustomUser",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_manual_groups",
+        verbose_name="létrehozó",
+    )
+    managers = models.ManyToManyField(
+        "api.CustomUser",
+        blank=True,
+        related_name="managed_manual_groups",
+        verbose_name="csoportkezelők",
+    )
     parent = TreeForeignKey(
         "self",
         on_delete=models.CASCADE,
@@ -343,8 +410,131 @@ class ManualGroup(MPTTModel):
             self.get_ancestors(include_self=True).values_list("slug", flat=True)
         )
 
+    @property
+    def directory_key(self) -> str:
+        return f"manual-{self.slug}"
+
     def __str__(self) -> str:
         return self.full_path
+
+
+class SchoolClass(models.Model):
+    """An administrable class record; student membership is derived from profiles."""
+
+    start_year = models.PositiveIntegerField("kezdés éve")
+    section = models.CharField("szekció", max_length=10)
+    homeroom_teacher = models.ForeignKey(
+        "api.CustomUser",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="homeroom_classes",
+        verbose_name="osztályfőnök",
+    )
+    deputy_teacher = models.ForeignKey(
+        "api.CustomUser",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="deputy_classes",
+        verbose_name="osztályfőnök-helyettes",
+    )
+
+    class Meta:
+        ordering = ["start_year", "section"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=("start_year", "section"), name="api_unique_school_class"
+            )
+        ]
+        verbose_name = "osztály"
+        verbose_name_plural = "osztályok"
+
+    @property
+    def name(self) -> str:
+        return year_szekcio_to_str(self.start_year, self.section)
+
+    def __str__(self) -> str:
+        return self.name
+
+    def save(self, *args, **kwargs):
+        self.section = self.section.strip().upper()
+        super().save(*args, **kwargs)
+
+    def clean(self):
+        self.section = self.section.strip().upper()
+        errors = {}
+        for field, label in (
+            ("homeroom_teacher", "Osztályfőnök"),
+            ("deputy_teacher", "Osztályfőnök-helyettes"),
+        ):
+            user_id = getattr(self, f"{field}_id", None)
+            if user_id and not CustomUser.objects.filter(
+                pk=user_id,
+                is_group_mailbox=False,
+                teacher_profile__isnull=False,
+            ).exists():
+                errors[field] = f"{label} csak tanári profillal rendelkező fiók lehet."
+        if errors:
+            raise ValidationError(errors)
+
+
+class InstitutionalRole(models.Model):
+    """A school-level role and its holders, independent of SZLG+ permissions."""
+
+    slug = models.SlugField("azonosító", max_length=80, unique=True)
+    name = models.CharField("szerepkör neve", max_length=120)
+    description = models.TextField("leírás", blank=True)
+    is_required = models.BooleanField(
+        "kötelezően kitöltendő",
+        default=True,
+        help_text="A hiányzó szerepkör megjelenik az adminisztrátori teendőlistában.",
+    )
+    members = models.ManyToManyField(
+        "api.CustomUser",
+        blank=True,
+        related_name="institutional_roles",
+        verbose_name="betöltők",
+    )
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "iskolai szerepkör"
+        verbose_name_plural = "iskolai szerepkörök"
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class GroupMailboxAssociation(models.Model):
+    """Connects an explicitly marked mailbox account to a directory group key."""
+
+    mailbox = models.ForeignKey(
+        "api.CustomUser",
+        on_delete=models.CASCADE,
+        related_name="group_mailbox_associations",
+        verbose_name="csoportos postafiók",
+    )
+    group_key = models.CharField("címtárcsoport", max_length=180)
+
+    class Meta:
+        ordering = ["group_key", "mailbox__email"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=("mailbox", "group_key"), name="api_unique_group_mailbox_link"
+            )
+        ]
+        verbose_name = "csoportos postafiók-kapcsolat"
+        verbose_name_plural = "csoportos postafiók-kapcsolatok"
+
+    def __str__(self) -> str:
+        return f"{self.mailbox.email} → {self.group_key}"
+
+    def clean(self):
+        if self.mailbox_id and not self.mailbox.is_group_mailbox:
+            raise ValidationError(
+                {"mailbox": "Csak csoportos postafiókként megjelölt fiók kapcsolható csoporthoz."}
+            )
 
 
 class PermissionGroup(Group):
@@ -405,6 +595,17 @@ class ApplicationProfile(models.Model):
     )
     developer = models.CharField("fejlesztő", max_length=120)
     short_description = models.CharField("rövid leírás", max_length=160)
+    required_group_keys = models.JSONField(
+        "alkalmazáshoz szükséges csoportok",
+        default=list,
+        blank=True,
+        help_text="Ha meg van adva, legalább egy csoporttagság szükséges az alkalmazás-hozzáféréshez.",
+    )
+    launch_url = models.URLField(
+        "indítási URL",
+        blank=True,
+        help_text="Az alkalmazás kezdőlapja, ahová a felhasználó az appcsempéről továbblép.",
+    )
     logo = models.ImageField(
         "logó",
         upload_to="app-logos/",
@@ -497,6 +698,17 @@ class GlobalConfig(SingletonModel):
         help_text="Az iskola által használt e-mail domain.",
         blank=True,
         null=True,
+    )
+
+    administrator_contacts = models.ManyToManyField(
+        "api.CustomUser",
+        verbose_name="SZLG+ kapcsolattartók",
+        blank=True,
+        related_name="administrator_contact_for",
+        help_text=(
+            "Az itt kiválasztott felhasználók elérhetősége megjelenik az adatkezelési "
+            "tájékoztatóban és az iskolai címmel regisztrálóknak szóló üzenetben."
+        ),
     )
 
     class Meta:

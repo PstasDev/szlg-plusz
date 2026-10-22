@@ -10,7 +10,7 @@
   </div>
 
   <div class="two">
-    <section class="panel">
+    <section class="panel" id="password">
       <h2>{% if has_password %}Jelszó módosítása{% else %}Jelszó beállítása{% endif %}</h2>
       <p class="lead muted">{% if has_password %}Add meg a jelenlegi jelszavadat, majd válassz újat.{% else %}Még nincs jelszavad, csak jelkulccsal tudsz belépni. Beállíthatsz egyet is.{% endif %}</p>
       <form method="post" novalidate>

@@ -61,9 +61,9 @@
           <dt>Iskolai csoportok</dt>
           <dd>
             {% if school_groups %}
-              <div class="badges">{% for group in school_groups %}<span class="badge" title="{{ group.full_path }}">{{ group.name }}</span>{% endfor %}</div>
+              <div class="badges">{% for group in school_groups %}<a class="badge" href="{% url 'group-detail' group_key=group.key %}"{% if group.manual_group %} title="{{ group.manual_group.full_path }}"{% endif %}>{{ group.name }}</a>{% endfor %}</div>
             {% else %}<span class="muted">Nem tartozol iskolai csoporthoz</span>{% endif %}
-            <div class="muted">Osztály, szakkör stb.; az alkalmazások ezt látják.</div>
+            <div class="muted">Automatikus és kézi csoporttagságok; az alkalmazások a groups scope engedélyezése után kapják meg.</div>
           </dd>
         </div>
         <div>

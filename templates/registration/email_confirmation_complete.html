@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Fiók megerősítve · SZLG+{% endblock %}
+{% block head_text %}
+  <h1>Fiók megerősítve</h1>
+  <p class="subtitle">Az e-mail-címedet sikeresen megerősítettük</p>
+{% endblock %}
+{% block content %}
+  <p class="success" role="status">A fiókod aktív, most már bejelentkezhetsz.</p>
+  <div class="actions"><a class="btn" href="{% url 'login' %}?confirmed=1">Bejelentkezés</a></div>
+  <p class="muted privacy-link"><a href="{% url 'privacy' %}">Adatkezelési Tájékoztató</a></p>
+{% endblock %}

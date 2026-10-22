@@ -6,6 +6,7 @@
   <p class="subtitle">Használd a SZLG+ fiókodat</p>
 {% endblock %}
 {% block content %}
+  {% if confirmed %}<p class="success" role="status">Az e-mail-címedet megerősítettük, most már bejelentkezhetsz.</p>{% endif %}
   {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
   {% if show_account_chooser %}
     <h2>Fiókválasztó</h2>
@@ -58,6 +59,12 @@
   </button>
   <p id="passkey-error" class="error" role="alert" hidden></p>
   {% endif %}
+  <p class="muted auth-register">Még nincs SZLG+ fiókod? <a href="{% url 'register' %}">Regisztráció</a></p>
+  <details class="privacy-notice">
+    <summary>Adatkezelési tájékoztató megtekintése</summary>
+    {% include "partials/privacy_policy.html" %}
+  </details>
+  <p class="muted privacy-link">A tájékoztató külön oldalon is elérhető: <a href="{% url 'privacy' %}">Adatkezelési Tájékoztató</a>.</p>
 {% endblock %}
 {% block scripts %}
   <script src="{% static 'js/webauthn.js' %}" defer></script>

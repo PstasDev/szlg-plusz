@@ -25,10 +25,11 @@ SCOPE_DETAILS = {
         "icon": "phone",
     },
     "groups": {
-        "title": "Szerepkör és iskolai csoportok",
+        "title": "Iskolai csoportok és szerepek",
         "description": (
-            "Hogy diák vagy tanár vagy-e, és mely iskolai csoportokhoz (például osztály "
-            "vagy szakkör) tartozol."
+            "A számított iskolai szerepeid, a címtárban szereplő csoporttagságaid, "
+            "és az alkalmazáshoz beállított csoportkövetelmény teljesülése. "
+            "Az SZLG+ adminisztrációs jogosultságaid nem kerülnek át."
         ),
         "icon": "users",
     },

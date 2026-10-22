@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}E-mail-cím megerősítése · SZLG+{% endblock %}
+{% block head_text %}
+  <h1>E-mail-cím megerősítése</h1>
+  <p class="subtitle">A SZLG+ regisztráció befejezése</p>
+{% endblock %}
+{% block content %}
+  {% if valid_token %}
+    <p>A megerősítéshez kattints a gombra. Ez a lépés aktiválja a fiókodat, és ezután be tudsz jelentkezni.</p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="actions"><button class="btn" type="submit">E-mail-cím megerősítése</button></div>
+    </form>
+  {% else %}
+    <p class="error" role="alert">Ez a megerősítő hivatkozás érvénytelen, lejárt vagy már felhasználták.</p>
+    <p class="muted">Kérj új megerősítő levelet a regisztrációkor használt címedre.</p>
+    <div class="actions"><a class="btn" href="{% url 'email-confirm-resend' %}">Új levél kérése</a></div>
+  {% endif %}
+  <p class="muted privacy-link"><a href="{% url 'privacy' %}">Adatkezelési Tájékoztató</a></p>
+{% endblock %}

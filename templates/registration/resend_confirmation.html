@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Megerősítő levél újraküldése · SZLG+{% endblock %}
+{% block head_text %}
+  <h1>Megerősítő levél újraküldése</h1>
+  <p class="subtitle">Add meg a regisztrációkor használt e-mail-címedet</p>
+{% endblock %}
+{% block content %}
+  <form method="post" action="{% url 'email-confirm-resend' %}">
+    {% csrf_token %}
+    <div class="field">
+      <input id="email" name="email" type="email" placeholder=" " autocomplete="email" value="{{ email }}" required>
+      <label for="email">E-mail-cím</label>
+    </div>
+    <div class="actions"><button class="btn" type="submit">Levél újraküldése</button></div>
+  </form>
+  <p class="muted">Ha ehhez a címhez megerősítésre váró fiók tartozik, elküldjük a levelet. <a href="{% url 'privacy' %}">Adatkezelési Tájékoztató</a></p>
+{% endblock %}

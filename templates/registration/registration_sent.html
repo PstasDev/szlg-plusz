@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}E-mail-megerősítés · SZLG+{% endblock %}
+{% block head_text %}
+  <h1>E-mail-megerősítés</h1>
+  <p class="subtitle">A regisztráció befejezése</p>
+{% endblock %}
+{% block content %}
+  {% if generic_resend_message %}
+    <p class="success" role="status">{{ generic_resend_message }}</p>
+  {% elif email_sent %}
+    <p class="success" role="status">Megerősítő levelet küldtünk a(z) <strong>{{ email }}</strong> címre. A fiók a megerősítésig nem használható bejelentkezésre.</p>
+  {% else %}
+    <p class="error" role="alert">A fiók létrejött, de a megerősítő levelet most nem sikerült elküldeni. Kérd a levél újbóli küldését, vagy fordulj az SZLG+ rendszergazdáihoz.</p>
+  {% endif %}
+  <p class="muted">A levélben található hivatkozás 3 napig érvényes. Ha nem találod, ellenőrizd a levélszemét mappát is.</p>
+  <div class="actions">
+    <a class="btn outline" href="{% url 'email-confirm-resend' %}">Megerősítő levél újraküldése</a>
+    <a class="btn" href="{% url 'login' %}">Bejelentkezés</a>
+  </div>
+  <p class="muted privacy-link"><a href="{% url 'privacy' %}">Adatkezelési Tájékoztató</a></p>
+{% endblock %}
