@@ -1,58 +1,92 @@
 {% extends "dashboard/base.html" %}
 {% block title %}{{ group.name }}{% endblock %}
 {% block content %}
-  <div class="page-head">
-    <div><p class="welcome-kicker" style="color:var(--primary)">{{ group.type_label }}</p><h1>{{ group.name }}</h1><p class="muted">{{ group.description|default:"Ehhez a csoporthoz még nem tartozik leírás." }}</p></div>
-    <a class="btn outline" href="{% url 'groups' %}">Vissza a csoportokhoz</a>
-  </div>
-
-  <div class="two">
-    <section class="panel">
-      <h2>Csoportadatok</h2>
-      <dl class="data">
-        <div><dt>Típus</dt><dd>{{ group.type_label }}</dd></div>
-        <div><dt>Közérdekű</dt><dd>{% if group.is_public %}Igen · megjelenik a böngészőben{% else %}Nem · kereséssel továbbra is megtalálható{% endif %}</dd></div>
-        {% if group.parent_name %}<div><dt>Szülőcsoport</dt><dd>{{ group.parent_name }}</dd></div>{% endif %}
-        <div><dt>Tagok</dt><dd>{{ group.member_count }}</dd></div>
-        {% if group.manual_group.created_by %}<div><dt>Létrehozó</dt><dd>{{ group.manual_group.created_by.get_full_name|default:group.manual_group.created_by.email }}</dd></div>{% endif %}
-      </dl>
-      {% if group.mailboxes %}
-        <h3 class="directory-subheading">Kapcsolt csoportos postafiókok</h3>
-        <ul class="items">{% for mailbox in group.mailboxes %}<li><a href="{% url 'directory-person' mailbox.pk %}">{{ mailbox.email }}</a><span class="badge">Csoportos postafiók</span></li>{% endfor %}</ul>
-      {% endif %}
-    </section>
-    <section class="panel">
-      <h2>Csoportkezelők</h2>
-      {% if group.managers %}
-        <ul class="items">{% for manager in group.managers %}<li><a href="{% url 'directory-person' manager.pk %}">{{ manager.get_full_name|default:manager.email }}</a><span class="directory-person-email">{{ manager.email }}</span></li>{% endfor %}</ul>
-      {% else %}<p class="muted">A csoportot az iskolai adatok vagy az adminisztráció kezeli.</p>{% endif %}
-    </section>
-  </div>
-
-  <section class="panel">
-    <div class="launcher-heading"><div><h2>Csoporttagok</h2><p class="muted">A címtár a csoporttagok nevét és e-mail-címét is megjeleníti. Önálló csatlakozás nincs.</p></div>
-      {% if gmail_url %}<a class="btn outline" href="{{ gmail_url }}" target="_blank" rel="noopener noreferrer">E-mail-vázlat Gmailben</a>{% endif %}
+  <a class="back-link" href="{% url 'groups' %}"><span aria-hidden="true">←</span> Vissza a csoportokhoz</a>
+  <section class="group-detail-hero">
+    <div class="group-detail-mark" aria-hidden="true">{{ group.name|slice:":1"|upper }}</div>
+    <div class="group-detail-heading">
+      <div class="group-detail-tags"><span class="type-pill">{{ group.type_label }}</span>{% if group.is_public %}<span class="public-pill">Böngészhető</span>{% else %}<span class="private-pill">Kereshető</span>{% endif %}</div>
+      <h1>{{ group.name }}</h1>
+      <p>{{ group.description|default:"Ehhez a csoporthoz még nem tartozik leírás." }}</p>
+      {% if group.parent_name %}<span class="group-breadcrumb">{{ group.parent_name }} <span aria-hidden="true">/</span> {{ group.name }}</span>{% endif %}
     </div>
-    {% if recipients %}<div class="directory-recipient-copy"><label for="group-recipients">Címzettek másolása</label><div class="copy"><input id="group-recipients" type="text" value="{{ recipients }}" readonly><button type="button" class="btn outline" data-copy="group-recipients">Másolás</button></div><p class="muted">A Gmail-vázlat a tagok címeit a Címzett mezőbe teszi, így a címzettek egymás címét is látják.</p></div>{% endif %}
-    {% if recipients and not gmail_url %}<p class="flash error" role="note">A csoport túl nagy egyetlen Gmail-hivatkozáshoz. Másold ki a címeket, majd illeszd be őket egy új levél Címzett mezőjébe.</p>{% endif %}
-    {% if group.members %}
-      <ul class="directory-list member-list">
-        {% for member in group.members %}
-          <li><a href="{% url 'directory-person' member.pk %}"><span class="directory-person-name">{{ member.get_full_name|default:member.email }}</span><span class="directory-person-meta">{% if member.student_profile %}{% if member.student_profile.kezdes_eve and member.student_profile.szekcio %}{{ member.student_profile.osztaly }} · {% endif %}{{ member.student_profile.tagozat.name|default:"Tagozat nincs megadva" }}{% else %}{{ member.account_type }}{% endif %}</span><span class="directory-person-email">{{ member.email }}</span></a></li>
-        {% endfor %}
-      </ul>
-    {% else %}<p class="empty">Még nincs csoporttag rögzítve.</p>{% endif %}
+    <div class="group-detail-actions">
+      {% if gmail_url %}<a class="btn group-mail-btn" href="{{ gmail_url }}" target="_blank" rel="noopener noreferrer">{% include "partials/icon.html" with name="mail" %} E-mail-vázlat</a>{% endif %}
+      <span class="group-member-total"><strong>{{ group.member_count }}</strong><small>csoporttag</small></span>
+    </div>
   </section>
 
-  {% if can_manage and form %}
-    <section class="panel">
-      <h2>Csoport kezelése</h2>
-      <p class="lead muted">A csoportkezelők módosíthatják a csoport adatait, kezelőit és tagságát. A SZLG+ adminisztrációs jogosultságoktól ez különálló.</p>
-      <form method="post" novalidate>
-        {% csrf_token %}
-        {% include "partials/form_fields.html" %}
-        <div class="form-actions"><button class="btn" type="submit">Módosítások mentése</button></div>
-      </form>
+  <div class="group-detail-layout">
+    <section class="roster-section" aria-labelledby="roster-title">
+      <div class="roster-heading">
+        <div><p class="section-kicker">A KÖZÖSSÉG</p><h2 id="roster-title">Tagok <span>{{ group.member_count }}</span></h2></div>
+        <span class="roster-note">A tagok neve és e-mail-címe látható a címtárban.</span>
+      </div>
+
+      {% if recipients %}
+        <details class="recipient-details">
+          <summary><span class="recipient-summary-icon">{% include "partials/icon.html" with name="mail" %}</span><span><strong>Címzettlista</strong><small>Másolás vagy Gmail-vázlat készítése</small></span><b aria-hidden="true">⌄</b></summary>
+          <div class="directory-recipient-copy">
+            <label for="group-recipients">Tagok e-mail-címei</label>
+            <div class="copy"><input id="group-recipients" type="text" value="{{ recipients }}" readonly><button type="button" class="btn outline sm" data-copy="group-recipients">Másolás</button></div>
+            <p>A Gmail-vázlat a címeket a Címzett mezőbe teszi. A címzettek egymás e-mail-címét is látják.</p>
+            {% if gmail_url %}<a class="recipient-open-link" href="{{ gmail_url }}" target="_blank" rel="noopener noreferrer">Megnyitás Gmailben <span aria-hidden="true">↗</span></a>{% else %}<p class="recipient-limit-note">A lista túl hosszú egyetlen Gmail-hivatkozáshoz. Másold ki a címeket, majd illeszd be őket egy új levélbe.</p>{% endif %}
+          </div>
+        </details>
+      {% endif %}
+
+      {% if group.members %}
+        <div class="roster-list">
+          {% for member in group.members %}
+            <a class="roster-person" href="{% url 'directory-person' member.pk %}">
+              <span class="person-avatar">{{ member.get_full_name|default:member.email|slice:":1"|upper }}</span>
+              <span class="roster-person-main"><strong>{{ member.get_full_name|default:member.email }}</strong><span>{% if member.student_profile %}{% if member.student_profile.kezdes_eve and member.student_profile.szekcio %}{{ member.student_profile.osztaly }}{% endif %}{% if member.student_profile.tagozat %}<i>·</i>{{ member.student_profile.tagozat.name }}{% endif %}{% elif member.teacher_profile %}Tanár{% endif %}</span></span>
+              {% if member.is_group_mailbox %}<span class="meta-pill meta-pill-mail">Postafiók</span>{% endif %}
+              <span class="roster-email">{{ member.email }}</span><span class="card-arrow" aria-hidden="true">↗</span>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="directory-empty roster-empty"><span class="empty-icon">{% include "partials/icon.html" with name="users" %}</span><div><strong>Még nincsenek tagok</strong><p>A csoportkezelő adhat hozzá tagokat.</p></div></div>
+      {% endif %}
     </section>
+
+    <aside class="group-sidebar">
+      <section class="group-info-card">
+        <p class="section-kicker">CSOPORTADATOK</p>
+        <h2>Részletek</h2>
+        <dl class="group-facts">
+          <div><dt>Típus</dt><dd>{{ group.type_label }}</dd></div>
+          <div><dt>Láthatóság</dt><dd>{% if group.is_public %}Közérdekű{% else %}Nem közérdekű, kereshető{% endif %}</dd></div>
+          {% if group.parent_name %}<div><dt>Szülőcsoport</dt><dd>{{ group.parent_name }}</dd></div>{% endif %}
+          {% if group.manual_group.created_by %}<div><dt>Létrehozta</dt><dd>{{ group.manual_group.created_by.get_full_name|default:group.manual_group.created_by.email }}</dd></div>{% endif %}
+          {% if group.manual_group.full_path %}<div><dt>Teljes útvonal</dt><dd><code>{{ group.manual_group.full_path }}</code></dd></div>{% endif %}
+        </dl>
+      </section>
+
+      <section class="group-people-card">
+        <div class="sidebar-card-heading"><span class="sidebar-card-icon manager-icon">{% include "partials/icon.html" with name="users" %}</span><div><p class="section-kicker">KAPCSOLATTARTÓK</p><h2>Csoportkezelők</h2></div></div>
+        {% if group.managers %}
+          <div class="manager-list">{% for manager in group.managers %}<a href="{% url 'directory-person' manager.pk %}"><span class="manager-avatar">{{ manager.get_full_name|default:manager.email|slice:":1"|upper }}</span><span><strong>{{ manager.get_full_name|default:manager.email }}</strong><small>{{ manager.email }}</small></span><b aria-hidden="true">↗</b></a>{% endfor %}</div>
+        {% else %}<p class="sidebar-note">A tagságot a profiladatok vagy az iskolai adminisztráció kezeli.</p>{% endif %}
+      </section>
+
+      {% if group.mailboxes %}
+        <section class="group-people-card mailbox-association-card">
+          <div class="sidebar-card-heading"><span class="sidebar-card-icon mailbox-icon" aria-hidden="true">@</span><div><p class="section-kicker">KAPCSOLAT</p><h2>Csoportos postafiók</h2></div></div>
+          <div class="manager-list">{% for mailbox in group.mailboxes %}<a href="{% url 'directory-person' mailbox.pk %}"><span class="manager-avatar">@</span><span><strong>{{ mailbox.get_full_name|default:mailbox.email }}</strong><small>{{ mailbox.email }}</small></span><b aria-hidden="true">↗</b></a>{% endfor %}</div>
+        </section>
+      {% endif %}
+    </aside>
+  </div>
+
+  {% if can_manage and form %}
+    <details class="group-manage-accordion"{% if form.errors %} open{% endif %}>
+      <summary><span class="manage-summary-icon" aria-hidden="true">⚙</span><span><strong>Csoport kezelése</strong><small>Leírás, láthatóság, kezelők és tagság módosítása</small></span><b aria-hidden="true">⌄</b></summary>
+      <div class="group-manage-body">
+        <p>A csoportkezelők a tagságot állítják be; önálló csatlakozás nincs. Ez a szerepkör különáll az SZLG+ adminisztrációs jogosultságoktól.</p>
+        <form method="post" novalidate>{% csrf_token %}{% include "partials/form_fields.html" %}<div class="form-actions"><button class="btn" type="submit">Módosítások mentése</button></div></form>
+      </div>
+    </details>
   {% endif %}
 {% endblock %}

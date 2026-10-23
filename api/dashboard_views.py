@@ -18,6 +18,7 @@ from oauth2_provider.models import (
     RefreshToken,
 )
 
+from .access import can_access_school_features
 from .directory import (
     directory_groups,
     ensure_school_classes,
@@ -68,8 +69,9 @@ def dashboard(request):
         .select_related("application", "application__profile")
         .order_by("application__name")
     )
-    query = request.GET.get("q", "").strip()
-    people = people_queryset(request.user, query) if len(query) >= 2 else []
+    school_access = can_access_school_features(request.user)
+    query = request.GET.get("q", "").strip() if school_access else ""
+    people = people_queryset(request.user, query) if school_access and len(query) >= 2 else []
     if hasattr(people, "filter"):
         school_people = people.filter(is_group_mailbox=False)
         group_mailboxes = people.filter(is_group_mailbox=True)
@@ -93,6 +95,8 @@ def dashboard(request):
 @login_required
 @require_GET
 def directory_person(request, pk):
+    if not can_access_school_features(request.user):
+        return HttpResponseForbidden("Az iskolai címtár csak iskolai fiókkal érhető el.")
     person = visible_person(request.user, pk)
     if person is None:
         from django.http import Http404
@@ -101,6 +105,7 @@ def directory_person(request, pk):
     student_profile = getattr(person, "student_profile", None)
     person_group_keys = set(user_school_group_keys(person))
     groups = [group for group in directory_groups() if group.key in person_group_keys]
+    mailbox_groups = mailbox_group_links(person) if person.is_group_mailbox else []
     return render(
         request,
         "dashboard/person_detail.html",
@@ -109,9 +114,8 @@ def directory_person(request, pk):
             "person": person,
             "student_profile": student_profile,
             "groups": groups,
-            "mailbox_groups": mailbox_group_links(person)
-            if person.is_group_mailbox
-            else [],
+            "mailbox_groups": mailbox_groups,
+            "group_count": len(groups) + len(mailbox_groups),
         },
     )
 
@@ -119,6 +123,8 @@ def directory_person(request, pk):
 @login_required
 @require_GET
 def groups(request):
+    if not can_access_school_features(request.user):
+        return HttpResponseForbidden("Az iskolai csoportok csak iskolai fiókkal érhetők el.")
     query = request.GET.get("q", "").strip()
     ensure_school_classes()
     groups_list = directory_groups(query, browsable_only=not bool(query))
@@ -142,6 +148,8 @@ def groups(request):
 @require_http_methods(["GET", "POST"])
 @ratelimit(key="user", rate="10/h", method="POST", block=True)
 def group_new(request):
+    if not can_access_school_features(request.user):
+        return HttpResponseForbidden("Iskolai csoportot csak iskolai fiókkal lehet kezelni.")
     form = ManualGroupForm(request.POST or None, user=request.user)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
@@ -165,6 +173,8 @@ def group_new(request):
 @require_http_methods(["GET", "POST"])
 @ratelimit(key="user", rate="30/h", method="POST", block=True)
 def group_detail(request, group_key):
+    if not can_access_school_features(request.user):
+        return HttpResponseForbidden("Az iskolai csoportok csak iskolai fiókkal érhetők el.")
     directory_group = get_directory_group(group_key)
     if directory_group is None:
         from django.http import Http404
@@ -330,6 +340,11 @@ def directory_setup(request):
     mailbox_links = [
         (link, group_by_key.get(link.group_key)) for link in mailbox_links
     ]
+    task_count = (
+        required_roles_missing.count()
+        + len(incomplete_classes)
+        + unlinked_mailboxes.count()
+    )
     return render(
         request,
         "dashboard/directory_setup.html",
@@ -348,6 +363,7 @@ def directory_setup(request):
                 is_active=True, is_group_mailbox=True
             ).order_by("email"),
             "mailbox_links": mailbox_links,
+            "task_count": task_count,
         },
     )
 
@@ -356,10 +372,12 @@ def directory_setup(request):
 @require_GET
 def profile(request):
     user = request.user
-    user_group_keys = set(user_school_group_keys(user))
-    school_groups = [
-        group for group in directory_groups() if group.key in user_group_keys
-    ]
+    school_groups = []
+    if can_access_school_features(user):
+        user_group_keys = set(user_school_group_keys(user))
+        school_groups = [
+            group for group in directory_groups() if group.key in user_group_keys
+        ]
     return render(
         request,
         "dashboard/profile.html",
@@ -380,6 +398,11 @@ def profile(request):
 @login_required
 @require_GET
 def dashboard_placeholder(request, title, description):
+    if (
+        request.resolver_match.url_name in {"schedule", "map"}
+        and not can_access_school_features(request.user)
+    ):
+        return HttpResponseForbidden("Ez az iskolai szolgáltatás csak iskolai fiókkal érhető el.")
     return render(
         request,
         "dashboard/placeholder.html",
@@ -444,9 +467,11 @@ def _application_limit_reached(user) -> bool:
 
 
 def _render_application(request, application, new_secret=None, status=200):
-    group_names = {
-        group.key: group.name for group in directory_groups()
-    }
+    group_names = (
+        {group.key: group.name for group in directory_groups()}
+        if can_access_school_features(request.user)
+        else {}
+    )
     required_group_names = [
         group_names[key]
         for key in getattr(getattr(application, "profile", None), "required_group_keys", [])

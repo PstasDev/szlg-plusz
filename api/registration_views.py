@@ -126,7 +126,11 @@ def register(request):
     return render(
         request,
         "registration/register.html",
-        {"form": form, **privacy_context()},
+        {
+            "form": form,
+            "school_domain_attempted": form.school_domain_attempted,
+            **privacy_context(),
+        },
     )
 
 

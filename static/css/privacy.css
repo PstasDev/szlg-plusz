@@ -40,6 +40,7 @@
 .landing-privacy { border-color: rgb(16 42 43 / .16); }
 .landing-privacy .privacy-policy-content { max-width: none; }
 .auth-register, .privacy-link { margin-top: 1rem; }
+.footer .privacy-footer-link { color: inherit; text-decoration: underline; text-underline-offset: .15em; }
 .check-row {
   display: flex;
   align-items: flex-start;

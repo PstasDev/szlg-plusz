@@ -43,11 +43,20 @@
 
   <div class="layout">
     <nav class="sidenav" aria-label="Fő navigáció">
-      <p class="nav-label">Mindennapok</p>
-      <a href="{% url 'dashboard' %}"{% if section == "home" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="home" %}Címtár</a>
-      <a href="{% url 'schedule' %}"{% if section == "schedule" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="calendar" %}Órarend</a>
-      <a href="{% url 'groups' %}"{% if section == "groups" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="users" %}Csoportok</a>
-      <a href="{% url 'map' %}"{% if section == "map" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="map" %}Térkép</a>
+      {% if can_access_school_features %}
+        <p class="nav-label">Mindennapok</p>
+        <a href="{% url 'dashboard' %}"{% if section == "home" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="home" %}Címtár</a>
+        <a href="{% url 'schedule' %}"{% if section == "schedule" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="calendar" %}Órarend</a>
+        <a href="{% url 'groups' %}"{% if section == "groups" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="users" %}Csoportok</a>
+        <a href="{% url 'map' %}"{% if section == "map" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="map" %}Térkép</a>
+      {% else %}
+        <p class="nav-label">Saját fiók</p>
+        <a href="{% url 'dashboard' %}"{% if section == "home" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="home" %}Áttekintés</a>
+        <a href="{% url 'profile' %}"{% if section == "profile" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="user" %}Személyes adatok</a>
+        <a href="{% url 'security' %}"{% if section == "security" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="shield" %}Biztonság</a>
+        <a href="{% url 'applications' %}"{% if section == "applications" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="grid" %}Alkalmazásaim</a>
+        <a href="{% url 'grants' %}"{% if section == "grants" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="link" %}Engedélyek</a>
+      {% endif %}
       {% if request.user.is_staff or request.user.is_superuser %}
         <div class="sep"></div>
         <p class="nav-label">Iskolai beállítások</p>

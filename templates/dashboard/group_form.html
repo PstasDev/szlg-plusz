@@ -1,12 +1,22 @@
 {% extends "dashboard/base.html" %}
 {% block title %}Új csoport{% endblock %}
 {% block content %}
-  <div class="page-head"><div><h1>Új csoport</h1><p class="muted">Bármelyik bejelentkezett felhasználó létrehozhat csoportot. A tagságot a csoportkezelők állítják be.</p></div></div>
-  <section class="panel" style="max-width:48rem">
-    <form method="post" novalidate>
-      {% csrf_token %}
-      {% include "partials/form_fields.html" %}
-      <div class="form-actions"><button class="btn" type="submit">Csoport létrehozása</button><a class="btn text" href="{% url 'groups' %}">Mégse</a></div>
-    </form>
-  </section>
+  <a class="back-link" href="{% url 'groups' %}"><span aria-hidden="true">←</span> Vissza a csoportokhoz</a>
+  <div class="create-group-layout">
+    <section class="create-group-main">
+      <div class="create-group-heading"><span class="create-group-symbol" aria-hidden="true">＋</span><div><p class="section-kicker">ÚJ KÖZÖSSÉG</p><h1>Csoport létrehozása</h1><p>Adj nevet a csoportodnak, majd állítsd be a leírását és a tagjait.</p></div></div>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% include "partials/form_fields.html" %}
+        <div class="form-actions"><button class="btn" type="submit">Csoport létrehozása</button><a class="btn text" href="{% url 'groups' %}">Mégse</a></div>
+      </form>
+    </section>
+    <aside class="create-group-aside">
+      <p class="section-kicker">MIRE SZÁMÍTS?</p>
+      <h2>A csoport szabályai</h2>
+      <div class="create-rule"><span>01</span><div><strong>Alapból nem közérdekű</strong><p>A csoport nem kerül a böngészhető listába, de kereséssel megtalálható.</p></div></div>
+      <div class="create-rule"><span>02</span><div><strong>Te leszel az első kezelő</strong><p>A létrehozás után bármikor megadhatod a tagokat és további kezelőket.</p></div></div>
+      <div class="create-rule"><span>03</span><div><strong>Nincs önálló csatlakozás</strong><p>A csoporttagságot kizárólag a kezelők állítják be.</p></div></div>
+    </aside>
+  </div>
 {% endblock %}

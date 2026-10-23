@@ -94,6 +94,9 @@ class HiddenInputParser(HTMLParser):
 
 class IdentityModelTests(TestCase):
     def setUp(self):
+        config = GlobalConfig.get_solo()
+        config.school_domain = "@example.org"
+        config.save()
         self.user = CustomUser.objects.create_user(
             email="Student@Example.org",
             password="test-password-123",
@@ -153,12 +156,10 @@ class IdentityModelTests(TestCase):
         self.assertNotIn("manual_groups", claims)
 
     def test_email_patterns_are_parsed_from_the_local_part(self):
-        GlobalConfig.get_solo().school_domain = "@szlgbp.hu"
-        GlobalConfig.get_solo().save()
-
-        self.assertTrue(email_info("titkarsag@szlgbp.hu").is_group_email)
-        self.assertFalse(email_info("minta.anna@szlgbp.hu").is_group_email)
-        self.assertTrue(email_info("minta.anna.23af@szlgbp.hu").is_part_time_student)
+        with patch("api.models.get_school_domain", return_value="@szlgbp.hu"):
+            self.assertTrue(email_info("titkarsag@szlgbp.hu").is_group_email)
+            self.assertFalse(email_info("minta.anna@szlgbp.hu").is_group_email)
+            self.assertTrue(email_info("minta.anna.23af@szlgbp.hu").is_part_time_student)
 
 
 @override_settings(
@@ -379,8 +380,91 @@ class DirectoryTests(TestCase):
     SESSION_COOKIE_SECURE=False,
     CSRF_COOKIE_SECURE=False,
 )
+class SchoolFeatureAccessTests(TestCase):
+    def setUp(self):
+        config = GlobalConfig.get_solo()
+        config.school_domain = "@school.test"
+        config.save()
+        self.school_user = CustomUser.objects.create_user(
+            email="diak@school.test", first_name="Iskolai", last_name="Felhasználó"
+        )
+        self.external_user = CustomUser.objects.create_user(
+            email="kulso@example.org", first_name="Külső", last_name="Felhasználó"
+        )
+        self.group = ManualGroup.objects.create(
+            name="Belső csoport", slug="belso-csoport"
+        )
+
+    def test_external_users_can_manage_their_account_but_not_school_features(self):
+        self.client.force_login(self.external_user)
+
+        home = self.client.get("/dashboard/?q=Iskolai")
+        self.assertEqual(home.status_code, 200)
+        self.assertContains(home, self.external_user.email)
+        self.assertContains(home, "Saját fiók")
+        self.assertNotContains(home, "Kit keresel?")
+        self.assertNotContains(home, 'href="/dashboard/schedule/"')
+        self.assertNotContains(home, 'href="/dashboard/groups/"')
+        self.assertNotContains(home, 'href="/dashboard/map/"')
+        self.assertNotContains(home, self.school_user.email)
+
+        forbidden_paths = (
+            "/dashboard/groups/",
+            "/dashboard/groups/?q=Belső",
+            "/dashboard/groups/new/",
+            f"/dashboard/groups/{self.group.directory_key}/",
+            f"/dashboard/people/{self.school_user.pk}/",
+            "/dashboard/schedule/",
+            "/dashboard/map/",
+        )
+        for path in forbidden_paths:
+            with self.subTest(path=path):
+                self.assertEqual(self.client.get(path).status_code, 403)
+
+        for path in ("/account/profile/", "/security/", "/apps/", "/grants/"):
+            with self.subTest(path=path):
+                self.assertEqual(self.client.get(path).status_code, 200)
+
+        app_form = self.client.get("/apps/new/")
+        self.assertNotContains(app_form, "Alkalmazáshoz szükséges csoportok")
+
+        claims = SZLGPlusOAuth2Validator().get_oidc_claims(
+            None,
+            None,
+            SimpleNamespace(user=self.external_user, scopes=["openid", "groups"]),
+        )
+        self.assertEqual(claims["school_groups"], [])
+        self.assertEqual(claims["manual_groups"], [])
+        self.assertFalse(any(claims["smart_groups"].values()))
+
+    def test_school_users_and_staff_can_access_school_features(self):
+        for user in (self.school_user, self.external_user):
+            if user == self.external_user:
+                user.is_staff = True
+                user.save(update_fields=["is_staff"])
+            with self.subTest(user=user.email):
+                self.client.force_login(user)
+                for path in (
+                    "/dashboard/groups/",
+                    f"/dashboard/groups/{self.group.directory_key}/",
+                    f"/dashboard/people/{self.school_user.pk}/",
+                    "/dashboard/schedule/",
+                    "/dashboard/map/",
+                ):
+                    with self.subTest(path=path):
+                        self.assertEqual(self.client.get(path).status_code, 200)
+
+
+@override_settings(
+    SECURE_SSL_REDIRECT=False,
+    SESSION_COOKIE_SECURE=False,
+    CSRF_COOKIE_SECURE=False,
+)
 class LoginAndOIDCTests(TestCase):
     def setUp(self):
+        config = GlobalConfig.get_solo()
+        config.school_domain = "@example.org"
+        config.save()
         self.user = CustomUser.objects.create_user(
             email="student@example.org",
             password="test-password-123",
@@ -581,6 +665,142 @@ class LoginAndOIDCTests(TestCase):
         self.assertTrue(claims["smart_groups"]["student"])
         self.assertEqual(claims["manual_groups"], ["studiosok"])
 
+
+@override_settings(
+    SECURE_SSL_REDIRECT=False,
+    SESSION_COOKIE_SECURE=False,
+    CSRF_COOKIE_SECURE=False,
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
+class RegistrationTests(TestCase):
+    PASSWORD = "Evergreen-Password-47!"
+
+    def setUp(self):
+        cache.clear()
+        config = GlobalConfig.get_solo()
+        config.school_domain = "@szlgbp.hu"
+        config.promote_passkey = False
+        config.save()
+
+    def _registration_data(self, **overrides):
+        values = {
+            "email": "external@example.org",
+            "first_name": "Anna",
+            "last_name": "Minta",
+            "password1": self.PASSWORD,
+            "password2": self.PASSWORD,
+            "privacy_consent": "on",
+        }
+        values.update(overrides)
+        return values
+
+    def test_privacy_policy_is_available_on_landing_login_registration_and_standalone_page(self):
+        for path in ("/", "/login/", "/register/", "/adatvedelem/"):
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, "Adatkezelési Tájékoztató")
+                self.assertContains(response, "Kőbányai Szent László Gimnázium")
+
+    def test_registration_requires_policy_consent(self):
+        response = self.client.post(
+            "/register/", self._registration_data(privacy_consent="")
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(CustomUser.objects.filter(email="external@example.org").exists())
+        self.assertContains(response, "hozzájárulok a regisztrációhoz szükséges adatkezeléshez")
+
+    def test_new_account_is_inactive_until_email_confirmation(self):
+        response = self.client.post("/register/", self._registration_data())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Megerősítő levelet küldtünk")
+        user = CustomUser.objects.get(email="external@example.org")
+        self.assertFalse(user.is_active)
+        self.assertFalse(user.email_verified)
+        self.assertIsNotNone(user.privacy_consent_at)
+        self.assertTrue(user.check_password(self.PASSWORD))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [user.email])
+
+        denied = self.client.post(
+            "/login/password/", {"email": user.email, "password": self.PASSWORD}
+        )
+        self.assertEqual(denied.status_code, 401)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+        confirmation_path = re.search(
+            r"/email/confirm/([^/\s]+)", mail.outbox[0].body
+        ).group(0) + "/"
+        preview = self.client.get(confirmation_path)
+        self.assertEqual(preview.status_code, 200)
+        user.refresh_from_db()
+        self.assertFalse(user.is_active, "Opening the link alone must not activate accounts.")
+
+        confirmed = self.client.post(confirmation_path)
+        self.assertRedirects(confirmed, "/email/confirmed/", fetch_redirect_response=False)
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
+        self.assertTrue(user.email_verified)
+
+        login_response = self.client.post(
+            "/login/password/", {"email": user.email, "password": self.PASSWORD}
+        )
+        self.assertEqual(login_response.status_code, 302)
+        self.assertIn("_auth_user_id", self.client.session)
+
+    def test_school_domain_registration_is_blocked_and_lists_configured_contacts(self):
+        contact = CustomUser.objects.create_user(
+            email="admin@example.org", first_name="Attila", last_name="Admin"
+        )
+        GlobalConfig.get_solo().administrator_contacts.add(contact)
+
+        response = self.client.post(
+            "/register/",
+            self._registration_data(email="diak.23a@SZLGBP.HU"),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Iskolai e-mail-címmel nem lehet önállóan regisztrálni")
+        self.assertContains(response, "admin@example.org")
+        self.assertFalse(CustomUser.objects.filter(email__iexact="diak.23a@szlgbp.hu").exists())
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_registration_does_not_create_a_duplicate_for_an_existing_user(self):
+        existing = CustomUser.objects.create_user(
+            email="external@example.org", password=self.PASSWORD
+        )
+
+        response = self.client.post(
+            "/register/", self._registration_data(email="EXTERNAL@example.org")
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ehhez az e-mail-címhez már tartozik fiók")
+        self.assertEqual(CustomUser.objects.filter(email__iexact=existing.email).count(), 1)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_resend_sends_only_for_pending_self_service_registrations(self):
+        pending = CustomUser.objects.create_user(
+            email="pending@example.org",
+            password=self.PASSWORD,
+            is_active=False,
+            privacy_consent_at=timezone.now(),
+        )
+        existing = CustomUser.objects.create_user(email="old@example.org", is_active=False)
+
+        response = self.client.post(
+            "/email/confirm/resend/", {"email": pending.email}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [pending.email])
+
+        self.client.post("/email/confirm/resend/", {"email": existing.email})
+        self.assertEqual(len(mail.outbox), 1)
+
+
 @override_settings(
     SECURE_SSL_REDIRECT=False,
     SESSION_COOKIE_SECURE=False,
@@ -588,6 +808,9 @@ class LoginAndOIDCTests(TestCase):
 )
 class ConsentScreenTests(TestCase):
     def setUp(self):
+        config = GlobalConfig.get_solo()
+        config.school_domain = "@example.org"
+        config.save()
         self.user = CustomUser.objects.create_user(
             email="student@example.org",
             password="test-password-123",
@@ -669,6 +892,9 @@ def _png_upload(name="logo.png", size=(64, 64), fmt="PNG"):
 )
 class DashboardTests(TestCase):
     def setUp(self):
+        config = GlobalConfig.get_solo()
+        config.school_domain = "@example.org"
+        config.save()
         self.media_root = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.media_root, ignore_errors=True)
         media = override_settings(MEDIA_ROOT=self.media_root)
@@ -757,6 +983,7 @@ class DashboardTests(TestCase):
 
         self.assertContains(response, "Teszt app")
         self.assertContains(response, "https://igazolas.example.org/")
+        self.assertContains(response, "Kit keresel?")
         self.assertContains(response, "Órarend")
 
     def test_profile_shows_all_stored_data_read_only(self):
@@ -1096,6 +1323,26 @@ class GlobalConfigTests(TestCase):
         self.client.post("/admin/api/globalconfig/1/change/", {"_save": "Mentés"})
         self.assertFalse(GlobalConfig.get_solo().promote_passkey)
         self.assertEqual(GlobalConfig.objects.count(), 1)
+
+    def test_admin_can_select_public_szlg_contacts(self):
+        contact = CustomUser.objects.create_user(
+            email="contact@example.org", first_name="Kapcsolat"
+        )
+
+        response = self.client.post(
+            "/admin/api/globalconfig/1/change/",
+            {
+                "_save": "Mentés",
+                "promote_passkey": "on",
+                "school_domain": "@szlgbp.hu",
+                "administrator_contacts": [str(contact.pk)],
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertQuerySetEqual(
+            GlobalConfig.get_solo().administrator_contacts.all(), [contact]
+        )
 
 
 @override_settings(

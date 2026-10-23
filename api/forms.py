@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.utils.text import slugify
 from oauth2_provider.models import Application
 
+from .access import can_access_school_features
 from .directory import group_choices, people_queryset
 from .models import (
     ApplicationProfile,
@@ -53,11 +54,19 @@ class RegistrationForm(forms.Form):
         required=True,
     )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.school_domain_attempted = False
+
     def clean_email(self):
         email = self.cleaned_data["email"].strip().lower()
         if email_info(email).is_in_school_domain:
+            self.school_domain_attempted = True
             raise forms.ValidationError(
-                "Iskolai e-mail-címmel nem lehet önállóan regisztrálni. Kérjük, fordulj az SZLG+ rendszergazdáihoz."
+                "Iskolai e-mail-címmel nem lehet önállóan regisztrálni. Az SZLG+ fiókodat "
+                "az iskola automatikusan létrehozhatta; próbálj meg bejelentkezni vagy "
+                "jelszó-visszaállítást kérni. Ha mégsem létezik fiókod, keresd az alábbi "
+                "SZLG+ adminisztrátorok egyikét."
             )
         if CustomUser.objects.filter(email__iexact=email).exists():
             raise forms.ValidationError(
@@ -135,7 +144,10 @@ class ApplicationForm(forms.ModelForm):
     def __init__(self, *args, user, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
-        self.fields["required_group_keys"].choices = group_choices()
+        if can_access_school_features(user):
+            self.fields["required_group_keys"].choices = group_choices()
+        else:
+            self.fields.pop("required_group_keys")
         self.fields["client_type"] = forms.ChoiceField(
             label="Típus",
             choices=[
@@ -204,7 +216,8 @@ class ApplicationForm(forms.ModelForm):
         )
         profile.developer = self.cleaned_data["developer"]
         profile.short_description = self.cleaned_data["short_description"]
-        profile.required_group_keys = self.cleaned_data.get("required_group_keys", [])
+        if "required_group_keys" in self.cleaned_data:
+            profile.required_group_keys = self.cleaned_data["required_group_keys"]
         logo = self.cleaned_data.get("logo")
         if logo is False:
             profile.logo.delete(save=False)

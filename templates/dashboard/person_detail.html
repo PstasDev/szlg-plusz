@@ -1,22 +1,35 @@
 {% extends "dashboard/base.html" %}
 {% block title %}{{ person.get_full_name|default:person.email }}{% endblock %}
 {% block content %}
-  <div class="page-head"><div><p class="welcome-kicker" style="color:var(--primary)">Iskolai címtár</p><h1>{{ person.get_full_name|default:person.email }}</h1>{% if person.is_group_mailbox %}<span class="badge">Csoportos postafiók</span>{% endif %}</div><a class="btn outline" href="{% url 'dashboard' %}">Vissza a címtárhoz</a></div>
-  <div class="two">
-    <section class="panel">
-      <h2>Alapadatok</h2>
-      <dl class="data">
-        <div><dt>Teljes név</dt><dd>{{ person.get_full_name|default:"Nincs megadva" }}</dd></div>
-        {% if student_profile and student_profile.kezdes_eve and student_profile.szekcio %}<div><dt>Osztály</dt><dd>{{ student_profile.osztaly }}</dd></div>{% endif %}
-        {% if student_profile and student_profile.tagozat %}<div><dt>Tagozat</dt><dd>{{ student_profile.tagozat.name }}</dd></div>{% endif %}
-        <div><dt>E-mail-cím</dt><dd><a href="mailto:{{ person.email }}">{{ person.email }}</a></dd></div>
-        {% if person.is_group_mailbox %}<div><dt>Fióktípus</dt><dd>Csoportos postafiók</dd></div>{% endif %}
-      </dl>
-    </section>
-    <section class="panel">
-      <h2>Iskolai csoportok</h2>
-      {% if groups %}<ul class="items">{% for group in groups %}<li><a href="{% url 'group-detail' group_key=group.key %}">{{ group.name }}</a><span class="badge">{{ group.type_label }}</span></li>{% endfor %}</ul>{% else %}<p class="muted">Nincs megjeleníthető iskolai csoport.</p>{% endif %}
-      {% if mailbox_groups %}<h3 class="directory-subheading">Kapcsolt csoportok</h3><ul class="items">{% for group in mailbox_groups %}<li><a href="{% url 'group-detail' group_key=group.key %}">{{ group.name }}</a><span class="badge">Postafiók-kapcsolat</span></li>{% endfor %}</ul>{% endif %}
-    </section>
-  </div>
+  <a class="back-link" href="{% url 'dashboard' %}"><span aria-hidden="true">←</span> Vissza a címtárhoz</a>
+  <section class="person-profile-hero{% if person.is_group_mailbox %} person-profile-mailbox{% endif %}">
+    <span class="person-profile-avatar">{% if person.is_group_mailbox %}@{% else %}{{ person.get_full_name|default:person.email|slice:":1"|upper }}{% endif %}</span>
+    <div class="person-profile-heading">
+      <p class="section-kicker">{% if person.is_group_mailbox %}CSOPORTOS POSTAFIÓK{% else %}ISKOLAI CÍMTÁR{% endif %}</p>
+      <h1>{{ person.get_full_name|default:"Nincs megadva név" }}</h1>
+      <a href="mailto:{{ person.email }}">{{ person.email }}</a>
+    </div>
+    <div class="person-profile-badges">
+      {% if person.is_group_mailbox %}<span class="meta-pill meta-pill-mail">Csoportos postafiók</span>{% endif %}
+      {% if student_profile and student_profile.kezdes_eve and student_profile.szekcio %}<span class="meta-pill">{{ student_profile.osztaly }}</span>{% endif %}
+      {% if student_profile and student_profile.tagozat %}<span class="meta-pill meta-pill-soft">{{ student_profile.tagozat.name }}</span>{% endif %}
+      {% if person.teacher_profile %}<span class="meta-pill meta-pill-soft">Tanár</span>{% endif %}
+    </div>
+  </section>
+
+  <section class="person-groups-section">
+    <div class="section-heading"><div><p class="section-kicker">KÖZÖSSÉGI KAPCSOLATOK</p><h2>Iskolai csoportok</h2></div><span class="result-count">{{ group_count }} kapcsolat</span></div>
+    {% if groups or mailbox_groups %}
+      <div class="person-group-grid">
+        {% for group in groups %}
+          <a class="person-group-card" href="{% url 'group-detail' group_key=group.key %}"><span class="group-card-mark" aria-hidden="true">{{ group.name|slice:":1"|upper }}</span><span><small>{{ group.type_label }}</small><strong>{{ group.name }}</strong></span><b aria-hidden="true">↗</b></a>
+        {% endfor %}
+        {% for group in mailbox_groups %}
+          <a class="person-group-card person-group-mailbox" href="{% url 'group-detail' group_key=group.key %}"><span class="group-card-mark" aria-hidden="true">@</span><span><small>Postafiók-kapcsolat</small><strong>{{ group.name }}</strong></span><b aria-hidden="true">↗</b></a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="directory-empty"><span class="empty-icon">{% include "partials/icon.html" with name="users" %}</span><div><strong>Nincs csoportkapcsolat</strong><p>Ehhez a fiókhoz még nem tartozik címtárcsoport.</p></div></div>
+    {% endif %}
+  </section>
 {% endblock %}

@@ -1,0 +1,132 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{% if can_access_school_features %}Címtár{% else %}Saját fiók{% endif %}{% endblock %}
+{% block content %}
+  {% if can_access_school_features %}
+  <section class="directory-hero">
+    <div class="directory-hero-orbit orbit-one" aria-hidden="true"></div>
+    <div class="directory-hero-orbit orbit-two" aria-hidden="true"></div>
+    <div class="directory-hero-topline">
+      <span class="eyebrow"><span class="eyebrow-dot"></span> SZLG+ · ISKOLAI CÍMTÁR</span>
+      <a class="hero-account" href="{% url 'profile' %}">
+        <span class="hero-account-avatar">{{ request.user.email|slice:":1"|upper }}</span>
+        <span><strong>{{ request.user.get_full_name|default:request.user.email }}</strong><small>Saját fiók</small></span>
+        <span aria-hidden="true">↗</span>
+      </a>
+    </div>
+    <div class="directory-hero-copy">
+      <h1>Kit keresel?</h1>
+      <p>Találd meg az iskola tagjait, és tudd meg, mely közösségekhez tartoznak.</p>
+    </div>
+    <form method="get" action="{% url 'dashboard' %}" class="directory-search-form directory-search-form-hero">
+      <span class="search-symbol">{% include "partials/icon.html" with name="search" %}</span>
+      <label class="sr-only" for="directory-query">Keresés név vagy e-mail-cím alapján</label>
+      <input id="directory-query" type="search" name="q" value="{{ query }}" minlength="2" placeholder="Keress név vagy e-mail-cím alapján" autocomplete="off">
+      <button class="btn" type="submit">Keresés <span aria-hidden="true">→</span></button>
+    </form>
+    <div class="directory-hero-footer">
+      <span>Teljes név · Osztály · Tagozat · E-mail</span>
+      <a href="{% url 'groups' %}">Vagy böngéssz a csoportok között <span aria-hidden="true">↗</span></a>
+    </div>
+  </section>
+
+  {% if has_searched %}
+    <section class="directory-results-section" aria-labelledby="people-results-title">
+      <div class="section-heading">
+        <div><p class="section-kicker">CÍMTÁR TALÁLATOK</p><h2 id="people-results-title">Személyek</h2></div>
+        <span class="result-count">{{ school_people|length }} találat</span>
+      </div>
+      {% if school_people %}
+        <div class="directory-result-list">
+          {% for person in school_people %}
+            <a class="directory-person-card" href="{% url 'directory-person' person.pk %}">
+              <span class="person-avatar">{{ person.get_full_name|default:person.email|slice:":1"|upper }}</span>
+              <span class="person-card-main">
+                <strong>{{ person.get_full_name|default:person.email }}</strong>
+                <span class="person-card-meta">
+                  {% if person.student_profile %}
+                    {% if person.student_profile.kezdes_eve and person.student_profile.szekcio %}<span class="meta-pill">{{ person.student_profile.osztaly }}</span>{% endif %}
+                    <span class="meta-pill meta-pill-soft">{{ person.student_profile.tagozat.name|default:"Tagozat nincs megadva" }}</span>
+                  {% elif person.teacher_profile %}<span class="meta-pill meta-pill-soft">Tanár</span>
+                  {% else %}<span class="meta-pill meta-pill-soft">{{ person.account_type }}</span>{% endif %}
+                </span>
+              </span>
+              <span class="person-card-email">{{ person.email }}</span>
+              <span class="person-card-arrow" aria-hidden="true">↗</span>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="directory-empty"><span class="empty-icon">{% include "partials/icon.html" with name="search" %}</span><div><strong>Nem találtunk személyt</strong><p>Ellenőrizd a nevet vagy az e-mail-címet, és próbáld újra.</p></div></div>
+      {% endif %}
+
+      {% if group_mailboxes %}
+        <div class="mailbox-results">
+          <div class="section-heading mailbox-heading">
+            <div><p class="section-kicker">KÜLÖN FIÓKTÍPUS</p><h2>Csoportos postafiókok</h2></div>
+            <span class="result-count">{{ group_mailboxes|length }} postafiók</span>
+          </div>
+          <div class="directory-result-list">
+            {% for person in group_mailboxes %}
+              <a class="directory-person-card mailbox-person-card" href="{% url 'directory-person' person.pk %}">
+                <span class="mailbox-avatar" aria-hidden="true">@</span>
+                <span class="person-card-main"><strong>{{ person.get_full_name|default:person.email }}</strong><span class="person-card-meta"><span class="meta-pill meta-pill-mail">Csoportos postafiók</span></span></span>
+                <span class="person-card-email">{{ person.email }}</span><span class="person-card-arrow" aria-hidden="true">↗</span>
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    </section>
+  {% else %}
+    <section class="directory-start-links" aria-label="Gyors elérés">
+      <a class="start-link start-link-groups" href="{% url 'groups' %}"><span class="start-link-icon">{% include "partials/icon.html" with name="users" %}</span><span><small>ISKOLAI KÖZÖSSÉGEK</small><strong>Csoportok böngészése</strong></span><b aria-hidden="true">→</b></a>
+      <a class="start-link" href="{% url 'group-new' %}"><span class="start-link-icon" aria-hidden="true">＋</span><span><small>ÚJ KÖZÖSSÉG</small><strong>Csoport létrehozása</strong></span><b aria-hidden="true">→</b></a>
+    </section>
+  {% endif %}
+  {% else %}
+    <section class="directory-hero personal-account-hero">
+      <div class="directory-hero-orbit orbit-one" aria-hidden="true"></div>
+      <div class="directory-hero-orbit orbit-two" aria-hidden="true"></div>
+      <div class="directory-hero-topline">
+        <span class="eyebrow"><span class="eyebrow-dot"></span> SZLG+ · SAJÁT FIÓK</span>
+        <a class="hero-account" href="{% url 'profile' %}">
+          <span class="hero-account-avatar">{{ request.user.email|slice:":1"|upper }}</span>
+          <span><strong>{{ request.user.get_full_name|default:request.user.email }}</strong><small>Saját fiók</small></span>
+          <span aria-hidden="true">↗</span>
+        </a>
+      </div>
+      <div class="directory-hero-copy">
+        <h1>Üdv az SZLG+-ban!</h1>
+        <p>Ezen az oldalon a saját fiókodat és alkalmazásaidat kezelheted.</p>
+      </div>
+      <div class="directory-hero-footer">
+        <span>Profil · Biztonság · Saját alkalmazások</span>
+        <a href="{% url 'profile' %}">Saját adataim <span aria-hidden="true">↗</span></a>
+      </div>
+    </section>
+
+    <section class="directory-start-links" aria-label="Saját fiók kezelése">
+      <a class="start-link" href="{% url 'profile' %}"><span class="start-link-icon">{% include "partials/icon.html" with name="user" %}</span><span><small>SAJÁT FIÓK</small><strong>Személyes adatok</strong></span><b aria-hidden="true">→</b></a>
+      <a class="start-link" href="{% url 'security' %}"><span class="start-link-icon">{% include "partials/icon.html" with name="shield" %}</span><span><small>FIÓKBIZTONSÁG</small><strong>Jelszó és jelkulcsok</strong></span><b aria-hidden="true">→</b></a>
+    </section>
+  {% endif %}
+
+  <section class="launcher-section launcher-secondary" aria-labelledby="launcher-title">
+    <div class="section-heading"><div><p class="section-kicker">GYORS ELÉRÉS</p><h2 id="launcher-title">Alkalmazásaid</h2></div><span class="result-count">{{ launcher_apps|length }} alkalmazás</span></div>
+    {% if launcher_apps %}
+      <div class="launcher-grid">
+        {% for connection in launcher_apps %}
+          {% with application=connection.application profile=connection.application.profile %}
+            <a class="launcher-card" href="{{ profile.launch_url }}" target="_blank" rel="noopener noreferrer">
+              <span class="launcher-logo">{% if profile.logo %}<img src="{{ profile.logo.url }}" alt="">{% else %}<span>{{ application.name|slice:":1"|upper }}</span>{% endif %}</span>
+              <span class="launcher-details"><strong>{{ application.name }}</strong><small>{{ profile.short_description|default:"Iskolai alkalmazás" }}</small></span>
+              <span class="launcher-arrow" aria-hidden="true">↗</span>
+            </a>
+          {% endwith %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="launcher-empty"><span class="empty-symbol" aria-hidden="true">▦</span><div><h3>Még nincsenek megjeleníthető alkalmazások</h3><p>Az engedélyezett alkalmazásaidat a profilmenü „Alkalmazásengedélyek” pontjában kezelheted.</p></div><a href="{% url 'grants' %}" class="btn outline sm">Engedélyek</a></div>
+    {% endif %}
+  </section>
+{% endblock %}
