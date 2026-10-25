@@ -1,74 +1,56 @@
 <!doctype html>
-<html lang="hu" class="h-full" data-theme="dark">
+<html lang="hu" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
-  <title>{% block title %}Dashboard{% endblock %} · SZLG+</title>
+  <meta name="color-scheme" content="dark light">
+  <title>{% block title %}Fiókom{% endblock %} · SZLG+</title>
   {% load static %}
   <script>
-    try { if (localStorage.getItem("szlg-theme") === "light") document.documentElement.setAttribute("data-theme", "light"); } catch (e) {}
+    try {
+      if (localStorage.getItem("szlg-theme") === "light") {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    } catch (e) {}
   </script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>tailwind.config={theme:{extend:{colors:{ink:'#102a2b',forest:'#174746',mint:'#c8f0df',copper:'#c98454',paper:'#f7f8f4'}}}}</script>
   <link rel="stylesheet" href="{% static 'css/theme.css' %}">
   <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
 </head>
 <body class="dash">
   <header class="topbar">
-    <a class="brand" href="{% url 'dashboard' %}" aria-label="SZLG+ Dashboard">
-      <span class="crest" aria-hidden="true"></span><span class="brand-name">SZLG<span class="text-copper">+</span></span>
+    <a class="brand" href="{% url 'dashboard' %}" aria-label="SZLG+ főoldal">
+      <span class="crest" aria-hidden="true"></span>
+      <span class="brand-name">SZLG+</span>
     </a>
     <span class="spacer"></span>
-    <a class="topbar-docs" href="{% url 'docs' %}">Súgó</a>
+    <span class="who">{{ request.user.email }}</span>
     <button type="button" class="btn text sm" id="theme-toggle">Világos mód</button>
-    <details class="profile-menu">
-      <summary aria-label="Profilbeállítások megnyitása">
-        <span class="profile-avatar" aria-hidden="true">{{ request.user.email|slice:":1"|upper }}</span>
-        <span class="profile-email">{{ request.user.get_full_name|default:request.user.email }}</span>
-        <span class="profile-chevron" aria-hidden="true">⌄</span>
-      </summary>
-      <div class="profile-panel">
-        <div class="profile-heading"><strong>{{ request.user.get_full_name|default:request.user.email }}</strong><small>{{ request.user.email }}</small></div>
-        <a href="{% url 'profile' %}">{% include "partials/icon.html" with name="user" %}Személyes adatok</a>
-        <a href="{% url 'security' %}">{% include "partials/icon.html" with name="shield" %}Biztonság és jelkulcsok</a>
-        <a href="{% url 'security' %}#password">{% include "partials/icon.html" with name="lock" %}Jelszó</a>
-        <a href="{% url 'grants' %}">{% include "partials/icon.html" with name="link" %}Alkalmazás engedélyek</a>
-        <a href="{% url 'applications' %}">{% include "partials/icon.html" with name="grid" %}Alkalmazásaim</a>
-        {% if request.user.is_staff %}<a href="{% url 'admin:index' %}">{% include "partials/icon.html" with name="settings" %}Adminisztráció</a>{% endif %}
-        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit">{% include "partials/icon.html" with name="logout" %}Kijelentkezés</button></form>
-      </div>
-    </details>
+    <form method="post" action="{% url 'logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn outline sm">Kijelentkezés</button>
+    </form>
   </header>
 
   <div class="layout">
-    <nav class="sidenav" aria-label="Fő navigáció">
-      {% if can_access_school_features %}
-        <p class="nav-label">Mindennapok</p>
-        <a href="{% url 'dashboard' %}"{% if section == "home" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="home" %}Címtár</a>
-        <a href="{% url 'schedule' %}"{% if section == "schedule" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="calendar" %}Órarend</a>
-        <a href="{% url 'groups' %}"{% if section == "groups" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="users" %}Csoportok</a>
-        <a href="{% url 'map' %}"{% if section == "map" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="map" %}Térkép</a>
-      {% else %}
-        <p class="nav-label">Saját fiók</p>
-        <a href="{% url 'dashboard' %}"{% if section == "home" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="home" %}Áttekintés</a>
-        <a href="{% url 'profile' %}"{% if section == "profile" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="user" %}Személyes adatok</a>
-        <a href="{% url 'security' %}"{% if section == "security" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="shield" %}Biztonság</a>
-        <a href="{% url 'applications' %}"{% if section == "applications" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="grid" %}Alkalmazásaim</a>
-        <a href="{% url 'grants' %}"{% if section == "grants" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="link" %}Engedélyek</a>
-      {% endif %}
-      {% if request.user.is_staff or request.user.is_superuser %}
+    <nav class="sidenav" aria-label="Főmenü">
+      <a href="{% url 'dashboard' %}"{% if section == "profile" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="user" %}Profil</a>
+      <a href="{% url 'security' %}"{% if section == "security" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="lock" %}Biztonság</a>
+      <a href="{% url 'applications' %}"{% if section == "applications" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="grid" %}Alkalmazásaim</a>
+      <a href="{% url 'grants' %}"{% if section == "grants" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="link" %}Engedélyek</a>
+      {% if request.user.is_staff %}
         <div class="sep"></div>
-        <p class="nav-label">Iskolai beállítások</p>
-        <a href="{% url 'directory-setup' %}"{% if section == "directory-setup" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="settings" %}Címtár teendők</a>
+        <a href="{% url 'admin:index' %}">{% include "partials/icon.html" with name="settings" %}Adminisztráció</a>
       {% endif %}
     </nav>
 
     <main class="content">
-      {% for message in messages %}<div class="flash {{ message.tags }}" role="status">{{ message }}</div>{% endfor %}
+      {% for message in messages %}
+        <div class="flash {{ message.tags }}" role="status">{{ message }}</div>
+      {% endfor %}
       {% block content %}{% endblock %}
     </main>
   </div>
+
   <script src="{% static 'js/dashboard.js' %}"></script>
   {% block scripts %}{% endblock %}
 </body>

@@ -39,7 +39,6 @@
       <dl class="data">
         <div><dt>Leírás</dt><dd>{{ application.profile.short_description|default:"–" }}</dd></div>
         <div><dt>Fejlesztő</dt><dd>{{ application.profile.developer|default:"–" }}</dd></div>
-        <div><dt>Hozzáférési csoportok</dt><dd>{% if required_group_names %}<div class="badges">{% for group_name in required_group_names %}<span class="badge">{{ group_name }}</span>{% endfor %}</div><p class="muted">Legalább egy kiválasztott csoport tagjának kell lennie a felhasználónak. Az alkalmazásnak az ID token <code>application_group_access</code> claimjét ellenőriznie kell.</p>{% else %}Nincs csoporttagsághoz kötve.{% endif %}</dd></div>
         <div>
           <dt>Átirányítási URI-k</dt>
           <dd>{% for uri in redirect_uris %}<div><code>{{ uri }}</code></div>{% endfor %}</dd>

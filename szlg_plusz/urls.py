@@ -20,39 +20,6 @@ from api.web_views import (
 urlpatterns = [
     path("", portal_views.landing, name="home"),
     path("dashboard/", dashboard_views.dashboard, name="dashboard"),
-    path(
-        "dashboard/directory/setup/",
-        dashboard_views.directory_setup,
-        name="directory-setup",
-    ),
-    path(
-        "dashboard/people/<int:pk>/",
-        dashboard_views.directory_person,
-        name="directory-person",
-    ),
-    path(
-        "dashboard/schedule/",
-        dashboard_views.dashboard_placeholder,
-        {"title": "Órarend", "description": "Az órarended és a napi változások egy helyen."},
-        name="schedule",
-    ),
-    path(
-        "dashboard/groups/",
-        dashboard_views.groups,
-        name="groups",
-    ),
-    path("dashboard/groups/new/", dashboard_views.group_new, name="group-new"),
-    path(
-        "dashboard/groups/<str:group_key>/",
-        dashboard_views.group_detail,
-        name="group-detail",
-    ),
-    path(
-        "dashboard/map/",
-        dashboard_views.dashboard_placeholder,
-        {"title": "Térkép", "description": "Iskolai helyszínek és útbaigazítás."},
-        name="map",
-    ),
     path("docs/", portal_views.docs, name="docs"),
     path("adatvedelem/", portal_views.privacy, name="privacy"),
     path("docs/felhasznalok/", portal_views.docs, {"slug": "felhasznalok"}, name="docs-users"),
@@ -132,7 +99,7 @@ urlpatterns = [
         name="password-reset-complete",
     ),
     path("account/", RedirectView.as_view(pattern_name="profile", permanent=False), name="account"),
-    path("account/profile/", dashboard_views.profile, name="profile"),
+    path("account/profile/", dashboard_views.dashboard, name="profile"),
     path(
         "account/passkeys/register/options/",
         passkey_registration_options,

@@ -28,15 +28,10 @@ from .auth_challenges import consume_challenge
 from .models import (
     ApplicationProfile,
     CustomUser,
-    GroupMailboxAssociation,
     GlobalConfig,
-    InstitutionalRole,
     ManualGroup,
     Passkey,
-    SchoolClass,
     StudentProfile,
-    Tagozat,
-    TeacherProfile,
     UserAppConnection,
     email_info,
 )
@@ -160,299 +155,6 @@ class IdentityModelTests(TestCase):
             self.assertTrue(email_info("titkarsag@szlgbp.hu").is_group_email)
             self.assertFalse(email_info("minta.anna@szlgbp.hu").is_group_email)
             self.assertTrue(email_info("minta.anna.23af@szlgbp.hu").is_part_time_student)
-
-
-@override_settings(
-    SECURE_SSL_REDIRECT=False,
-    SESSION_COOKIE_SECURE=False,
-    CSRF_COOKIE_SECURE=False,
-)
-class DirectoryTests(TestCase):
-    def setUp(self):
-        config = GlobalConfig.get_solo()
-        config.school_domain = "@school.test"
-        config.save()
-        self.student = CustomUser.objects.create_user(
-            email="anna.23f@school.test", first_name="Anna", last_name="Minta"
-        )
-        self.external = CustomUser.objects.create_user(
-            email="bela@outside.test", first_name="Béla", last_name="Külső"
-        )
-        self.mailbox = CustomUser.objects.create_user(
-            email="nappali.diakok@school.test",
-            first_name="Nappali diákok",
-            is_group_mailbox=True,
-        )
-        self.tagozat = Tagozat.objects.create(name="Nappali", slug="nappali")
-        StudentProfile.objects.create(
-            user=self.student, kezdes_eve=2023, szekcio="F", tagozat=self.tagozat
-        )
-        self.client.force_login(self.student)
-
-    def test_people_search_is_school_domain_limited_and_groups_mailboxes_last(self):
-        response = self.client.get("/dashboard/?q=a")
-        self.assertNotContains(response, "Anna Minta")
-
-        response = self.client.get("/dashboard/?q=Anna")
-        self.assertContains(response, "Minta Anna")
-        self.assertContains(response, self.student.email)
-        self.assertNotContains(response, self.external.email)
-        self.assertNotContains(response, self.mailbox.email)
-
-        response = self.client.get("/dashboard/?q=diakok")
-        self.assertContains(response, "Csoportos postafiókok")
-        self.assertContains(response, self.mailbox.email)
-        self.assertNotContains(response, self.external.email)
-
-    def test_staff_can_search_accounts_outside_school_domain(self):
-        self.student.is_staff = True
-        self.student.save(update_fields=["is_staff"])
-
-        response = self.client.get("/dashboard/?q=Külső")
-
-        self.assertContains(response, self.external.email)
-
-    def test_person_detail_shows_only_directory_basics_and_marks_mailboxes(self):
-        response = self.client.get(f"/dashboard/people/{self.student.pk}/")
-        self.assertContains(response, "Minta Anna")
-        self.assertContains(response, self.student.student_profile.osztaly)
-        self.assertContains(response, "Nappali")
-        self.assertContains(response, self.student.email)
-        self.assertNotContains(response, "OM azonosító")
-
-        mailbox_page = self.client.get(f"/dashboard/people/{self.mailbox.pk}/")
-        self.assertContains(mailbox_page, "Csoportos postafiók")
-        self.assertFalse(self.mailbox.is_teacher_or_school_employee)
-
-    def test_normal_users_cannot_open_an_out_of_domain_person_directly(self):
-        response = self.client.get(f"/dashboard/people/{self.external.pk}/")
-        self.assertEqual(response.status_code, 404)
-
-    def test_any_user_can_create_a_private_group_but_does_not_join_automatically(self):
-        response = self.client.post(
-            "/dashboard/groups/new/",
-            {"name": "Foci csapat", "description": "Közösségi csoport"},
-        )
-
-        self.assertEqual(response.status_code, 302)
-        group = ManualGroup.objects.get(name="Foci csapat")
-        self.assertFalse(group.is_public)
-        self.assertEqual(group.created_by, self.student)
-        self.assertTrue(group.managers.filter(pk=self.student.pk).exists())
-        self.assertFalse(group.members.filter(pk=self.student.pk).exists())
-
-    def test_only_group_managers_can_edit_members_and_group_details(self):
-        group = ManualGroup.objects.create(
-            name="Stúdiósok", slug="studiosok", created_by=self.external
-        )
-        group.managers.add(self.external)
-
-        response = self.client.post(
-            f"/dashboard/groups/{group.directory_key}/",
-            {"name": "Átnevezett", "description": "", "is_public": "on"},
-        )
-
-        self.assertEqual(response.status_code, 403)
-        group.refresh_from_db()
-        self.assertEqual(group.name, "Stúdiósok")
-
-    def test_nonpublic_groups_are_hidden_from_browse_but_searchable(self):
-        public = ManualGroup.objects.create(
-            name="Nyilvános klub", slug="nyilvanos-klub", is_public=True
-        )
-        private = ManualGroup.objects.create(
-            name="Specifikus csapat", slug="specifikus-csapat", is_public=False
-        )
-
-        browse = self.client.get("/dashboard/groups/")
-        self.assertContains(browse, public.name)
-        self.assertNotContains(browse, private.name)
-        search = self.client.get("/dashboard/groups/?q=Specifikus")
-        self.assertContains(search, private.name)
-
-    def test_group_detail_lists_members_and_gmail_draft_recipients(self):
-        group = ManualGroup.objects.create(
-            name="Nappalisok", slug="nappalisok", is_public=True
-        )
-        group.members.add(self.student)
-        GroupMailboxAssociation.objects.create(
-            mailbox=self.mailbox, group_key=group.directory_key
-        )
-
-        response = self.client.get(f"/dashboard/groups/{group.directory_key}/")
-
-        self.assertContains(response, self.student.email)
-        self.assertContains(response, "mail.google.com/mail/")
-        self.assertContains(response, self.mailbox.email)
-
-    def test_school_groups_and_application_group_policy_appear_in_oidc_claims(self):
-        group = ManualGroup.objects.create(name="Stúdiósok", slug="studiosok")
-        group.members.add(self.student)
-        permission_circle = Group.objects.create(name="Naplóadminok")
-        self.student.groups.add(permission_circle)
-        role = InstitutionalRole.objects.get(slug="intezmenyvezeto")
-        role.members.add(self.student)
-        school_class, _ = SchoolClass.objects.get_or_create(
-            start_year=2023, section="F"
-        )
-        application = Application.objects.create(
-            name="Címtár teszt app",
-            user=self.external,
-            client_type=Application.CLIENT_PUBLIC,
-            authorization_grant_type=Application.GRANT_AUTHORIZATION_CODE,
-            redirect_uris="https://client.example/callback",
-            algorithm=Application.RS256_ALGORITHM,
-        )
-        ApplicationProfile.objects.create(
-            application=application,
-            developer="SZLG+",
-            short_description="Teszt",
-            required_group_keys=["osztaly-2023-f-diakok"],
-        )
-        request = SimpleNamespace(
-            user=self.student,
-            client_id=application.client_id,
-            scopes=["openid", "groups"],
-        )
-
-        claims = SZLGPlusOAuth2Validator().get_oidc_claims(None, None, request)
-
-        self.assertIn(group.directory_key, claims["school_groups"])
-        self.assertIn(f"tagozat-{self.tagozat.slug}", claims["school_groups"])
-        self.assertIn("osztaly-2023-f-diakok", claims["school_groups"])
-        self.assertIn("szerepkor-intezmenyvezeto", claims["school_groups"])
-        self.assertNotIn("staff", claims["school_groups"])
-        self.assertNotIn(permission_circle.name, claims["school_groups"])
-        self.assertTrue(claims["application_group_access"])
-        self.assertEqual(
-            claims["application_required_groups"],
-            ["osztaly-2023-f-diakok"],
-        )
-
-        application.profile.required_group_keys = ["smart-teacher"]
-        application.profile.save(update_fields=["required_group_keys"])
-        denied_claims = SZLGPlusOAuth2Validator().get_oidc_claims(
-            None, None, request
-        )
-        self.assertFalse(denied_claims["application_group_access"])
-
-    def test_staff_setup_page_is_separate_from_permission_groups(self):
-        self.assertEqual(self.client.get("/dashboard/directory/setup/").status_code, 403)
-        self.student.is_staff = True
-        self.student.save(update_fields=["is_staff"])
-
-        response = self.client.get("/dashboard/directory/setup/")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Címtár teendők")
-        self.assertContains(response, "Intézményvezető")
-
-    def test_staff_can_mark_and_link_an_existing_group_mailbox(self):
-        self.student.is_staff = True
-        self.student.save(update_fields=["is_staff"])
-
-        marked = self.client.post(
-            "/dashboard/directory/setup/",
-            {"action": "mark-mailbox", "mailbox": self.external.pk},
-        )
-        self.assertEqual(marked.status_code, 302)
-        self.external.refresh_from_db()
-        self.assertTrue(self.external.is_group_mailbox)
-
-        linked = self.client.post(
-            "/dashboard/directory/setup/",
-            {
-                "action": "link-mailbox",
-                "mailbox": self.external.pk,
-                "group_key": "smart-student",
-            },
-        )
-        self.assertEqual(linked.status_code, 302)
-        self.assertTrue(
-            GroupMailboxAssociation.objects.filter(
-                mailbox=self.external, group_key="smart-student"
-            ).exists()
-        )
-
-
-@override_settings(
-    SECURE_SSL_REDIRECT=False,
-    SESSION_COOKIE_SECURE=False,
-    CSRF_COOKIE_SECURE=False,
-)
-class SchoolFeatureAccessTests(TestCase):
-    def setUp(self):
-        config = GlobalConfig.get_solo()
-        config.school_domain = "@school.test"
-        config.save()
-        self.school_user = CustomUser.objects.create_user(
-            email="diak@school.test", first_name="Iskolai", last_name="Felhasználó"
-        )
-        self.external_user = CustomUser.objects.create_user(
-            email="kulso@example.org", first_name="Külső", last_name="Felhasználó"
-        )
-        self.group = ManualGroup.objects.create(
-            name="Belső csoport", slug="belso-csoport"
-        )
-
-    def test_external_users_can_manage_their_account_but_not_school_features(self):
-        self.client.force_login(self.external_user)
-
-        home = self.client.get("/dashboard/?q=Iskolai")
-        self.assertEqual(home.status_code, 200)
-        self.assertContains(home, self.external_user.email)
-        self.assertContains(home, "Saját fiók")
-        self.assertNotContains(home, "Kit keresel?")
-        self.assertNotContains(home, 'href="/dashboard/schedule/"')
-        self.assertNotContains(home, 'href="/dashboard/groups/"')
-        self.assertNotContains(home, 'href="/dashboard/map/"')
-        self.assertNotContains(home, self.school_user.email)
-
-        forbidden_paths = (
-            "/dashboard/groups/",
-            "/dashboard/groups/?q=Belső",
-            "/dashboard/groups/new/",
-            f"/dashboard/groups/{self.group.directory_key}/",
-            f"/dashboard/people/{self.school_user.pk}/",
-            "/dashboard/schedule/",
-            "/dashboard/map/",
-        )
-        for path in forbidden_paths:
-            with self.subTest(path=path):
-                self.assertEqual(self.client.get(path).status_code, 403)
-
-        for path in ("/account/profile/", "/security/", "/apps/", "/grants/"):
-            with self.subTest(path=path):
-                self.assertEqual(self.client.get(path).status_code, 200)
-
-        app_form = self.client.get("/apps/new/")
-        self.assertNotContains(app_form, "Alkalmazáshoz szükséges csoportok")
-
-        claims = SZLGPlusOAuth2Validator().get_oidc_claims(
-            None,
-            None,
-            SimpleNamespace(user=self.external_user, scopes=["openid", "groups"]),
-        )
-        self.assertEqual(claims["school_groups"], [])
-        self.assertEqual(claims["manual_groups"], [])
-        self.assertFalse(any(claims["smart_groups"].values()))
-
-    def test_school_users_and_staff_can_access_school_features(self):
-        for user in (self.school_user, self.external_user):
-            if user == self.external_user:
-                user.is_staff = True
-                user.save(update_fields=["is_staff"])
-            with self.subTest(user=user.email):
-                self.client.force_login(user)
-                for path in (
-                    "/dashboard/groups/",
-                    f"/dashboard/groups/{self.group.directory_key}/",
-                    f"/dashboard/people/{self.school_user.pk}/",
-                    "/dashboard/schedule/",
-                    "/dashboard/map/",
-                ):
-                    with self.subTest(path=path):
-                        self.assertEqual(self.client.get(path).status_code, 200)
 
 
 @override_settings(
@@ -969,22 +671,12 @@ class DashboardTests(TestCase):
                 self.assertEqual(page.status_code, 200)
                 self.assertContains(page, title)
 
-    def test_dashboard_home_uses_app_launcher(self):
-        application = self._create_application(self.other)
-        ApplicationProfile.objects.create(
-            application=application,
-            developer="SZLG+",
-            short_description="Ügyintézés",
-            launch_url="https://igazolas.example.org/",
-        )
-        UserAppConnection.objects.create(user=self.user, application=application)
-
+    def test_dashboard_shows_the_account_profile(self):
         response = self.client.get("/dashboard/")
 
-        self.assertContains(response, "Teszt app")
-        self.assertContains(response, "https://igazolas.example.org/")
-        self.assertContains(response, "Kit keresel?")
-        self.assertContains(response, "Órarend")
+        self.assertContains(response, "Profil")
+        self.assertContains(response, self.user.email)
+        self.assertNotContains(response, "Kit keresel?")
 
     def test_profile_shows_all_stored_data_read_only(self):
         self.user.phone = "+36 1 234"
@@ -1119,14 +811,6 @@ class DashboardTests(TestCase):
 
         again = self.client.get(f"/apps/{application.pk}/")
         self.assertNotContains(again, secret)
-
-    def test_application_owner_can_configure_required_school_groups(self):
-        response = self._app_post(required_group_keys=["smart-student"])
-
-        self.assertEqual(response.status_code, 200)
-        application = Application.objects.get(name="Új app")
-        self.assertEqual(application.profile.required_group_keys, ["smart-student"])
-        self.assertContains(response, "Diákok")
 
     def test_users_cannot_choose_protocol_settings(self):
         self._app_post(

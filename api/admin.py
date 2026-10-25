@@ -10,12 +10,9 @@ from .models import (
     ApplicationProfile,
     CustomUser,
     GlobalConfig,
-    GroupMailboxAssociation,
-    InstitutionalRole,
     ManualGroup,
     Passkey,
     PermissionGroup,
-    SchoolClass,
     StudentProfile,
     TeacherProfile,
     Tagozat,
@@ -68,7 +65,6 @@ class CustomUserAdmin(UserAdmin):
                     "date_of_birth",
                     "email_verified",
                     "privacy_consent_at",
-                    "is_group_mailbox",
                 )
             },
         ),
@@ -121,32 +117,9 @@ class PermissionGroupAdmin(GroupAdmin):
 @admin.register(ManualGroup)
 class ManualGroupAdmin(DraggableMPTTAdmin):
     mptt_indent_field = "name"
-    list_display = ("tree_actions", "indented_title", "slug", "is_public", "created_by")
-    list_filter = ("is_public",)
+    list_display = ("tree_actions", "indented_title", "slug")
     prepopulated_fields = {"slug": ("name",)}
     search_fields = ("name", "slug", "description")
-
-
-@admin.register(SchoolClass)
-class SchoolClassAdmin(admin.ModelAdmin):
-    list_display = ("name", "start_year", "section", "homeroom_teacher", "deputy_teacher")
-    list_filter = ("start_year", "section")
-    search_fields = ("section", "homeroom_teacher__email", "deputy_teacher__email")
-
-
-@admin.register(InstitutionalRole)
-class InstitutionalRoleAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "is_required")
-    list_filter = ("is_required",)
-    search_fields = ("name", "slug", "description")
-    filter_horizontal = ("members",)
-
-
-@admin.register(GroupMailboxAssociation)
-class GroupMailboxAssociationAdmin(admin.ModelAdmin):
-    list_display = ("mailbox", "group_key")
-    list_filter = ("group_key",)
-    search_fields = ("mailbox__email", "group_key")
 
 
 @admin.register(Passkey)
