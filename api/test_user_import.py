@@ -185,6 +185,18 @@ class UserImportTests(TestCase):
             self.tagozat,
         )
 
+    def test_student_marker_creates_profile_even_when_optional_fields_are_blank(self):
+        response = self._import_one(
+            {"email": "external-student@example.org", "is_student": True}
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        profile = StudentProfile.objects.get(user__email="external-student@example.org")
+        self.assertIsNone(profile.kezdes_eve)
+        self.assertEqual(profile.szekcio, "")
+        self.assertIsNone(profile.tagozat_id)
+        self.assertEqual(profile.om_id, "")
+
     def test_import_creates_user_and_student_teacher_profiles(self):
         record = {
             "email": "anna@example.org",

@@ -568,7 +568,9 @@ def _apply_import_record(data, source_apps):
 
         student_fields = {"is_student", "kezdes_eve", "szekcio", "om_id", "tagozat"}
         if student_fields.intersection(data):
-            profile, _ = _profile_for(user, "student_profile", StudentProfile)
+            profile, profile_created = _profile_for(
+                user, "student_profile", StudentProfile
+            )
             profile_updates = []
             for field in ("om_id", "tagozat"):
                 value = data.get(field)
@@ -614,7 +616,9 @@ def _apply_import_record(data, source_apps):
                     else:
                         preserved.append(FIELD_LABELS["szekcio"])
 
-            if profile_updates:
+            if profile_created:
+                profile.save()
+            elif profile_updates:
                 profile.save(update_fields=profile_updates)
             final_section = (profile.szekcio or "").strip().upper()
             if profile.kezdes_eve is not None and final_section:
@@ -625,10 +629,15 @@ def _apply_import_record(data, source_apps):
 
         employee_number = data.get("employee_number")
         if employee_number:
-            profile, _ = _profile_for(user, "teacher_profile", TeacherProfile)
+            profile, profile_created = _profile_for(
+                user, "teacher_profile", TeacherProfile
+            )
             if not (profile.employee_number or "").strip():
                 profile.employee_number = employee_number
-                profile.save(update_fields=["employee_number"])
+                if profile_created:
+                    profile.save()
+                else:
+                    profile.save(update_fields=["employee_number"])
                 added.append(FIELD_LABELS["employee_number"])
             else:
                 preserved.append(FIELD_LABELS["employee_number"])
