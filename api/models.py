@@ -58,9 +58,11 @@ def class_str_to_year_szekcio(class_str: str) -> tuple[int, str]:
     raise ValueError(f"Cannot parse class string: {class_str}")
 
 class email_info:
-    def __init__(self, email: str):
+    def __init__(self, email: str, school_domain: str | None = None):
         self.email = email.strip().lower()
-        self.school_domain = get_school_domain()
+        self.school_domain = (
+            school_domain if school_domain is not None else get_school_domain()
+        )
 
     @property
     def local_part(self) -> str:
@@ -94,6 +96,26 @@ class email_info:
             and not self.local_part.startswith("x.")
             and bool(re.search(r"\.\d{2,4}[a-z]f$", self.local_part))
         )
+
+    @property
+    def class_from_email(self) -> tuple[int, str] | None:
+        """Return the student's cohort and section encoded in a school e-mail."""
+        if not (self.is_student or self.is_part_time_student):
+            return None
+        match = re.search(r"\.(\d{2,4})([a-z])f?$", self.local_part)
+        if not match:
+            return None
+
+        year_text, section = match.groups()
+        year = int(year_text)
+        current_year = datetime.date.today().year
+        if len(year_text) == 2:
+            candidates = [century + year for century in (1900, 2000, 2100)]
+            plausible = [candidate for candidate in candidates if candidate <= current_year + 5]
+            year = min(plausible, key=lambda candidate: abs(candidate - current_year))
+        if year < 1900 or year > current_year + 5:
+            return None
+        return year, section.upper()
 
     @property
     def is_computer_test_account(self) -> bool:
@@ -171,6 +193,15 @@ class CustomUser(AbstractUser):
         null=True,
         blank=True,
         editable=False,
+    )
+    import_sources = models.JSONField(
+        "adatimport-források",
+        default=list,
+        blank=True,
+        help_text=(
+            "Azon alkalmazások neve és stabil azonosítója, amelyekből a fiók adatait "
+            "importáltuk. Az importáló felület bővíti, nem cseréli le a listát."
+        ),
     )
     is_group_mailbox = models.BooleanField(
         "csoportos postafiók",

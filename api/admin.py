@@ -52,7 +52,7 @@ class CustomUserAdmin(UserAdmin):
     list_display = ("email", "last_name", "first_name", "is_active", "is_staff")
     search_fields = ("email", "last_name", "first_name")
     filter_horizontal = ("groups", "user_permissions", "manual_groups")
-    readonly_fields = ("privacy_consent_at",)
+    readonly_fields = ("privacy_consent_at", "import_sources")
     fieldsets = (
         (None, {"fields": ("email", "password")}),
         (
@@ -68,6 +68,7 @@ class CustomUserAdmin(UserAdmin):
                 )
             },
         ),
+        ("Importálási előzmények", {"fields": ("import_sources",)}),
         ("Iskolai csoportok", {"fields": ("manual_groups",)}),
         (
             "Jogosultságok",

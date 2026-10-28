@@ -37,8 +37,11 @@
       <a href="{% url 'security' %}"{% if section == "security" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="lock" %}Biztonság</a>
       <a href="{% url 'applications' %}"{% if section == "applications" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="grid" %}Alkalmazásaim</a>
       <a href="{% url 'grants' %}"{% if section == "grants" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="link" %}Engedélyek</a>
+      {% if request.user.is_superuser or request.user.is_staff %}<div class="sep"></div>{% endif %}
+      {% if request.user.is_superuser %}
+        <a href="{% url 'user-import' %}"{% if section == "user-import" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="users" %}Felhasználó-import</a>
+      {% endif %}
       {% if request.user.is_staff %}
-        <div class="sep"></div>
         <a href="{% url 'admin:index' %}">{% include "partials/icon.html" with name="settings" %}Adminisztráció</a>
       {% endif %}
     </nav>

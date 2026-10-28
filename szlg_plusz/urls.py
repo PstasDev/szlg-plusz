@@ -5,6 +5,8 @@ from django.views.generic.base import RedirectView
 from api import dashboard_views, password_reset_views
 from api import portal_views
 from api import registration_views
+from api import student_profile_views
+from api import user_import_views
 from api.web_views import (
     login_page,
     logout_view,
@@ -45,6 +47,17 @@ urlpatterns = [
         name="docs-oidc",
     ),
     path("docs/passkey/", portal_views.docs, {"slug": "felhasznalok"}, name="docs-passkey"),
+    path("admin/user-import/", user_import_views.user_import_page, name="user-import"),
+    path(
+        "admin/user-import/preview/",
+        user_import_views.user_import_preview,
+        name="user-import-preview",
+    ),
+    path(
+        "admin/user-import/one/",
+        user_import_views.user_import_one,
+        name="user-import-one",
+    ),
     path("admin/", admin.site.urls),
     path("login/", login_page, name="login"),
     path("register/", registration_views.register, name="register"),
@@ -100,6 +113,11 @@ urlpatterns = [
     ),
     path("account/", RedirectView.as_view(pattern_name="profile", permanent=False), name="account"),
     path("account/profile/", dashboard_views.dashboard, name="profile"),
+    path(
+        "account/student-profile/complete/",
+        student_profile_views.student_profile_completion,
+        name="student-profile-completion",
+    ),
     path(
         "account/passkeys/register/options/",
         passkey_registration_options,

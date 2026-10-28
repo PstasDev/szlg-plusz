@@ -1,0 +1,127 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block title %}Felhasználó-import{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>Felhasználói adatbázis importálása</h1>
+      <p class="muted">Régi adatbázisból származó felhasználói adatok biztonságos átvétele JSON-ból.</p>
+    </div>
+  </div>
+
+  <section class="panel">
+    <h2>Elvárt JSON-formátum</h2>
+    <p class="lead">A beillesztendő adat egy JSON-tömb: minden elem egy felhasználó. Az <code>email</code> kötelező, ez alapján keressük meg a már létező fiókot.</p>
+    <pre class="import-code"><code>[
+  {
+    "email": "anna.minta@szlgbp.hu",
+    "last_name": "Minta",
+    "first_name": "Anna",
+    "phone": "+36 30 123 4567",
+    "date_of_birth": "2008-03-21",
+    "osztaly": "2023F",
+    "om_id": "12345678901",
+{% if tagozatok %}    "tagozat": "{{ tagozatok.0.slug }}",
+{% endif %}    "employee_number": "M-1042"
+  }
+]</code></pre>
+
+    <div class="import-fields">
+      <div><code>email</code><span>Kötelező e-mail-cím; ez a fiók egyedi azonosítója.</span></div>
+      <div><code>last_name</code>, <code>first_name</code><span>Vezetéknév és keresztnév.</span></div>
+      <div><code>phone</code><span>Telefonszám szövegként, például <code>+36 30 123 4567</code>.</span></div>
+      <div><code>date_of_birth</code><span>Opcionális születési dátum, <code>ÉÉÉÉ-HH-NN</code> formátumban.</span></div>
+      <div><code>osztaly</code><span>Opcionális évfolyam és szekció, például <code>2023F</code>, <code>23F</code>, <code>10. F</code> vagy <code>KNYA</code>. Ha nincs megadva, az SZLG-s e-mail-cím végződéséből automatikusan megpróbáljuk kikövetkeztetni. Külön mezőként a <code>kezdes_eve</code> és <code>szekcio</code> együtt adható meg.</span></div>
+      <div><code>is_student</code><span>Opcionális <code>true</code>, ha a diákot az e-mail-cím és más diákadat alapján sem lehet felismerni. Ilyenkor tagozatot is rendelhetsz hozzá az előnézetben.</span></div>
+      <div><code>om_id</code><span>Opcionális OM azonosító.</span></div>
+      <div><code>tagozat</code><span>A lenti meglévő tagozat neve vagy slugja. Ismeretlen régi értéknél az előnézetben kiválaszthatod a megfelelőt, vagy üresen hagyhatod.</span></div>
+      <div><code>employee_number</code><span>Opcionális munkatársi azonosító; tanári profilt hoz létre, ha még nincs.</span></div>
+    </div>
+
+    {% if tagozatok %}
+      <p class="import-options"><strong>Használható tagozatok:</strong>
+        {% for tagozat in tagozatok %}<code>{{ tagozat.slug }}</code> ({{ tagozat.name }}){% if not forloop.last %}, {% endif %}{% endfor %}
+      </p>
+    {% else %}
+      <p class="import-options">Még nincs felvett tagozat. Tagozatot tartalmazó rekordhoz előbb hozd létre a tagozatot az adminisztrációban.</p>
+    {% endif %}
+    <p class="import-warning">A meglévő fióknál csak az üres adatmezők egészülnek ki; a kitöltött adatokat, jelszót, jogosultságokat és jelkulcsokat nem módosítjuk. Az új fiók aktív, de jelszó nélkül jön létre; a felhasználó jelszó-visszaállítással állíthat be jelszót. Jelszót ne küldj az importban.</p>
+    <p class="muted">Egy ellenőrzés legfeljebb {{ max_import_records }} rekordot fogad. Hibás vagy ismétlődő rekord nem kerül importálásra.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Adatok beillesztése</h2>
+    <p class="lead">Az import először ellenőrzi a teljes JSON-t, és megmutatja, mely fiókok újak, melyek léteznek már, illetve hol van hiba. Mentés csak a következő lépésben történik.</p>
+    <form id="user-import-form" data-preview-url="{% url 'user-import-preview' %}" data-import-url="{% url 'user-import-one' %}" data-max-import-sources="{{ max_import_sources }}">
+      {% csrf_token %}
+      <fieldset class="import-source-picker">
+        <legend>Forrásalkalmazások <span class="required-label">(kötelező)</span></legend>
+        <p class="hint">Jelöld ki, mely alkalmazás(ok) adatbázisából származik ez az import. A kiválasztott forrásokat minden rekord felhasználójához hozzáfűzzük, a korábbiakat megtartva. Ha a rekordok különböző alkalmazásokból származnak, importáld őket külön kötegekben. Egy köteg legfeljebb {{ max_import_sources }} forrásalkalmazást tartalmazhat.</p>
+        {% if applications %}
+          <div class="import-source-list">
+            {% for application in applications %}
+              <label class="import-source-option"><input type="checkbox" class="user-import-source" value="{{ application.pk }}"><span>{{ application.name }}</span></label>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="import-warning">Még nincs regisztrált alkalmazás. Forrásmegjelölés nélküli import nem indítható; előbb hozz létre egy alkalmazást az adminisztrációban.</p>
+        {% endif %}
+      </fieldset>
+      <div class="fld">
+        <label for="user-import-json">Felhasználói adatok JSON-ban</label>
+        <textarea id="user-import-json" rows="14" spellcheck="false" autocomplete="off" autocapitalize="off" required aria-describedby="user-import-hint"></textarea>
+        <p class="hint" id="user-import-hint">Másold be ide a teljes JSON-tömböt. Az adatokat nem mentjük el a böngészőben vagy a munkamenetben.</p>
+      </div>
+      <div class="form-actions">
+        <button class="btn" id="user-import-preview-button" type="submit">JSON ellenőrzése</button>
+      </div>
+    </form>
+    <p class="import-message" id="user-import-message" role="status" aria-live="polite" hidden></p>
+  </section>
+
+  <section class="panel" id="user-import-preview" hidden>
+    <h2>Ellenőrzés eredménye</h2>
+    <p class="lead" id="user-import-summary" aria-live="polite"></p>
+    <p class="muted" id="user-import-sources-summary"></p>
+    <p class="import-warning" id="user-import-invalid-note" hidden>A hibás rekordok kimaradnak; a többi rekord ettől még importálható.</p>
+    <section class="import-bulk" id="user-import-tagozat-bulk" hidden aria-labelledby="user-import-tagozat-heading">
+      <h3 id="user-import-tagozat-heading">Diákok tagozatának kijelölése</h3>
+      <p class="muted" id="user-import-tagozat-help">Az alábbi diákoknál nem ismert a tagozat. Jelölj ki több diákot, majd rendeld hozzájuk egyszerre a megfelelő tagozatot. A kijelöletlen diákok tagozata üresen marad, az import ettől még folytatható.</p>
+      <div class="import-bulk-controls">
+        <button class="btn outline sm" id="user-import-select-unassigned" type="button">Összes kijelölése</button>
+        <label for="user-import-bulk-tagozat">Tagozat</label>
+        <select id="user-import-bulk-tagozat">
+          <option value="">Válassz tagozatot…</option>
+          {% for tagozat in tagozatok %}<option value="{{ tagozat.slug }}">{{ tagozat.name }}</option>{% endfor %}
+        </select>
+        <button class="btn sm" id="user-import-assign-tagozat" type="button">Hozzárendelés a kijelöltekhez</button>
+      </div>
+      <p class="import-message" id="user-import-tagozat-message" role="status" aria-live="polite" hidden></p>
+    </section>
+    <div class="import-table-wrap">
+      <table class="import-table">
+        <thead>
+          <tr>
+            <th scope="col"><input type="checkbox" id="user-import-select-all" aria-label="Összes tagozat nélküli diák kijelölése"></th>
+            <th scope="col">#</th><th scope="col">E-mail-cím</th><th scope="col">Név</th><th scope="col">Osztály</th><th scope="col">Tagozat</th><th scope="col">Állapot</th><th scope="col">Részletek</th>
+          </tr>
+        </thead>
+        <tbody id="user-import-rows"></tbody>
+      </table>
+    </div>
+    <div class="form-actions">
+      <button class="btn" id="user-import-start" type="button" disabled>Importálás indítása</button>
+    </div>
+  </section>
+
+  <section class="panel" id="user-import-progress" hidden>
+    <h2 id="user-import-progress-title">Importálás folyamatban</h2>
+    <p id="user-import-progress-label" aria-live="polite"></p>
+    <progress id="user-import-progress-bar" max="1" value="0" aria-label="Importálás állapota"></progress>
+    <p class="muted">A rekordokat egyenként mentjük, ezért az oldal közben tovább használható. Hiba esetén az import biztonságosan újraindítható.</p>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'js/user_import.js' %}" defer></script>
+{% endblock %}

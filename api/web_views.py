@@ -1,6 +1,6 @@
 import json
 import logging
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
@@ -15,6 +15,10 @@ from oauth2_provider.models import get_application_model
 
 from .models import GlobalConfig, Passkey
 from .privacy import privacy_context
+from .student_profile_views import (
+    STUDENT_PROFILE_PROMPT_DISMISSED_KEY,
+    student_profile_needs_completion,
+)
 from .webauthn_services import (
     create_authentication_options,
     create_registration_options,
@@ -143,6 +147,17 @@ def _safe_next_url(request, value: str | None) -> str:
     return reverse("dashboard")
 
 
+def _post_login_destination(request, user, next_url: str) -> str:
+    if request.session.get(STUDENT_PROFILE_PROMPT_DISMISSED_KEY) == str(user.pk):
+        return next_url
+    if not student_profile_needs_completion(user):
+        return next_url
+    completion_path = reverse("student-profile-completion")
+    if urlsplit(next_url).path == completion_path:
+        return next_url
+    return f"{completion_path}?{urlencode({'next': next_url})}"
+
+
 def _oauth_application_from_next(next_url: str):
     parsed = urlsplit(next_url)
     if parsed.path != reverse("oauth2_provider:authorize"):
@@ -174,6 +189,7 @@ def _json_payload(request) -> dict:
 def login_page(request):
     next_url = _safe_next_url(request, request.GET.get("next"))
     if request.user.is_authenticated:
+        next_url = _post_login_destination(request, request.user, next_url)
         return _remember_account(request, redirect(next_url), request.user)
     accounts = _remembered_accounts(request)
     selected_account = _remembered_account(request, request.GET.get("account"))
@@ -239,6 +255,7 @@ def password_login(request):
             status=401,
         )
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    next_url = _post_login_destination(request, user, next_url)
     # Only password logins get here; passkey logins never need the offer.
     if _promo_kind(request, user):
         request.session[PASSKEY_PROMO_SESSION_KEY] = next_url
@@ -278,7 +295,9 @@ def passkey_login_verify(request):
     except ValueError as exc:
         return JsonResponse({"error": str(exc)}, status=400)
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    response = JsonResponse({"redirect": _safe_next_url(request, payload.get("next"))})
+    next_url = _safe_next_url(request, payload.get("next"))
+    next_url = _post_login_destination(request, user, next_url)
+    response = JsonResponse({"redirect": next_url})
     # A passkey just worked here, so this device needs no offer.
     _remember_device(request, response, user)
     return _remember_account(request, response, user)
