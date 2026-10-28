@@ -2,7 +2,7 @@
   <h2>Adatkezelési Tájékoztató (SZLG+ és az ahhoz kapcsolódó webes szolgáltatások)</h2>
   <p>Jelen dokumentum célja, hogy részletesen és átláthatóan tájékoztassa a felhasználókat (diákokat, tanárokat, öregdiákokat és külsős regisztrálókat) a Kőbányai Szent László Gimnázium által üzemeltetett webes alkalmazások (központi nevükön az SZLG+ ökoszisztéma) során megvalósuló adatkezelési gyakorlatról, az Európai Unió Általános Adatvédelmi Rendelete (GDPR), valamint a vonatkozó hazai jogszabályok előírásainak megfelelően.</p>
 
-  <h3>1. Az Adatkezelő adatai és elérhetőségei</h3>
+  <h3 id="adatkezelo">1. Az Adatkezelő adatai és elérhetőségei</h3>
   <ul>
     <li>Adatkezelő megnevezése: Kőbányai Szent László Gimnázium</li>
     <li>Központi e-mail cím adatvédelmi kérdésekben: <a href="mailto:molnar.attila@szlgbp.hu">molnar.attila@szlgbp.hu</a></li>
@@ -17,12 +17,12 @@
     </ul>
   {% endif %}
 
-  <h3>2. Az SZLG+ központi azonosító rendszer szerepe</h3>
+  <h3 id="sso">2. Az SZLG+ központi azonosító rendszer szerepe</h3>
   <p>Az SZLG+ a gimnázium központi felhasználói adatbázisa és egységes bejelentkezési rendszere (SSO — Single Sign-On). Ennek célja, hogy a felhasználóknak ne kelljen minden egyes iskolai alkalmazáshoz külön regisztrálniuk, és adataikat egyetlen, biztonságos központi felületen kezelhessék.</p>
   <p>Az egyes alalkalmazások kizárólag azokat az adatokat kapják meg a központi SZLG+ rendszerből, amelyek működésükhöz feltétlenül szükségesek, és amelyek átadásához a felhasználó (vagy a rendszergazda a beiratkozás alapján) előzetesen hozzájárult. Az adatmegosztási engedélyek a felhasználók számára bármikor áttekinthetők és visszavonhatók az <a href="https://sso.szlg.info/dashboard">sso.szlg.info/dashboard</a> felületen.</p>
   <p>A jövőben az SZLG+ további központi információkat is kiszolgálhat (például nagy órarendet, terembeosztásokat és térképet); ezek megtekintése szintén ezen az egységes azonosításon alapul.</p>
 
-  <h3>3. A kezelt adatok köre, célja és az alkalmazások listája</h3>
+  <h3 id="adatok">3. A kezelt adatok köre, célja és az alkalmazások listája</h3>
   <p>A Kőbányai Szent László Gimnázium webalkalmazásai eltérő funkciókat látnak el, így a kezelt adatok köre is alkalmazásonként változik.</p>
   <p>Az SZLG+ központi adatbázisán keresztül jellemzően kezelt alapadatok:</p>
   <ul>
@@ -40,13 +40,13 @@
     <li><strong>szlg.info:</strong> az informatika tagozatos diákok házioldala és házi feladat-ellenőrző mentorrendszere; az alapadatokon felül az oktatási előmenetellel összefüggő feladatmegoldásokat és értékeléseket kezeli.</li>
   </ul>
 
-  <h3>4. Az adatkezelés jogalapja</h3>
+  <h3 id="jogalap">4. Az adatkezelés jogalapja</h3>
   <ul>
     <li><strong>Diákok esetében:</strong> az adatkezelés elsődleges jogalapja a gimnáziummal fennálló tanulói jogviszony, az intézmény Házirendje, valamint a beiratkozáskor kitöltött és a törvényes képviselő által aláírt dokumentumok.</li>
     <li><strong>Egyéb felhasználók és specifikus, hozzájáruláson alapuló funkciók esetében:</strong> az érintett kifejezett, önkéntes hozzájárulása, amelyet az SZLG+ felületén a regisztráció, illetve az első bejelentkezés során ad meg.</li>
   </ul>
 
-  <h3>5. Adatmegőrzési idő (adattárolás időtartama)</h3>
+  <h3 id="megorzes">5. Adatmegőrzési idő (adattárolás időtartama)</h3>
   <p>Az adatkezelés főszabály szerint a felhasználó törlési kérelméig tart. A tanulói jogviszony megszűnése után is megőrizhetünk adatokat az alábbi okokból:</p>
   <ul>
     <li><strong>Öregdiák-kedvezmények (Google Workspace):</strong> a központi címtár segít azonosítani azokat a volt diákokat, akik évente legalább egyszer aktívan használják iskolai Google-fiókjukat, és így megtarthatják annak előnyeit.</li>
@@ -54,7 +54,7 @@
   </ul>
   <p>Ha a felhasználó kéri adatai törlését, és jogszabály nem kötelez minket további megőrzésre, a fiókot és a hozzá tartozó személyes adatokat véglegesen eltávolítjuk vagy anonimizáljuk.</p>
 
-  <h3>6. Adatfeldolgozók, tárhelyszolgáltatás és harmadik felek</h3>
+  <h3 id="adatfeldolgozok">6. Adatfeldolgozók, tárhelyszolgáltatás és harmadik felek</h3>
   <p>Az infrastruktúra és a szolgáltatások biztosításához az Adatkezelő külső szolgáltatókat vesz igénybe:</p>
   <ul>
     <li><strong>Szerverek és backend:</strong> DigitalOcean (DigitalOcean, LLC) Droplets szerverek.</li>
@@ -63,14 +63,14 @@
     <li><strong>Biztonság és analitika:</strong> Cloudflare (Cloudflare, Inc.) a weboldalak védelmére és látogatottsági elemzésére; a Vercel Analytics szintén látogatottsági elemzésre.</li>
   </ul>
 
-  <h3>7. Sütik (cookies), IP-címek és analitika</h3>
+  <h3 id="sutik">7. Sütik (cookies), IP-címek és analitika</h3>
   <ul>
     <li><strong>IP-címek:</strong> az SZLG+ alkalmazás a felhasználó IP-címét közvetlenül, azonosításra alkalmas módon nem tárolja. Az analitikai szolgáltatások anonimizált formában dolgozzák fel a látogatottsági adatokat.</li>
     <li><strong>Sütik:</strong> a weboldalak analitikai szolgáltatásokhoz és a felhasználói munkamenetek biztonságos fenntartásához szükséges sütiket használhatnak. A munkamenet-süti a böngészőben tárol azonosítót; a munkamenet működéséhez kapcsolódó adatokat a szolgáltatás feldolgozhatja.</li>
     <li><strong>Nincsenek nyomkövető sütik:</strong> rendszereink nem használnak olyan harmadik féltől származó, marketingcélú sütiket, amelyek más weboldalakon is nyomon követik a felhasználót (cross-site tracking).</li>
   </ul>
 
-  <h3>8. Adatbiztonság és hozzáférés</h3>
+  <h3 id="adatbiztonsag">8. Adatbiztonság és hozzáférés</h3>
   <ul>
     <li><strong>Titkosított adatátvitel:</strong> minden weboldalunk és alkalmazásunk HTTPS protokollon keresztül kommunikál.</li>
     <li><strong>Jelszavas védelem:</strong> jelszavakat nyílt (plain text) formában nem tárolunk; azok az adatbázisba iparági szabványoknak megfelelően hashelve és/vagy sózva kerülnek.</li>
@@ -78,7 +78,7 @@
     <li><strong>Rendszergazdai hozzáférés:</strong> az üzemeltetők, rendszergazdák és adminisztrátorok manuális hozzáférése kizárólag feltétlenül szükséges esetben történik (például adatkezelési kérelem, technikai hiba vagy anonimizált statisztika készítése miatt). A jogosulatlan hozzáférés, adattovábbítás vagy visszaélés tilos. Különös védelemben részesülnek az érzékeny adatok, például az igazolások indoklásai.</li>
   </ul>
 
-  <h3>9. Az érintettek jogai</h3>
+  <h3 id="jogok">9. Az érintettek jogai</h3>
   <p>A felhasználókat (diákokat, szülőket, tanárokat és külsősöket) az adatkezeléssel kapcsolatban az alábbi jogok illetik meg:</p>
   <ul>
     <li><strong>Tájékoztatáshoz és hozzáféréshez való jog:</strong> tájékoztatást kérhet a kezelt személyes adatairól; ezek egy része az <a href="https://sso.szlg.info/dashboard">sso.szlg.info/dashboard</a> felületen is megtekinthető.</li>
@@ -89,7 +89,7 @@
     <li><strong>Hozzájárulás visszavonása:</strong> az alkalmazásoknak adott adatmegosztási engedélyeket az SZLG+ felületén bármikor visszavonhatja.</li>
   </ul>
 
-  <h3>10. Jogérvényesítési lehetőségek</h3>
+  <h3 id="jogorvoslat">10. Jogérvényesítési lehetőségek</h3>
   <p>Adatkezelési kérdés, kérelem vagy panasz esetén első lépésként írj a <a href="mailto:molnar.attila@szlgbp.hu">molnar.attila@szlgbp.hu</a> címre, hogy a problémát mielőbb orvosolhassuk.</p>
   <p>Jogosulatlan adatkezelés vélelme esetén a felhasználó (kiskorú esetén törvényes képviselője) panasszal élhet a Nemzeti Adatvédelmi és Információszabadság Hatóságnál (NAIH, 1055 Budapest, Falk Miksa utca 9–11., <a href="https://www.naih.hu/">www.naih.hu</a>), vagy bírósághoz fordulhat.</p>
 </div>

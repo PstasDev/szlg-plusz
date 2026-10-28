@@ -20,10 +20,7 @@
       {% endif %}
     {% endfor %}
 
-    <details class="privacy-notice">
-      <summary>Adatkezelési Tájékoztató megtekintése</summary>
-      {% include "partials/privacy_policy.html" %}
-    </details>
+    <p class="muted privacy-link"><a href="{% url 'privacy' %}">Adatkezelési tájékoztató</a></p>
     <div class="check-row">
       {{ form.privacy_consent }}
       <label for="{{ form.privacy_consent.id_for_label }}">{{ form.privacy_consent.label }}</label>
@@ -51,5 +48,4 @@
     {% endif %}
   </aside>
   {% endif %}
-  <p class="muted privacy-link">A tájékoztató külön oldalon: <a href="{% url 'privacy' %}">Adatkezelési Tájékoztató</a>.</p>
 {% endblock %}
