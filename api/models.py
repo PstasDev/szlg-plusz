@@ -244,6 +244,8 @@ class CustomUser(AbstractUser):
             return False
         if hasattr(self, "student_profile"):
             return True
+        if hasattr(self, "teacher_profile"):
+            return False
         if email_info(self.email).is_student:
             return True
         return False
@@ -255,6 +257,8 @@ class CustomUser(AbstractUser):
             return False
         if hasattr(self, "part_time_student_profile"):
             return True
+        if hasattr(self, "teacher_profile") and not hasattr(self, "student_profile"):
+            return False
         if email_info(self.email).is_part_time_student:
             return True
         return False
@@ -280,7 +284,7 @@ class CustomUser(AbstractUser):
         """Check if the user has a teacher or school employee profile."""
         if self.is_group_mailbox:
             return False
-        if hasattr(self, "teacher_or_school_employee_profile"):
+        if hasattr(self, "teacher_profile") or hasattr(self, "teacher_or_school_employee_profile"):
             return True
         if email_info(self.email).is_teacher_or_school_employee:
             return True

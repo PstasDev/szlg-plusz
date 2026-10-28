@@ -31,8 +31,8 @@
       <div><code>last_name</code>, <code>first_name</code><span>Vezetéknév és keresztnév.</span></div>
       <div><code>phone</code><span>Telefonszám szövegként, például <code>+36 30 123 4567</code>.</span></div>
       <div><code>date_of_birth</code><span>Opcionális születési dátum, <code>ÉÉÉÉ-HH-NN</code> formátumban.</span></div>
-      <div><code>osztaly</code><span>Opcionális évfolyam és szekció, például <code>2023F</code>, <code>23F</code>, <code>10. F</code> vagy <code>KNYA</code>. Ha nincs megadva, az SZLG-s e-mail-cím végződéséből automatikusan megpróbáljuk kikövetkeztetni. Külön mezőként a <code>kezdes_eve</code> és <code>szekcio</code> együtt adható meg.</span></div>
-      <div><code>is_student</code><span>Opcionális <code>true</code>, ha a diákot az e-mail-cím és más diákadat alapján sem lehet felismerni. Ilyenkor tagozatot is rendelhetsz hozzá az előnézetben.</span></div>
+      <div><code>osztaly</code><span>Opcionális évfolyam és szekció, például <code>2023F</code>, <code>23F</code>, <code>10. F</code> vagy <code>KNYA</code>. Hiányzó osztályt diáknál az SZLG-s e-mail-címből következtetünk ki; munkatársi azonosítóval megadott tanárhoz nem rendelünk automatikusan osztályt. Külön mezőként a <code>kezdes_eve</code> és <code>szekcio</code> együtt adható meg.</span></div>
+      <div><code>is_student</code><span>Opcionális logikai érték: <code>true</code>, ha diák, <code>false</code>, ha az e-mail-címe alapján tévesen diáknak tűnne (például tanárként). Ismeretlen e-mail-formátum esetén a <code>true</code> tagozat-hozzárendelést ajánl fel.</span></div>
       <div><code>om_id</code><span>Opcionális OM azonosító.</span></div>
       <div><code>tagozat</code><span>A lenti meglévő tagozat neve vagy slugja. Ismeretlen régi értéknél az előnézetben kiválaszthatod a megfelelőt, vagy üresen hagyhatod.</span></div>
       <div><code>employee_number</code><span>Opcionális munkatársi azonosító; tanári profilt hoz létre, ha még nincs.</span></div>
@@ -51,7 +51,7 @@
 
   <section class="panel">
     <h2>Adatok beillesztése</h2>
-    <p class="lead">Az import először ellenőrzi a teljes JSON-t, és megmutatja, mely fiókok újak, melyek léteznek már, illetve hol van hiba. Mentés csak a következő lépésben történik.</p>
+    <p class="lead">Az import először ellenőrzi a JSON-t. Az előnézetben soronként javíthatod az adatokat vagy kihagyhatod a rekordot; az adatbázis csak az importálás indításakor változik.</p>
     <form id="user-import-form" data-preview-url="{% url 'user-import-preview' %}" data-import-url="{% url 'user-import-one' %}" data-max-import-sources="{{ max_import_sources }}">
       {% csrf_token %}
       <fieldset class="import-source-picker">
@@ -103,7 +103,7 @@
         <thead>
           <tr>
             <th scope="col"><input type="checkbox" id="user-import-select-all" aria-label="Összes tagozat nélküli diák kijelölése"></th>
-            <th scope="col">#</th><th scope="col">E-mail-cím</th><th scope="col">Név</th><th scope="col">Osztály</th><th scope="col">Tagozat</th><th scope="col">Állapot</th><th scope="col">Részletek</th>
+            <th scope="col">#</th><th scope="col">E-mail-cím</th><th scope="col">Név</th><th scope="col">Osztály</th><th scope="col">Tagozat</th><th scope="col">Állapot</th><th scope="col">Részletek</th><th scope="col">Műveletek</th>
           </tr>
         </thead>
         <tbody id="user-import-rows"></tbody>

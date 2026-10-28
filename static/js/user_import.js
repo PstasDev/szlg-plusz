@@ -28,6 +28,8 @@
   let records = [];
   let sourceAppIds = [];
   let importing = false;
+  let validating = false;
+  let nextRecordId = 1;
 
   function showMessage(text, isSuccess = false) {
     message.textContent = text;
@@ -36,7 +38,7 @@
   }
 
   function clearPreview() {
-    if (importing) return;
+    if (importing || validating) return;
     records = [];
     preview.hidden = true;
     progressPanel.hidden = true;
@@ -74,12 +76,11 @@
   }
 
   function updateTagAssignmentUI() {
-    const unassigned = records.filter((record) => record.status !== "invalid" && record.needs_tagozat);
+    const unassigned = records.filter(
+      (record) => !record.excluded && record.status !== "invalid" && record.needs_tagozat,
+    );
     tagBulk.hidden = unassigned.length === 0;
     selectAllCheckbox.disabled = unassigned.length === 0;
-
-    const validCount = records.filter((record) => record.status !== "invalid").length;
-    startButton.disabled = validCount === 0;
     selectAllCheckbox.checked = unassigned.length > 0 && unassigned.every(
       (record) => record.assignmentCheckbox?.checked,
     );
@@ -89,15 +90,171 @@
     }
   }
 
-  function buildPreviewRows(apiRows) {
+  function cloneJson(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function rawRecord(record) {
+    return record.rawData && typeof record.rawData === "object" && !Array.isArray(record.rawData)
+      ? record.rawData
+      : {};
+  }
+
+  function editorValue(record, key) {
+    const raw = rawRecord(record);
+    const normalized = record.data || {};
+    if (key === "osztaly") {
+      if (typeof raw.osztaly === "string" && raw.osztaly.trim()) return raw.osztaly;
+      if (raw.kezdes_eve != null && raw.szekcio) return `${raw.kezdes_eve}${raw.szekcio}`;
+      if (normalized.kezdes_eve != null && normalized.szekcio) {
+        return `${normalized.kezdes_eve}${normalized.szekcio}`;
+      }
+      return "";
+    }
+    const value = raw[key] ?? normalized[key] ?? "";
+    return typeof value === "string" ? value : String(value);
+  }
+
+  function makeEditorField(record, key, labelText, type = "text", maxLength = null) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "import-edit-field";
+    const id = `import-edit-${record.localId}-${key}`;
+    const label = document.createElement("label");
+    label.htmlFor = id;
+    label.textContent = labelText;
+    const input = document.createElement("input");
+    input.id = id;
+    input.name = key;
+    input.type = type;
+    input.value = editorValue(record, key);
+    if (maxLength) input.maxLength = maxLength;
+    wrapper.append(label, input);
+    return { wrapper, input };
+  }
+
+  function makeEditorRow(record) {
+    const editorRow = document.createElement("tr");
+    editorRow.className = "import-editor-row";
+    editorRow.hidden = true;
+    const cell = document.createElement("td");
+    cell.colSpan = 9;
+    const editor = document.createElement("div");
+    editor.className = "import-editor";
+    const fields = document.createElement("div");
+    fields.className = "import-editor-fields";
+    const inputs = {};
+    const definitions = [
+      ["email", "E-mail-cím", "email", 254],
+      ["last_name", "Vezetéknév", "text", 150],
+      ["first_name", "Keresztnév", "text", 150],
+      ["phone", "Telefonszám", "text", 32],
+      ["date_of_birth", "Születési dátum", "date", null],
+      ["osztaly", "Osztály (pl. 2023F vagy 10. F)", "text", 40],
+      ["om_id", "OM azonosító", "text", 32],
+      ["tagozat", "Tagozat neve vagy slugja", "text", 120],
+      ["employee_number", "Munkatársi azonosító", "text", 32],
+    ];
+    for (const [key, label, type, maxLength] of definitions) {
+      const field = makeEditorField(record, key, label, type, maxLength);
+      inputs[key] = field.input;
+      fields.append(field.wrapper);
+    }
+    editor.append(fields);
+
+    const roleLabel = document.createElement("label");
+    roleLabel.className = "import-editor-student";
+    const studentCheckbox = document.createElement("input");
+    studentCheckbox.type = "checkbox";
+    studentCheckbox.checked = record.has_student_profile
+      || (typeof rawRecord(record).is_student === "boolean"
+        ? rawRecord(record).is_student
+        : Boolean(record.is_student));
+    studentCheckbox.addEventListener("change", () => {
+      if (!studentCheckbox.checked) {
+        inputs.osztaly.value = "";
+        inputs.om_id.value = "";
+        inputs.tagozat.value = "";
+      }
+    });
+    const studentText = document.createElement("span");
+    studentText.textContent = "Diákprofilként kezeljük";
+    roleLabel.append(studentCheckbox, studentText);
+    editor.append(roleLabel);
+
+    const actions = document.createElement("div");
+    actions.className = "import-editor-actions";
+    const saveButton = document.createElement("button");
+    saveButton.type = "button";
+    saveButton.className = "btn sm";
+    saveButton.textContent = "Módosítások ellenőrzése";
+    saveButton.addEventListener("click", async () => {
+      if (importing || validating) return;
+      const edited = {};
+      for (const [key, input] of Object.entries(inputs)) {
+        const value = input.value.trim();
+        if (value) edited[key] = value;
+      }
+      edited.is_student = studentCheckbox.checked;
+      const previous = record.rawData;
+      record.rawData = edited;
+      saveButton.disabled = true;
+      try {
+        await revalidateActiveRecords();
+      } catch (_error) {
+        record.rawData = previous;
+        renderRows();
+      } finally {
+        saveButton.disabled = false;
+      }
+    });
+    const cancelButton = document.createElement("button");
+    cancelButton.type = "button";
+    cancelButton.className = "btn text sm";
+    cancelButton.textContent = "Mégse";
+    cancelButton.addEventListener("click", () => {
+      editorRow.hidden = true;
+      if (record.editButton) record.editButton.textContent = "Szerkesztés";
+    });
+    actions.append(saveButton, cancelButton);
+    editor.append(actions);
+    cell.append(editor);
+    editorRow.append(cell);
+    return editorRow;
+  }
+
+  function makeActionButton(label, className, onClick) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = className;
+    button.textContent = label;
+    button.addEventListener("click", onClick);
+    return button;
+  }
+
+  function updatePreviewSummary() {
+    const active = records.filter((record) => !record.excluded);
+    const counts = {
+      new: active.filter((record) => record.status === "new").length,
+      existing: active.filter((record) => record.status === "existing").length,
+      invalid: active.filter((record) => record.status === "invalid").length,
+    };
+    const skipped = records.length - active.length;
+    summary.textContent = `${counts.new} új fiók, ${counts.existing} már létező fiók, ${counts.invalid} hibás rekord${skipped ? `, ${skipped} kihagyva` : ""}.`;
+    invalidNote.hidden = counts.invalid === 0;
+    startButton.disabled = importing || validating || counts.new + counts.existing === 0;
+    startButton.textContent = `Importálás indítása (${counts.new + counts.existing} rekord)`;
+    updateTagAssignmentUI();
+  }
+
+  function renderRows() {
     rowsContainer.replaceChildren();
-    records = apiRows;
     const statusLabels = { new: "Új fiók", existing: "Már létezik", invalid: "Hibás – kimarad" };
 
-    for (const record of records) {
+    records.forEach((record, index) => {
       const row = document.createElement("tr");
+      if (record.excluded) row.classList.add("import-row-skipped");
       const selectCell = document.createElement("td");
-      if (record.needs_tagozat && record.status !== "invalid") {
+      if (!record.excluded && record.needs_tagozat && record.status !== "invalid") {
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.className = "tag-assignment-checkbox";
@@ -105,9 +262,11 @@
         checkbox.addEventListener("change", updateTagAssignmentUI);
         record.assignmentCheckbox = checkbox;
         selectCell.append(checkbox);
+      } else {
+        delete record.assignmentCheckbox;
       }
       row.append(selectCell);
-      addCell(row, String(record.index));
+      addCell(row, String(index + 1));
       addCell(row, record.email);
       addCell(row, record.display_name);
       let classLabel = record.class_label || "";
@@ -119,15 +278,134 @@
         "row-tagozat",
       );
       record.tagozatCell = tagCell;
-      const status = addCell(row, statusLabels[record.status] || "Ellenőrizve", "row-status");
-      status.dataset.state = record.status;
-      const previewDetails = [...(record.errors || []), ...(record.warnings || [])];
+      const status = addCell(
+        row,
+        record.excluded ? "Kihagyva" : (statusLabels[record.status] || "Ellenőrizve"),
+        "row-status",
+      );
+      status.dataset.state = record.excluded ? "excluded" : record.status;
+      const previewDetails = record.excluded
+        ? ["Ezt a sort nem importáljuk."]
+        : [...(record.errors || []), ...(record.warnings || [])];
       const detail = addCell(row, previewDetails.join(" "), "row-detail");
+      const actions = document.createElement("td");
+      actions.className = "import-row-actions";
       record.rowElement = row;
+
+      if (record.excluded) {
+        actions.append(makeActionButton("Visszaállítás", "btn outline sm", async () => {
+          if (importing || validating) return;
+          record.excluded = false;
+          try {
+            await revalidateActiveRecords();
+          } catch (_error) {
+            record.excluded = true;
+            renderRows();
+          }
+        }));
+        row.append(actions);
+        rowsContainer.append(row);
+        return;
+      }
+
+      const editButton = makeActionButton("Szerkesztés", "btn outline sm", () => {
+        if (importing || validating) return;
+        if (!record.editorRow) {
+          record.editorRow = makeEditorRow(record);
+          row.after(record.editorRow);
+        }
+        record.editorRow.hidden = !record.editorRow.hidden;
+        editButton.textContent = record.editorRow.hidden ? "Szerkesztés" : "Bezárás";
+      });
+      record.editButton = editButton;
+      actions.append(
+        editButton,
+        makeActionButton("Kihagyás", "btn text sm", async () => {
+          if (importing || validating) return;
+          record.excluded = true;
+          try {
+            await revalidateActiveRecords();
+          } catch (_error) {
+            renderRows();
+          }
+        }),
+      );
+      row.append(actions);
       rowsContainer.append(row);
       if (!previewDetails.length) detail.textContent = "E-mail alapján ellenőrizve.";
+    });
+
+    updatePreviewSummary();
+  }
+
+  function buildPreviewRows(apiRows, rawUsers) {
+    records = apiRows.map((record, index) => ({
+      ...record,
+      rawData: cloneJson(rawUsers[index]),
+      excluded: false,
+      localId: nextRecordId++,
+    }));
+    renderRows();
+  }
+
+  function setPreviewControlsBusy(busy) {
+    preview.querySelectorAll("button, input, select").forEach((element) => {
+      if (element.id === "user-import-start") return;
+      if (busy) {
+        element.dataset.wasDisabled = element.disabled ? "1" : "0";
+        element.disabled = true;
+      } else {
+        element.disabled = element.dataset.wasDisabled === "1";
+        delete element.dataset.wasDisabled;
+      }
+    });
+  }
+
+  async function revalidateActiveRecords() {
+    if (importing || validating) return;
+    const active = records.filter((record) => !record.excluded);
+    if (!active.length) {
+      renderRows();
+      return;
     }
-    updateTagAssignmentUI();
+
+    validating = true;
+    previewButton.disabled = true;
+    textarea.disabled = true;
+    sourceCheckboxes.forEach((checkbox) => { checkbox.disabled = true; });
+    setPreviewControlsBusy(true);
+    showMessage("A módosított rekordokat újraellenőrizzük…");
+    try {
+      const result = await postJson(form.dataset.previewUrl, {
+        users: active.map((record) => record.rawData),
+        source_app_ids: sourceAppIds,
+      });
+      result.rows.forEach((newRecord, index) => {
+        const oldRecord = active[index];
+        const rawData = oldRecord.rawData;
+        const localId = oldRecord.localId;
+        Object.assign(oldRecord, newRecord, { rawData, localId, excluded: false });
+        delete oldRecord.rowElement;
+        delete oldRecord.editorRow;
+        delete oldRecord.assignmentCheckbox;
+        delete oldRecord.tagozatCell;
+        delete oldRecord.editButton;
+      });
+      sourceSummary.textContent = `Forrásalkalmazás(ok): ${(result.source_apps || []).join(", ")}`;
+      preview.hidden = false;
+      renderRows();
+      showMessage("Az előnézet frissült. Az adatbázis még nem változott.", true);
+    } catch (error) {
+      showMessage(error.message);
+      throw error;
+    } finally {
+      validating = false;
+      previewButton.disabled = false;
+      textarea.disabled = false;
+      sourceCheckboxes.forEach((checkbox) => { checkbox.disabled = false; });
+      setPreviewControlsBusy(false);
+      updatePreviewSummary();
+    }
   }
 
   async function postJson(url, payload) {
@@ -167,7 +445,7 @@
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (importing) return;
+    if (importing || validating) return;
     clearPreview();
 
     let payload;
@@ -201,13 +479,10 @@
         users: payload,
         source_app_ids: sourceAppIds,
       });
-      buildPreviewRows(result.rows);
-      const { new: newCount, existing: existingCount, invalid: invalidCount } = result.counts;
-      summary.textContent = `${newCount} új fiók, ${existingCount} már létező fiók, ${invalidCount} hibás rekord.`;
       sourceSummary.textContent = `Forrásalkalmazás(ok): ${(result.source_apps || []).join(", ")}`;
-      invalidNote.hidden = invalidCount === 0;
       preview.hidden = false;
       progressPanel.hidden = true;
+      buildPreviewRows(result.rows, payload);
       showMessage("Az ellenőrzés kész. Az adatbázis még nem változott.", true);
     } catch (error) {
       showMessage(error.message);
@@ -219,14 +494,16 @@
   });
 
   startButton.addEventListener("click", async () => {
-    const validRecords = records.filter((record) => record.status !== "invalid");
-    if (!validRecords.length || importing) return;
+    const activeRecords = records.filter((record) => !record.excluded);
+    const validRecords = activeRecords.filter((record) => record.status !== "invalid");
+    if (!validRecords.length || importing || validating) return;
 
     importing = true;
     startButton.disabled = true;
     previewButton.disabled = true;
     textarea.disabled = true;
     sourceCheckboxes.forEach((checkbox) => { checkbox.disabled = true; });
+    setPreviewControlsBusy(true);
     progressPanel.hidden = false;
     progressTitle.textContent = "Importálás folyamatban";
     progressBar.max = validRecords.length;
@@ -284,7 +561,9 @@
     }
 
     const successCount = created + updated + unchanged;
-    summary.textContent = `Import kész: ${created} új fiók, ${updated} kiegészített, ${unchanged} változatlan, ${failed} hibás.`;
+    const invalidCount = activeRecords.filter((record) => record.status === "invalid").length;
+    const skippedCount = records.filter((record) => record.excluded).length;
+    summary.textContent = `Import kész: ${created} új fiók, ${updated} kiegészített, ${unchanged} változatlan, ${failed} mentési hiba, ${invalidCount} hibás rekord kihagyva, ${skippedCount} kézzel kihagyva.`;
     if (failed) showMessage("Az import részben sikerült. A hibás rekordok részlete a táblázatban látható.");
     else showMessage("Minden érvényes rekord importálása befejeződött.", true);
     progressLabel.textContent = stopped
@@ -295,11 +574,13 @@
     textarea.disabled = false;
     previewButton.disabled = false;
     sourceCheckboxes.forEach((checkbox) => { checkbox.disabled = false; });
+    setPreviewControlsBusy(false);
+    startButton.disabled = true;
   });
 
   selectAllCheckbox.addEventListener("change", () => {
     for (const record of records) {
-      if (record.needs_tagozat && record.assignmentCheckbox) {
+      if (!record.excluded && record.status !== "invalid" && record.needs_tagozat && record.assignmentCheckbox) {
         record.assignmentCheckbox.checked = selectAllCheckbox.checked;
       }
     }
@@ -308,7 +589,7 @@
 
   selectUnassignedButton.addEventListener("click", () => {
     for (const record of records) {
-      if (record.needs_tagozat && record.assignmentCheckbox) {
+      if (!record.excluded && record.status !== "invalid" && record.needs_tagozat && record.assignmentCheckbox) {
         record.assignmentCheckbox.checked = true;
       }
     }
@@ -318,7 +599,7 @@
   assignTagButton.addEventListener("click", () => {
     const slug = bulkTagSelect.value;
     const selectedRecords = records.filter(
-      (record) => record.needs_tagozat && record.assignmentCheckbox?.checked,
+      (record) => !record.excluded && record.needs_tagozat && record.assignmentCheckbox?.checked,
     );
     if (!slug) {
       showTagMessage("Válassz tagozatot a hozzárendeléshez.");
@@ -332,14 +613,15 @@
     const tagozatName = bulkTagSelect.selectedOptions[0].textContent.trim();
     for (const record of selectedRecords) {
       record.data.tagozat = slug;
+      record.data.is_student = true;
+      record.rawData = { ...rawRecord(record), tagozat: slug, is_student: true };
       record.needs_tagozat = false;
       record.tagozat_label = tagozatName;
-      record.tagozatCell.textContent = tagozatName;
-      record.assignmentCheckbox.checked = false;
-      record.assignmentCheckbox.disabled = true;
+      record.is_student = true;
+      record.warnings = [];
     }
+    renderRows();
     showTagMessage(`${selectedRecords.length} diákhoz rendeltük hozzá: ${tagozatName}.`, true);
-    updateTagAssignmentUI();
   });
 
   textarea.addEventListener("input", clearPreview);

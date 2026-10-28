@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
-from .models import SchoolClass, StudentProfile, Tagozat, email_info
+from .models import SchoolClass, StudentProfile, Tagozat, TeacherProfile, email_info
 
 STUDENT_PROFILE_PROMPT_DISMISSED_KEY = "student_profile_prompt_dismissed_user"
 
@@ -19,9 +19,19 @@ def _student_profile_state(user):
         profile = user.student_profile
     except StudentProfile.DoesNotExist:
         profile = None
+    try:
+        teacher_profile = user.teacher_profile
+    except TeacherProfile.DoesNotExist:
+        teacher_profile = None
 
     info = email_info(user.email)
-    is_student = bool(profile or info.is_student or info.is_part_time_student)
+    is_student = bool(
+        profile
+        or (
+            not teacher_profile
+            and (info.is_student or info.is_part_time_student)
+        )
+    )
     missing = {
         "tagozat": is_student and (profile is None or profile.tagozat_id is None),
         "om_id": is_student and not (profile and (profile.om_id or "").strip()),

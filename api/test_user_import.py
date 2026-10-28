@@ -132,6 +132,52 @@ class UserImportTests(TestCase):
         self.assertEqual(record["kezdes_eve"], 2024)
         self.assertEqual(record["szekcio"], "F")
 
+    def test_teacher_is_not_assigned_a_class_from_student_like_email(self):
+        existing_teacher = CustomUser.objects.create_user(
+            email="old.teacher.23a@example.org"
+        )
+        TeacherProfile.objects.create(user=existing_teacher, employee_number="T-42")
+        self.assertFalse(existing_teacher.is_student)
+        self.assertEqual(existing_teacher.account_type, "Tanár/iskolai alkalmazott")
+
+        response = self._preview(
+            [
+                {"email": "teacher.23a@example.org", "employee_number": "T-43"},
+                {"email": existing_teacher.email},
+                {"email": "explicit.teacher.23a@example.org", "is_student": False},
+            ]
+        )
+
+        self.assertEqual(response.status_code, 200)
+        for row in response.json()["rows"]:
+            with self.subTest(email=row["email"]):
+                self.assertFalse(row["class_label"])
+                self.assertFalse(row["class_inferred"])
+                self.assertFalse(row["is_student"])
+                self.assertFalse(row["needs_tagozat"])
+
+        existing_teacher_row = response.json()["rows"][1]
+        updated = self._import_one(existing_teacher_row["data"])
+        self.assertEqual(updated.status_code, 200, updated.content)
+        self.assertFalse(StudentProfile.objects.filter(user=existing_teacher).exists())
+
+        imported = self._import_one(
+            {"email": "teacher.23a@example.org", "employee_number": "T-43"}
+        )
+        self.assertEqual(imported.status_code, 200, imported.content)
+        teacher = CustomUser.objects.get(email="teacher.23a@example.org")
+        self.assertTrue(TeacherProfile.objects.filter(user=teacher).exists())
+        self.assertFalse(StudentProfile.objects.filter(user=teacher).exists())
+        self.assertFalse(teacher.is_student)
+
+        explicit_teacher_row = response.json()["rows"][2]
+        explicit_teacher = self._import_one(explicit_teacher_row["data"])
+        self.assertEqual(explicit_teacher.status_code, 200, explicit_teacher.content)
+        account = CustomUser.objects.get(email="explicit.teacher.23a@example.org")
+        self.assertTrue(TeacherProfile.objects.filter(user=account).exists())
+        self.assertFalse(StudentProfile.objects.filter(user=account).exists())
+        self.assertFalse(account.is_student)
+
     def test_class_is_inferred_from_student_email_and_missing_tagozat_is_flagged(self):
         response = self._preview([{"email": "anna.minta.23f@example.org"}])
 

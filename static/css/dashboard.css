@@ -237,6 +237,20 @@ dl.data code { font-size: .85rem; }
 .import-table .row-status[data-state="new"], .import-table .row-status[data-state="created"], .import-table .row-status[data-state="updated"] { color: var(--success); }
 .import-table .row-status[data-state="invalid"], .import-table .row-status[data-state="error"] { color: var(--danger); }
 .import-table .row-status[data-state="existing"], .import-table .row-status[data-state="unchanged"] { color: var(--muted); }
+.import-table .row-status[data-state="excluded"] { color: var(--muted); text-decoration: line-through; }
+.import-row-skipped { opacity: .65; }
+.import-row-actions { min-width: 7.5rem; }
+.import-row-actions .btn { margin: .1rem 0; }
+.import-editor-row > td { padding: .85rem; background: var(--bg); }
+.import-editor { display: grid; gap: .75rem; }
+.import-editor-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .75rem; }
+.import-edit-field { min-width: 0; }
+.import-edit-field label { display: block; margin-bottom: .25rem; color: var(--muted); font-size: .82rem; }
+.import-edit-field input { width: 100%; min-width: 0; padding: .5rem .6rem; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: .45rem; }
+.import-edit-field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.import-editor-student { display: flex; align-items: center; gap: .5rem; color: var(--muted); font-size: .9rem; }
+.import-editor-student input { accent-color: var(--primary); }
+.import-editor-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 #user-import-progress progress { display: block; width: 100%; height: .85rem; accent-color: var(--primary); }
 
 @media (max-width: 52rem) {
