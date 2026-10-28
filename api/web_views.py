@@ -1,14 +1,17 @@
 import json
 import logging
+from urllib.parse import urlsplit
+
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
 from django.core.signing import BadSignature
-from django.http import JsonResponse
+from django.http import JsonResponse, QueryDict
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django_ratelimit.decorators import ratelimit
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from oauth2_provider.models import get_application_model
 
 from .models import GlobalConfig, Passkey
 from .privacy import privacy_context
@@ -140,6 +143,21 @@ def _safe_next_url(request, value: str | None) -> str:
     return reverse("dashboard")
 
 
+def _oauth_application_from_next(next_url: str):
+    parsed = urlsplit(next_url)
+    if parsed.path != reverse("oauth2_provider:authorize"):
+        return None
+    client_id = QueryDict(parsed.query).get("client_id")
+    if not client_id:
+        return None
+    return (
+        get_application_model()
+        .objects.select_related("profile")
+        .filter(client_id=client_id)
+        .first()
+    )
+
+
 def _json_payload(request) -> dict:
     if len(request.body) > 1_000_000:
         raise ValueError("A kérés túl nagy.")
@@ -159,15 +177,23 @@ def login_page(request):
         return _remember_account(request, redirect(next_url), request.user)
     accounts = _remembered_accounts(request)
     selected_account = _remembered_account(request, request.GET.get("account"))
+    email = request.GET.get("email", "").strip()
+    password_step = bool(selected_account) or (
+        request.GET.get("step") == "password" and bool(email)
+    )
     return render(
         request,
         "auth/login.html",
         {
             "next_url": next_url,
+            "email": email,
+            "password_step": password_step,
+            "authorization_application": _oauth_application_from_next(next_url),
             "remembered_accounts": accounts,
             "selected_account": selected_account,
             "show_account_chooser": bool(accounts)
             and selected_account is None
+            and not password_step
             and request.GET.get("add_account") != "1",
             "add_account": request.GET.get("add_account") == "1",
             "confirmed": request.GET.get("confirmed") == "1",
@@ -202,6 +228,7 @@ def password_login(request):
             {
                 "next_url": next_url,
                 "email": email,
+                "password_step": not selected_account_id or selected_account is not None,
                 "remembered_accounts": _remembered_accounts(request),
                 "selected_account": selected_account,
                 "show_account_chooser": False,

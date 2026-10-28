@@ -1,16 +1,41 @@
 {% extends "base.html" %}
 {% load szlg_extras %}
-{% block title %}{% if error %}Hibás kérés{% else %}{{ application.name }} · Hozzáférés engedélyezése{% endif %} · SZLG+{% endblock %}
-{% block shell_class %}wide{% endblock %}
+{% block title %}{% if error %}Hibás kérés{% elif application %}{{ application.name }} · Hozzáférés engedélyezése{% else %}Hozzáférés engedélyezése{% endif %} · SZLG+{% endblock %}
+{% block body_class %}auth-page oauth-page{% endblock %}
+{% block shell_class %}wide oauth-shell{% endblock %}
 {% block head_text %}
   {% if error %}
-  <h1>Az alkalmazás nem kérhet hozzáférést</h1>
+    <h1>Az alkalmazás nem kérhet hozzáférést</h1>
+  {% elif application %}
+    <div class="oauth-app-identity">
+      <div class="app-logo">
+        {% if application.profile.logo %}
+          <img src="{{ application.profile.logo.url }}" alt="">
+        {% else %}
+          {{ application.name|slice:":1"|upper }}
+        {% endif %}
+      </div>
+      <div>
+        <div class="app-name">{{ application.name }}</div>
+        {% if application.profile.short_description %}<p class="app-desc">{{ application.profile.short_description }}</p>{% endif %}
+        {% if application.profile.developer %}<p class="app-dev">Fejlesztő: {{ application.profile.developer }}</p>{% endif %}
+      </div>
+    </div>
+    <h1>Bejelentkezés a(z) {{ application.name }} szolgáltatásba</h1>
+    <div class="user-chip">
+      <span class="avatar" aria-hidden="true">{{ request.user.get_full_name|default:request.user.email|slice:":1"|upper }}</span>
+      {{ request.user.get_full_name|default:request.user.email }} · {{ request.user.email }}
+    </div>
   {% else %}
-  <h1>Hozzáférés engedélyezése</h1>
-  <div class="user-chip"><span class="avatar" aria-hidden="true">{{ request.user.email|slice:":1"|upper }}</span>{{ request.user.email }}</div>
+    <h1>Hozzáférés engedélyezése</h1>
+    <div class="user-chip">
+      <span class="avatar" aria-hidden="true">{{ request.user.email|slice:":1"|upper }}</span>
+      {{ request.user.email }}
+    </div>
   {% endif %}
 {% endblock %}
 {% block content %}
+  <div class="oauth-content">
   {% if error %}
     <p class="error" role="alert">
       <strong>
@@ -25,67 +50,55 @@
     <p class="muted">Átirányítási URI: <code>{{ request.GET.redirect_uri|default:"–" }}</code></p>
     <div class="actions"><a class="btn" href="{% url 'dashboard' %}">Vissza a fiókomhoz</a></div>
   {% else %}
-  <div class="app">
-    <div class="app-logo">
-      {% if application.profile.logo %}
-        <img src="{{ application.profile.logo.url }}" alt="">
+    <h2 class="consent-heading">Az SZLG+ a következő adatokat osztja meg{% if application %} a(z) {{ application.name }} alkalmazással{% endif %}:</h2>
+
+    {% if application %}
+      {% if application.profile.verified %}
+        <p class="verification-note" role="status">Az iskola által ellenőrzött alkalmazás.</p>
       {% else %}
-        {{ application.name|slice:":1"|upper }}
+        <p class="verification-note warning" role="alert">Ezt az alkalmazást nem ellenőrizte az iskola. Csak akkor engedélyezd, ha ismered a fejlesztőjét.</p>
       {% endif %}
-    </div>
-    <div>
-      <div class="app-name">{{ application.name }}</div>
-      {% if application.profile.short_description %}<p class="app-desc">{{ application.profile.short_description }}</p>{% endif %}
-      {% if application.profile.developer %}<p class="app-dev">Fejlesztő: {{ application.profile.developer }}</p>{% endif %}
-    </div>
-  </div>
-
-  {% if application %}
-    {% if application.profile.verified %}
-      <p class="note muted" style="text-align:center">Az iskola által ellenőrzött alkalmazás.</p>
-    {% else %}
-      <p class="error" role="alert">Ezt az alkalmazást nem ellenőrizte az iskola. Csak akkor engedélyezd, ha ismered a fejlesztőjét.</p>
     {% endif %}
-  {% endif %}
-  <h2>A(z) {{ application.name }} hozzáférést kér a következőkhöz:</h2>
-  <ul class="scopes">
-    {% for item in scope_items %}
-      <li>
-        {% include "partials/icon.html" with name=item.icon %}
-        <div><b>{{ item.title }}</b><span class="desc">{{ item.description }}</span></div>
-      </li>
-    {% empty %}
-      <li>
-        {% include "partials/icon.html" with name="fingerprint" %}
-        <div><b>Alapvető bejelentkezés</b><span class="desc">Az alkalmazás megtudja, hogy sikeresen bejelentkeztél.</span></div>
-      </li>
-    {% endfor %}
-  </ul>
-  <p class="note muted">Csak olyan alkalmazásnak engedélyezd, amelyben megbízol. A jelszavadat az alkalmazás nem kapja meg.</p>
 
-  <form method="post" action="{{ request.get_full_path }}">
-    {% csrf_token %}
-    {% if form.errors %}
-      <div class="error" role="alert">
-        <p>A jóváhagyási kérés adatai nem voltak érvényesek. Frissítsd az alkalmazás bejelentkezési folyamatát.</p>
-        {{ form.errors }}
+    <ul class="scopes">
+      {% for item in scope_items %}
+        <li>
+          {% include "partials/icon.html" with name=item.icon %}
+          <div><b>{{ item.title }}</b><span class="desc">{{ item.description }}</span></div>
+        </li>
+      {% empty %}
+        <li>
+          {% include "partials/icon.html" with name="fingerprint" %}
+          <div><b>Alapvető bejelentkezés</b><span class="desc">Az alkalmazás megtudja, hogy sikeresen bejelentkeztél.</span></div>
+        </li>
+      {% endfor %}
+    </ul>
+    <p class="note muted">Csak olyan alkalmazásnak engedélyezd, amelyben megbízol. A jelszavadat az alkalmazás nem kapja meg.</p>
+
+    <form method="post" action="{{ request.get_full_path }}">
+      {% csrf_token %}
+      {% if form.errors %}
+        <div class="error" role="alert">
+          <p>A jóváhagyási kérés adatai nem voltak érvényesek. Frissítsd az alkalmazás bejelentkezési folyamatát.</p>
+          {{ form.errors }}
+        </div>
+      {% endif %}
+      <input type="hidden" name="redirect_uri" value="{% if redirect_uri %}{{ redirect_uri }}{% elif 'redirect_uri' in request.GET %}{{ request.GET.redirect_uri }}{% endif %}">
+      <input type="hidden" name="scope" value="{% if scopes %}{{ scopes|join:' ' }}{% elif 'scope' in request.GET %}{{ request.GET.scope }}{% endif %}">
+      <input type="hidden" name="nonce" value="{% if nonce %}{{ nonce }}{% elif 'nonce' in request.GET %}{{ request.GET.nonce }}{% endif %}">
+      <input type="hidden" name="client_id" value="{% if client_id %}{{ client_id }}{% elif 'client_id' in request.GET %}{{ request.GET.client_id }}{% endif %}">
+      <input type="hidden" name="state" value="{% if state %}{{ state }}{% elif 'state' in request.GET %}{{ request.GET.state }}{% endif %}">
+      <input type="hidden" name="response_type" value="{% if response_type %}{{ response_type }}{% elif 'response_type' in request.GET %}{{ request.GET.response_type }}{% endif %}">
+      <input type="hidden" name="code_challenge" value="{% if code_challenge %}{{ code_challenge }}{% elif 'code_challenge' in request.GET %}{{ request.GET.code_challenge }}{% endif %}">
+      <input type="hidden" name="code_challenge_method" value="{% if code_challenge_method %}{{ code_challenge_method }}{% elif 'code_challenge_method' in request.GET %}{{ request.GET.code_challenge_method }}{% endif %}">
+      <input type="hidden" name="claims" value="{% if claims %}{{ claims }}{% elif 'claims' in request.GET %}{{ request.GET.claims }}{% endif %}">
+      <input type="hidden" name="resource" value="{% if resource %}{{ resource }}{% elif 'resource' in request.GET %}{{ request.GET.resource }}{% endif %}">
+      {{ form.allow.errors }}
+      <div class="actions oauth-actions">
+        <button class="btn outline" type="submit" name="allow" value="false">Mégse</button>
+        <button class="btn outline" type="submit" name="allow" value="true">Engedélyezés</button>
       </div>
-    {% endif %}
-    <input type="hidden" name="redirect_uri" value="{% if redirect_uri %}{{ redirect_uri }}{% elif 'redirect_uri' in request.GET %}{{ request.GET.redirect_uri }}{% endif %}">
-    <input type="hidden" name="scope" value="{% if scopes %}{{ scopes|join:' ' }}{% elif 'scope' in request.GET %}{{ request.GET.scope }}{% endif %}">
-    <input type="hidden" name="nonce" value="{% if nonce %}{{ nonce }}{% elif 'nonce' in request.GET %}{{ request.GET.nonce }}{% endif %}">
-    <input type="hidden" name="client_id" value="{% if client_id %}{{ client_id }}{% elif 'client_id' in request.GET %}{{ request.GET.client_id }}{% endif %}">
-    <input type="hidden" name="state" value="{% if state %}{{ state }}{% elif 'state' in request.GET %}{{ request.GET.state }}{% endif %}">
-    <input type="hidden" name="response_type" value="{% if response_type %}{{ response_type }}{% elif 'response_type' in request.GET %}{{ request.GET.response_type }}{% endif %}">
-    <input type="hidden" name="code_challenge" value="{% if code_challenge %}{{ code_challenge }}{% elif 'code_challenge' in request.GET %}{{ request.GET.code_challenge }}{% endif %}">
-    <input type="hidden" name="code_challenge_method" value="{% if code_challenge_method %}{{ code_challenge_method }}{% elif 'code_challenge_method' in request.GET %}{{ request.GET.code_challenge_method }}{% endif %}">
-    <input type="hidden" name="claims" value="{% if claims %}{{ claims }}{% elif 'claims' in request.GET %}{{ request.GET.claims }}{% endif %}">
-    <input type="hidden" name="resource" value="{% if resource %}{{ resource }}{% elif 'resource' in request.GET %}{{ request.GET.resource }}{% endif %}">
-    {{ form.allow.errors }}
-    <div class="actions">
-      <button class="btn text" type="submit" name="allow" value="false">Mégse</button>
-      <button class="btn" type="submit" name="allow" value="true">Engedélyezés</button>
-    </div>
-  </form>
+    </form>
   {% endif %}
+  </div>
 {% endblock %}

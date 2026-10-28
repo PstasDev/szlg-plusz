@@ -147,6 +147,14 @@
     });
   }
 
+  const passwordVisibility = document.getElementById("password-visibility");
+  if (passwordVisibility) {
+    passwordVisibility.addEventListener("change", () => {
+      const password = document.getElementById("password");
+      if (password) password.type = passwordVisibility.checked ? "text" : "password";
+    });
+  }
+
   const registerButton = document.getElementById("passkey-register");
   if (registerButton) {
     registerButton.addEventListener("click", async () => {

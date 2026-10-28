@@ -1,66 +1,132 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Bejelentkezés · SZLG+{% endblock %}
+{% block body_class %}auth-page{% endblock %}
+{% block shell_class %}auth-shell{% endblock %}
 {% block head_text %}
-  <h1>Bejelentkezés</h1>
-  <p class="subtitle">Használd a SZLG+ fiókodat</p>
+  {% if password_step and selected_account %}
+    <h1>{{ selected_account.get_full_name|default:selected_account.email }}</h1>
+    <div class="user-chip auth-user-chip">
+      <span class="avatar" aria-hidden="true">{{ selected_account.email|slice:":1"|upper }}</span>
+      {{ selected_account.email }}
+    </div>
+  {% elif password_step %}
+    <h1>Jelszó megadása</h1>
+    <div class="user-chip auth-user-chip">
+      <span class="avatar" aria-hidden="true">{{ email|slice:":1"|upper }}</span>
+      {{ email }}
+    </div>
+  {% elif show_account_chooser %}
+    {% if authorization_application %}
+      <div class="oauth-app-identity">
+        <div class="app-logo">
+          {% if authorization_application.profile.logo %}
+            <img src="{{ authorization_application.profile.logo.url }}" alt="">
+          {% else %}
+            {{ authorization_application.name|slice:":1"|upper }}
+          {% endif %}
+        </div>
+        <div>
+          <div class="app-name">{{ authorization_application.name }}</div>
+          {% if authorization_application.profile.short_description %}<p class="app-desc">{{ authorization_application.profile.short_description }}</p>{% endif %}
+          {% if authorization_application.profile.developer %}<p class="app-dev">Fejlesztő: {{ authorization_application.profile.developer }}</p>{% endif %}
+        </div>
+      </div>
+      <h1>Válasszon fiókot</h1>
+      <p class="auth-destination">Tovább ide: <strong>{{ authorization_application.name }}</strong></p>
+    {% else %}
+    <h1>Válasszon fiókot</h1>
+    <p class="subtitle">Válaszd ki, melyik SZLG+ fiókkal szeretnél belépni.</p>
+    {% endif %}
+  {% else %}
+    <h1>Bejelentkezés</h1>
+    <p class="subtitle">Használd a SZLG+ fiókodat.</p>
+  {% endif %}
 {% endblock %}
 {% block content %}
+  <div class="auth-content">
   {% if confirmed %}<p class="success" role="status">Az e-mail-címedet megerősítettük, most már bejelentkezhetsz.</p>{% endif %}
   {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
   {% if show_account_chooser %}
-    <h2>Fiókválasztó</h2>
-    <p class="muted">Válaszd ki, melyik SZLG+ fiókkal szeretnél belépni.</p>
-    <div class="account-list">
+    {% if not authorization_application %}<p class="auth-prompt">Válasszon egy fiókot a folytatáshoz</p>{% endif %}
+    <div class="account-list google-account-list" role="group" aria-label="Fiókválasztó">
       {% for account in remembered_accounts %}
         <a class="account-choice" href="{% url 'login' %}?account={{ account.pk }}&amp;next={{ next_url|urlencode }}">
           <span class="avatar" aria-hidden="true">{{ account.get_full_name|default:account.email|slice:":1"|upper }}</span>
           <span><strong>{{ account.get_full_name|default:account.email }}</strong><small>{{ account.email }}</small></span>
+          <span class="account-chevron" aria-hidden="true">›</span>
         </a>
       {% endfor %}
+      <a class="account-choice account-add" href="{% url 'login' %}?add_account=1&amp;next={{ next_url|urlencode }}">
+        {% include "partials/icon.html" with name="user" %}
+        <strong>Másik fiók használata</strong>
+      </a>
     </div>
-    <p class="actions"><a class="btn outline" href="{% url 'login' %}?add_account=1&amp;next={{ next_url|urlencode }}">Másik fiók használata</a></p>
   {% else %}
-    {% if selected_account %}
-      <div class="user-chip">
-        <span class="avatar" aria-hidden="true">{{ selected_account.get_full_name|default:selected_account.email|slice:":1"|upper }}</span>
-        <span>{{ selected_account.get_full_name|default:selected_account.email }} · {{ selected_account.email }}</span>
-      </div>
-      <p><a class="btn text" href="{% url 'login' %}?next={{ next_url|urlencode }}">Fiókváltás</a></p>
-    {% elif remembered_accounts %}
-      <p><a class="btn text" href="{% url 'login' %}?next={{ next_url|urlencode }}">Vissza a fiókválasztóhoz</a></p>
-    {% endif %}
-  <form method="post" action="{% url 'password-login' %}">
-    {% csrf_token %}
-    <input type="hidden" name="next" value="{{ next_url }}">
-    {% if selected_account %}
-      <input type="hidden" name="account_id" value="{{ selected_account.pk }}">
-      <input type="hidden" id="passkey-email" value="{{ selected_account.email }}">
-      <input type="hidden" name="email" value="{{ selected_account.email }}">
+    {% if password_step %}
+      {% if not selected_account %}
+        <p><a class="btn text auth-back-link" href="{% url 'login' %}?next={{ next_url|urlencode }}{% if add_account %}&amp;add_account=1{% endif %}">E-mail-cím módosítása</a></p>
+      {% endif %}
+      <p class="auth-prompt">Add meg a jelszavad a folytatáshoz</p>
+      <form class="auth-form" method="post" action="{% url 'password-login' %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next_url }}">
+        {% if add_account %}<input type="hidden" name="add_account" value="1">{% endif %}
+        {% if selected_account %}
+          <input type="hidden" name="account_id" value="{{ selected_account.pk }}">
+          <input type="hidden" id="passkey-email" value="{{ selected_account.email }}">
+          <input type="hidden" name="email" value="{{ selected_account.email }}">
+        {% else %}
+          <input type="hidden" id="passkey-email" value="{{ email }}">
+          <input type="hidden" name="email" value="{{ email }}">
+        {% endif %}
+        <div class="field">
+          <input id="password" name="password" type="password" placeholder=" " autocomplete="current-password" required autofocus>
+          <label for="password">Jelszó</label>
+        </div>
+        <label class="check-row password-visibility" for="password-visibility">
+          <input id="password-visibility" type="checkbox">
+          <span>Jelszó megjelenítése</span>
+        </label>
+        <div class="auth-form-links">
+          <a href="{% url 'password-reset' %}">Elfelejtett jelszó?</a>
+        </div>
+        <div class="actions">
+          <a class="btn text" href="{% url 'login' %}?next={{ next_url|urlencode }}">Fiókváltás</a>
+          <button class="btn" type="submit">Tovább</button>
+        </div>
+      </form>
     {% else %}
-      <div class="field">
-        <input id="email" name="email" type="email" placeholder=" " autocomplete="username" value="{{ email|default:'' }}" required>
-        <label for="email">E-mail-cím</label>
-      </div>
+      <p class="auth-prompt">Jelentkezz be az SZLG+ fiókoddal</p>
+      <form class="auth-form" method="get" action="{% url 'login' %}">
+        <input type="hidden" name="next" value="{{ next_url }}">
+        <input type="hidden" name="step" value="password">
+        {% if add_account %}<input type="hidden" name="add_account" value="1">{% endif %}
+        <div class="field">
+          <input id="email" name="email" type="email" placeholder=" " autocomplete="username" value="{{ email|default:'' }}" required autofocus>
+          <label for="email">E-mail-cím</label>
+        </div>
+        <div class="auth-form-links">
+          <a href="{% url 'password-reset' %}">Elfelejtett jelszó?</a>
+        </div>
+        <p class="auth-note">Nem a saját eszközödet használod? A bejelentkezéshez nyiss privát ablakot.</p>
+        <div class="actions">
+          <a class="btn text" href="{% url 'register' %}">Fiók létrehozása</a>
+          <button class="btn" type="submit">Tovább</button>
+        </div>
+      </form>
     {% endif %}
-    <div class="field">
-      <input id="password" name="password" type="password" placeholder=" " autocomplete="current-password" required>
-      <label for="password">Jelszó</label>
-    </div>
-    <div class="actions">
-      <a class="btn text" href="{% url 'password-reset' %}">Elfelejtett jelszó?</a>
-      <button class="btn" type="submit">Bejelentkezés</button>
-    </div>
-  </form>
-  <div class="or">vagy</div>
-  <button class="btn outline block" id="passkey-login" type="button" style="margin-top:1.5rem">
-    {% include "partials/icon.html" with name="fingerprint" %}
-    Bejelentkezés jelkulccsal
-  </button>
-  <p id="passkey-error" class="error" role="alert" hidden></p>
+
+    {% if not show_account_chooser %}
+      <div class="or">vagy</div>
+      <button class="btn outline block auth-passkey" id="passkey-login" type="button">
+        {% include "partials/icon.html" with name="fingerprint" %}
+        Bejelentkezés jelkulccsal
+      </button>
+      <p id="passkey-error" class="error" role="alert" hidden></p>
+    {% endif %}
   {% endif %}
-  <p class="muted auth-register">Még nincs SZLG+ fiókod? <a href="{% url 'register' %}">Regisztráció</a></p>
-  <p class="muted privacy-link"><a href="{% url 'privacy' %}">Adatkezelési tájékoztató</a></p>
+  </div>
 {% endblock %}
 {% block scripts %}
   <script src="{% static 'js/webauthn.js' %}" defer></script>

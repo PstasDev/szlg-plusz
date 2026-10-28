@@ -195,6 +195,23 @@ class LoginAndOIDCTests(TestCase):
 
         self.assertEqual(response.status_code, 401)
         self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertContains(response, 'name="password"', status_code=401)
+
+    def test_login_page_separates_the_email_and_password_steps(self):
+        email_step = self.client.get("/login/")
+
+        self.assertContains(email_step, 'name="step" value="password"')
+        self.assertContains(email_step, 'id="email"')
+        self.assertNotContains(email_step, 'name="password"')
+
+        password_step = self.client.get(
+            "/login/",
+            {"step": "password", "email": self.user.email, "next": "/dashboard/"},
+        )
+
+        self.assertContains(password_step, 'type="password"')
+        self.assertContains(password_step, f'value="{self.user.email}"')
+        self.assertContains(password_step, "Jelszó megjelenítése")
 
     def test_login_page_and_discovery_document_are_available(self):
         self.assertEqual(self.client.get("/login/").status_code, 200)
@@ -1454,6 +1471,31 @@ class AccountChooserTests(TestCase):
         self.assertContains(chooser, self.first.email)
         self.assertContains(chooser, "Minta Anna")
         self.assertNotContains(chooser, 'id="email"')
+
+    def test_oauth_account_chooser_identifies_the_requested_application(self):
+        application = Application.objects.create(
+            name="Canva",
+            user=self.first,
+            client_type=Application.CLIENT_PUBLIC,
+            authorization_grant_type=Application.GRANT_AUTHORIZATION_CODE,
+            redirect_uris="https://client.example/callback",
+            algorithm=Application.RS256_ALGORITHM,
+        )
+        ApplicationProfile.objects.create(
+            application=application,
+            developer="Canva fejlesztő",
+            short_description="Kreatív tervezőalkalmazás",
+        )
+        self._password_login(self.first.email)
+        self.client.post("/logout/")
+        next_url = "/o/authorize/?" + urlencode({"client_id": application.client_id})
+
+        chooser = self.client.get("/login/", {"next": next_url})
+
+        self.assertContains(chooser, "Tovább ide:")
+        self.assertContains(chooser, "Canva")
+        self.assertContains(chooser, "Kreatív tervezőalkalmazás")
+        self.assertContains(chooser, "Fejlesztő: Canva fejlesztő")
 
     def test_selected_account_skips_identifier_and_is_bound_to_cookie_identity(self):
         self._password_login(self.first.email)
