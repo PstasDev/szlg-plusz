@@ -401,8 +401,11 @@ class RegistrationTests(TestCase):
             with self.subTest(path=path):
                 response = self.client.get(path)
                 self.assertEqual(response.status_code, 200)
-                self.assertContains(response, "Adatkezelési Tájékoztató")
                 self.assertContains(response, "Kőbányai Szent László Gimnázium")
+        self.assertContains(self.client.get("/"), "Adatvédelmi irányelvek")
+        for path in ("/login/", "/register/", "/adatvedelem/"):
+            with self.subTest(privacy_link=path):
+                self.assertContains(self.client.get(path), "Adatkezelési tájékoztató")
 
     def test_registration_requires_policy_consent(self):
         response = self.client.post(
@@ -654,8 +657,30 @@ class DashboardTests(TestCase):
 
         self.assertEqual(landing.status_code, 200)
         self.assertContains(landing, "Dashboard megnyitása")
-        self.assertContains(landing, "jelkulcsos belépés")
+        self.assertContains(landing, "Egyetlen fiók.")
+        self.assertContains(landing, "Belépés jelkulccsal")
+        self.assertContains(landing, "Jelkulcsos belépés, jelszó nélkül")
+        self.assertContains(landing, "SmartGroup és ManualGroup")
+        self.assertContains(landing, "nyilvánosan elérhető")
+        for rollout_item in (
+            "Igazoláskezelő",
+            "FTV alkalmazás",
+            "sport.szlg.info",
+            "Stúdió",
+            "app.szlg.info",
+            "NodeWS",
+            "szlg.info",
+            "zsuri.szlg.info",
+            "kampany.szlg.info",
+            "Google SSO",
+            "külsős fiókok",
+            "Django Admin",
+        ):
+            with self.subTest(rollout_item=rollout_item):
+                self.assertContains(landing, rollout_item)
         self.assertEqual(docs.status_code, 200)
+        self.assertContains(docs, "Mi az az SZLG+?")
+        self.assertContains(docs, "Fejlesztőknek")
         self.assertContains(docs, "Útmutató felhasználóknak")
         self.assertContains(docs, "SZLG+ adminisztrátoroknak")
         self.assertContains(docs, "Alkalmazásfejlesztőknek")
@@ -670,6 +695,15 @@ class DashboardTests(TestCase):
                 page = self.client.get(path)
                 self.assertEqual(page.status_code, 200)
                 self.assertContains(page, title)
+
+    def test_landing_shows_login_cta_for_signed_out_users(self):
+        self.client.logout()
+
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Bejelentkezés")
+        self.assertContains(response, 'href="/login/"')
 
     def test_dashboard_shows_the_account_profile(self):
         response = self.client.get("/dashboard/")

@@ -1,126 +1,252 @@
-<!doctype html>
-<html lang="hu" class="h-full scroll-smooth">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#102a2b">
-  <meta name="description" content="SZLG+ — egy biztonságos iskolai fiók az összes csatlakozó alkalmazáshoz.">
-  <title>SZLG+ · Egy iskolai fiók minden alkalmazáshoz</title>
-  {% load static %}
-  <link rel="stylesheet" href="{% static 'css/privacy.css' %}">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>tailwind.config={theme:{extend:{colors:{ink:'#102a2b',forest:'#174746',mint:'#c8f0df',copper:'#c98454',paper:'#f7f8f4'}}}}</script>
-</head>
-<body class="min-h-full bg-paper font-sans text-ink antialiased">
-  <header class="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-10">
-    <a href="/" class="flex items-center gap-3" aria-label="SZLG+ főoldal">
-      <span class="grid h-11 w-11 place-items-center rounded-xl bg-ink">
-        <img src="{% static 'img/szlg-bagoly.svg' %}" alt="" class="h-7 w-6 brightness-0 invert">
-      </span>
-      <span class="text-xl font-bold tracking-tight">SZLG<span class="text-copper">+</span></span>
-    </a>
-    <nav class="hidden items-center gap-8 text-sm font-medium text-ink/70 md:flex" aria-label="Fő navigáció">
-      <a class="transition hover:text-forest" href="#miert">Miért SZLG+?</a>
-      <a class="transition hover:text-forest" href="{% url 'docs' %}">Dokumentáció</a>
-      <a class="transition hover:text-forest" href="{% url 'privacy' %}">Adatvédelem</a>
-    </nav>
-    <a href="{% if request.user.is_authenticated %}{% url 'dashboard' %}{% else %}{% url 'login' %}{% endif %}"
-       class="inline-flex items-center justify-center rounded-lg bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-forest">
-      {% if request.user.is_authenticated %}Dashboard{% else %}Bejelentkezés{% endif %}
-    </a>
-  </header>
+{% extends "portal/base.html" %}
 
-  <main>
-    <section class="border-t border-ink/10">
-      <div class="mx-auto grid max-w-7xl items-center gap-14 px-6 py-16 md:py-24 lg:grid-cols-[1.05fr_.95fr] lg:px-10 lg:py-28">
-        <div>
-          <p class="mb-6 text-xs font-bold uppercase tracking-[.18em] text-forest">Kőbányai Szent László Gimnázium · SZLG+</p>
-          <h1 class="max-w-3xl text-5xl font-semibold leading-[1.04] tracking-[-.045em] sm:text-6xl lg:text-7xl">
-            Egy iskolai fiók.<br><span class="text-forest">Minden apphoz.</span>
-          </h1>
-          <p class="mt-7 max-w-xl text-lg leading-8 text-ink/65">
-            Az SZLG+ egyetlen biztonságos bejelentkezést ad az iskola csatlakozó alkalmazásaihoz. A fiókodat, a jelkulcsaidat és az engedélyeidet egy helyen kezelheted.
-          </p>
-          <div class="mt-9 flex flex-col gap-3 sm:flex-row">
-            <a href="{% if request.user.is_authenticated %}{% url 'dashboard' %}{% else %}{% url 'login' %}{% endif %}"
-               class="inline-flex min-h-14 items-center justify-center rounded-lg bg-forest px-7 py-4 font-semibold text-white transition hover:bg-ink">
-              {% if request.user.is_authenticated %}Dashboard megnyitása{% else %}Bejelentkezés{% endif %}
-            </a>
-            <a href="{% url 'docs-oidc' %}" class="inline-flex min-h-14 items-center justify-center rounded-lg border border-ink/20 px-7 py-4 font-semibold text-ink transition hover:border-forest hover:bg-white">
-              Fejlesztői útmutató
-            </a>
-            <a href="{% url 'register' %}" class="inline-flex min-h-14 items-center justify-center px-5 py-4 font-semibold text-forest underline underline-offset-4 hover:text-ink">
-              Külsős regisztráció
-            </a>
-          </div>
-          <div class="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink/55">
-            <span>Jelszavas és jelkulcsos belépés</span>
-            <span>Nyílt OpenID Connect szabvány</span>
-          </div>
+{% block title %}SZLG+ · Egyetlen fiók az iskolai alkalmazásokhoz{% endblock %}
+{% block meta_description %}Egyetlen biztonságos iskolai fiók az SZLG+ alkalmazásaihoz. Jelkulccsal jelszó nélkül is beléphetsz, a hozzáféréseidet pedig egy helyen kezelheted.{% endblock %}
+
+{% block content %}
+<main id="main-content">
+  <section class="relative isolate overflow-hidden border-b border-ink/10">
+    <div class="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_80%_20%,rgba(200,240,223,.75),transparent_42%),linear-gradient(180deg,#f7f8f4_0%,#ffffff_100%)]"></div>
+    <div class="mx-auto grid max-w-7xl items-center gap-14 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1.05fr_.95fr] lg:px-10 lg:py-28">
+      <div>
+        <p class="mb-6 inline-flex items-center gap-2 rounded-full border border-forest/15 bg-white/80 px-3.5 py-2 text-xs font-bold uppercase tracking-[.14em] text-forest shadow-sm">
+          <span class="h-2 w-2 rounded-full bg-forest"></span>
+          Kőbányai Szent László Gimnázium · SZLG+
+        </p>
+        <h1 class="max-w-3xl text-5xl font-semibold leading-[1.04] tracking-[-.045em] sm:text-6xl lg:text-7xl">
+          Egyetlen fiók.<br><span class="text-forest">Az összes iskolai alkalmazás.</span>
+        </h1>
+        <p class="mt-7 max-w-xl text-lg leading-8 text-ink/65 sm:text-xl">
+          Egy biztonságos, központi belépés az iskola csatlakozó alkalmazásaihoz. Jelkulccsal jelszó nélkül is bejelentkezhetsz, profilodat és jóváhagyott hozzáféréseidet pedig egy helyen kezelheted.
+        </p>
+        <div class="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <a href="{% if request.user.is_authenticated %}{% url 'dashboard' %}{% else %}{% url 'login' %}{% endif %}"
+             class="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-forest px-7 py-4 font-semibold text-white shadow-lg shadow-forest/15 transition hover:-translate-y-0.5 hover:bg-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest">
+            {% if request.user.is_authenticated %}Dashboard megnyitása{% else %}Bejelentkezés{% endif %}
+            <svg viewBox="0 0 20 20" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.5 10h13m-5-5 5 5-5 5"></path></svg>
+          </a>
+          <a href="{% url 'docs-app-developers' %}" class="inline-flex min-h-14 items-center justify-center rounded-xl border border-ink/15 bg-white/80 px-7 py-4 font-semibold text-ink transition hover:border-forest hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest">
+            Fejlesztői dokumentáció
+          </a>
         </div>
+        <div class="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium text-ink/55">
+          <span class="inline-flex items-center gap-2"><span class="text-forest" aria-hidden="true">✓</span> Jelszó nélküli belépés jelkulccsal</span>
+          <span class="inline-flex items-center gap-2"><span class="text-forest" aria-hidden="true">✓</span> Nyílt OpenID Connect szabvány</span>
+        </div>
+      </div>
 
-        <aside class="border border-ink/15 bg-white p-7 sm:p-10" aria-label="Az SZLG+ működése">
-          <p class="text-xs font-bold uppercase tracking-[.18em] text-copper">Központi hozzáférés</p>
-          <h2 class="mt-5 text-4xl font-semibold tracking-tight">SZLG+</h2>
-          <p class="mt-2 max-w-sm leading-7 text-ink/60">Az alkalmazás a bejelentkezést az SZLG+-ra bízza, nem a jelszavadat kezeli.</p>
-          <dl class="mt-8 divide-y divide-ink/10 border-y border-ink/10">
-            <div class="grid gap-1 py-4 sm:grid-cols-[9rem_1fr] sm:gap-4">
-              <dt class="text-sm font-semibold">Hitelesítés</dt>
-              <dd class="text-sm leading-6 text-ink/60">Egy iskolai fiók, jelszóval vagy jelkulccsal.</dd>
+      <div class="relative mx-auto w-full max-w-xl">
+        <div class="absolute -inset-5 -z-10 rounded-[2rem] bg-mint/70 blur-2xl"></div>
+        <aside class="overflow-hidden rounded-3xl border border-ink/10 bg-white shadow-soft" aria-label="Az SZLG+ központi belépésének szemléltetése">
+          <div class="flex items-start justify-between gap-4 border-b border-ink/10 px-6 py-5 sm:px-8">
+            <div>
+              <p class="text-[11px] font-bold uppercase tracking-[.18em] text-copper">Központi belépési pont</p>
+              <h2 class="mt-2 text-2xl font-semibold tracking-tight">SZLG<span class="text-copper">+</span></h2>
             </div>
-            <div class="grid gap-1 py-4 sm:grid-cols-[9rem_1fr] sm:gap-4">
-              <dt class="text-sm font-semibold">Engedélyek</dt>
-              <dd class="text-sm leading-6 text-ink/60">Az alkalmazások hozzáférései átláthatóan kezelhetők.</dd>
+            <span class="inline-flex items-center gap-2 rounded-full bg-mint/60 px-3 py-1.5 text-xs font-semibold text-forest">
+              <span class="h-2 w-2 rounded-full bg-forest"></span> Biztonságos azonosítás
+            </span>
+          </div>
+
+          <div class="px-6 py-6 sm:px-8 sm:py-7">
+            <div class="flex items-center gap-4">
+              <span class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-forest text-white">
+                <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                  <circle cx="12" cy="8" r="3.25"></circle><path stroke-linecap="round" d="M5.5 19c.7-3.1 3-4.7 6.5-4.7s5.8 1.6 6.5 4.7"></path>
+                </svg>
+              </span>
+              <div>
+                <p class="text-xs font-medium text-ink/45">Központi profil</p>
+                <p class="mt-0.5 font-semibold">Egy iskolai fiók</p>
+              </div>
             </div>
-            <div class="grid gap-1 py-4 sm:grid-cols-[9rem_1fr] sm:gap-4">
-              <dt class="text-sm font-semibold">Csoportadatok</dt>
-              <dd class="text-sm leading-6 text-ink/60">Az arra jogosult appok lekérhetik az iskolai csoporttagságot.</dd>
+
+            <div class="my-5 ml-6 h-6 border-l border-dashed border-forest/30" aria-hidden="true"></div>
+
+            <div class="rounded-2xl border border-forest/15 bg-paper p-4 sm:p-5">
+              <div class="flex items-start gap-4">
+                <span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-forest shadow-sm">
+                  <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.5 11.5a3.5 3.5 0 1 1 7 0v1.25h1.25A2.25 2.25 0 0 1 19 15v3.75A2.25 2.25 0 0 1 16.75 21h-9.5A2.25 2.25 0 0 1 5 18.75V15a2.25 2.25 0 0 1 2.25-2.25H8.5V11.5Z"></path><path stroke-linecap="round" d="M12 16v2"></path>
+                  </svg>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="font-semibold">Belépés jelkulccsal</p>
+                  <p class="mt-1 text-sm leading-6 text-ink/60">Ujjlenyomattal, arcfelismeréssel vagy az eszközöd PIN-kódjával — jelszó begépelése nélkül.</p>
+                </div>
+                <span class="hidden rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-forest sm:inline">Jelszó nélkül</span>
+              </div>
             </div>
-          </dl>
+
+            <div class="my-5 ml-6 h-6 border-l border-dashed border-forest/30" aria-hidden="true"></div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ink px-4 py-4 text-white sm:px-5">
+              <div>
+                <p class="text-xs text-white/55">Jóváhagyott alkalmazás</p>
+                <p class="mt-1 font-semibold">Igazoláskezelő</p>
+              </div>
+              <span class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-mint">
+                <span aria-hidden="true">✓</span> Bejelentkezés SZLG+-szal
+              </span>
+            </div>
+          </div>
+          <div class="border-t border-ink/10 bg-white px-6 py-4 text-xs leading-5 text-ink/50 sm:px-8">
+            Az alkalmazás az SZLG+-ra bízza a hitelesítést; az iskolai jelszavadat nem kell megadnod neki.
+          </div>
         </aside>
       </div>
-    </section>
-
-    <section id="miert" class="border-y border-ink/10 bg-white py-20 sm:py-24">
-      <div class="mx-auto max-w-7xl px-6 lg:px-10">
-        <div class="max-w-2xl">
-          <p class="text-sm font-bold uppercase tracking-[.16em] text-copper">Négyféle útmutató</p>
-          <h2 class="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">Több, mint közös bejelentkezés.</h2>
-          <p class="mt-4 leading-7 text-ink/60">Az SZLG+ egyszerűbbé teszi a fiókok kezelését, és leveszi az iskolai adatok külön nyilvántartásának terhét az alkalmazásokról.</p>
-        </div>
-        <div class="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 xl:grid-cols-4">
-          <article class="border-t-2 border-forest pt-5">
-            <h3 class="text-lg font-bold">Felhasználóknak</h3>
-            <p class="mt-3 text-sm leading-6 text-ink/60">Belépés, jelkulcsok, profiladatok és alkalmazásengedélyek kezelése egy helyen.</p>
-            <a class="mt-4 inline-block text-sm font-semibold text-forest underline decoration-forest/30 underline-offset-4 hover:decoration-forest" href="{% url 'docs-users' %}">Felhasználói útmutató</a>
-          </article>
-          <article class="border-t-2 border-forest pt-5">
-            <h3 class="text-lg font-bold">SZLG+ adminisztrátoroknak</h3>
-            <p class="mt-3 text-sm leading-6 text-ink/60">Fiókok, iskolai csoportok, regisztrált alkalmazások és indítócsempék kezelése.</p>
-            <a class="mt-4 inline-block text-sm font-semibold text-forest underline decoration-forest/30 underline-offset-4 hover:decoration-forest" href="{% url 'docs-admins' %}">Adminisztrátori útmutató</a>
-          </article>
-          <article class="border-t-2 border-forest pt-5">
-            <h3 class="text-lg font-bold">Alkalmazásfejlesztőknek</h3>
-            <p class="mt-3 text-sm leading-6 text-ink/60">Regisztráció és OpenID Connect integráció, a szükséges adatok és tokenek áttekintésével.</p>
-            <a class="mt-4 inline-block text-sm font-semibold text-forest underline decoration-forest/30 underline-offset-4 hover:decoration-forest" href="{% url 'docs-app-developers' %}">Fejlesztői útmutató</a>
-          </article>
-          <article class="border-t-2 border-forest pt-5">
-            <h3 class="text-lg font-bold">SZLG+ fejlesztőknek</h3>
-            <p class="mt-3 text-sm leading-6 text-ink/60">Helyi fejlesztés, a projekt felépítése, biztonsági alapelvek, tesztelés és éles kiadás.</p>
-            <a class="mt-4 inline-block text-sm font-semibold text-forest underline decoration-forest/30 underline-offset-4 hover:decoration-forest" href="{% url 'docs-szlg-developers' %}">Fejlesztői és üzemeltetői útmutató</a>
-          </article>
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <footer class="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-8 text-sm text-ink/50 sm:flex-row sm:items-center sm:justify-between lg:px-10">
-    <span>© Kőbányai Szent László Gimnázium · SZLG+</span>
-    <div class="flex flex-wrap gap-5">
-      <a class="font-medium text-forest hover:underline" href="{% url 'docs' %}">Dokumentáció és súgó</a>
-      <a class="font-medium text-forest hover:underline" href="{% url 'privacy' %}">Adatkezelési Tájékoztató</a>
     </div>
-  </footer>
-</body>
-</html>
+  </section>
+
+  <section id="mi-az-szlg-plusz" class="scroll-mt-24 bg-white py-20 sm:py-24">
+    <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+      <div class="mx-auto max-w-2xl text-center">
+        <p class="text-xs font-bold uppercase tracking-[.18em] text-copper">Egy fiók. Kevesebb súrlódás.</p>
+        <h2 class="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">Mi az az SZLG+?</h2>
+        <p class="mt-4 text-base leading-7 text-ink/60 sm:text-lg">
+          Az SZLG+ az iskola központi azonosítási szolgáltatása. A csatlakozó alkalmazásokhoz ugyanazzal a fiókkal léphetsz be, a profilodat, jelkulcsaidat és engedélyeidet pedig egy helyen érheted el.
+        </p>
+      </div>
+
+      <div class="mt-12 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <article class="rounded-2xl border border-ink/10 bg-paper/70 p-6 transition hover:-translate-y-1 hover:bg-white hover:shadow-soft">
+          <span class="grid h-11 w-11 place-items-center rounded-xl bg-mint text-lg font-bold text-forest" aria-hidden="true">01</span>
+          <h3 class="mt-5 text-lg font-bold">Központi profil</h3>
+          <p class="mt-2 text-sm leading-6 text-ink/60">A fiókadataid és a csatlakozó alkalmazásokhoz tartozó jóváhagyásaid egy helyen kezelhetők.</p>
+        </article>
+        <article class="rounded-2xl border border-ink/10 bg-paper/70 p-6 transition hover:-translate-y-1 hover:bg-white hover:shadow-soft">
+          <span class="grid h-11 w-11 place-items-center rounded-xl bg-mint text-lg font-bold text-forest" aria-hidden="true">02</span>
+          <h3 class="mt-5 text-lg font-bold">Jelkulcsos belépés, jelszó nélkül</h3>
+          <p class="mt-2 text-sm leading-6 text-ink/60">Jelkulccsal az eszközöd ujjlenyomatával, arcfelismerésével vagy PIN-kódjával léphetsz be.</p>
+        </article>
+        <article class="rounded-2xl border border-ink/10 bg-paper/70 p-6 transition hover:-translate-y-1 hover:bg-white hover:shadow-soft">
+          <span class="grid h-11 w-11 place-items-center rounded-xl bg-mint text-lg font-bold text-forest" aria-hidden="true">03</span>
+          <h3 class="mt-5 text-lg font-bold">Átlátható engedélyek</h3>
+          <p class="mt-2 text-sm leading-6 text-ink/60">Láthatod, melyik alkalmazás milyen adatokat kér, és a korábban megadott hozzáférést vissza is vonhatod.</p>
+        </article>
+        <article class="rounded-2xl border border-ink/10 bg-paper/70 p-6 transition hover:-translate-y-1 hover:bg-white hover:shadow-soft">
+          <span class="grid h-11 w-11 place-items-center rounded-xl bg-mint text-lg font-bold text-forest" aria-hidden="true">04</span>
+          <h3 class="mt-5 text-lg font-bold">Iskolai ökoszisztéma</h3>
+          <p class="mt-2 text-sm leading-6 text-ink/60">A csatlakozó szolgáltatások az iskola által kezelt fiók- és csoportadatokra építhetnek.</p>
+        </article>
+      </div>
+      <div class="mt-8 text-center">
+        <a href="{% url 'docs-users' %}" class="font-semibold text-forest underline decoration-forest/30 underline-offset-4 hover:decoration-forest">Ismerd meg a felhasználói útmutatót</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="fejlesztoknek" class="scroll-mt-24 border-y border-ink/10 bg-paper py-20 sm:py-24">
+    <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+      <div class="grid gap-10 lg:grid-cols-[.85fr_1.15fr] lg:items-end">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-[.18em] text-copper">Fejlesztőknek</p>
+          <h2 class="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">Szabványos belépés. Iskolai jogosultságok.</h2>
+        </div>
+        <p class="max-w-2xl text-base leading-7 text-ink/60">
+          Az alkalmazásod az SZLG+-ra bízhatja a felhasználó azonosítását, és — a szükséges engedélyekkel — megkaphatja a működéséhez szükséges iskolai csoportadatokat.
+        </p>
+      </div>
+
+      <div class="mt-10 grid gap-5 lg:grid-cols-2">
+        <article class="rounded-3xl bg-ink p-7 text-white shadow-soft sm:p-9">
+          <span class="inline-flex rounded-full border border-white/15 bg-white/[.07] px-3 py-1 text-xs font-semibold uppercase tracking-[.12em] text-mint">Nyílt szabvány</span>
+          <h3 class="mt-5 text-2xl font-semibold">OpenID Connect</h3>
+          <p class="mt-3 text-sm leading-7 text-white/65">Integrálj szabványos OIDC-könyvtárral. Az SZLG+ kezeli a központi hitelesítést, az alkalmazás pedig a saját szolgáltatására összpontosíthat.</p>
+          <a href="{% url 'docs-app-developers' %}" class="mt-6 inline-flex items-center gap-2 font-semibold text-mint underline decoration-white/25 underline-offset-4 hover:decoration-mint">
+            OIDC-integrációs útmutató <span aria-hidden="true">→</span>
+          </a>
+        </article>
+        <article class="rounded-3xl border border-ink/10 bg-white p-7 shadow-sm sm:p-9">
+          <span class="inline-flex rounded-full bg-mint/60 px-3 py-1 text-xs font-semibold uppercase tracking-[.12em] text-forest">Csoportalapú hozzáférés</span>
+          <h3 class="mt-5 text-2xl font-semibold">SmartGroup és ManualGroup</h3>
+          <p class="mt-3 text-sm leading-7 text-ink/60">A SmartGroup-ok a fiók szerepét jelzik, a ManualGroup-ok pedig az iskola által kezelt csoporttagságokat írják le. Az alkalmazás a szükséges csoport-hozzáféréseket szabályozottan kérheti.</p>
+          <a href="{% url 'docs-app-developers' %}" class="mt-6 inline-flex items-center gap-2 font-semibold text-forest underline decoration-forest/25 underline-offset-4 hover:decoration-forest">
+            Csoportclaim-ek a fejlesztői útmutatóban <span aria-hidden="true">→</span>
+          </a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="rollout" class="scroll-mt-24 bg-white py-20 sm:py-24">
+    <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+      <div class="max-w-2xl">
+        <p class="text-xs font-bold uppercase tracking-[.18em] text-copper">Fokozatos bevezetés</p>
+        <h2 class="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">Az SZLG+ ökoszisztéma bővül.</h2>
+        <p class="mt-4 leading-7 text-ink/60">A bevezetés alkalmazásonként halad. Az alábbi állapotok különválasztják a már elkészült integrációkat a még előttünk álló tervektől.</p>
+      </div>
+
+      <div class="mt-10 grid gap-6 lg:grid-cols-2">
+        <article class="rounded-3xl border border-forest/15 bg-paper/70 p-6 sm:p-8">
+          <div class="flex items-center gap-3">
+            <span class="grid h-10 w-10 place-items-center rounded-xl bg-forest text-white" aria-hidden="true">✓</span>
+            <div>
+              <p class="text-xs font-bold uppercase tracking-[.14em] text-forest">Elérhető</p>
+              <h3 class="mt-1 text-xl font-semibold">Már elkészült</h3>
+            </div>
+          </div>
+          <ul class="mt-6 space-y-4">
+            {% for item in rollout.available %}
+              <li class="flex gap-3 text-sm leading-6 text-ink/70">
+                <span class="mt-0.5 text-forest" aria-hidden="true">✓</span><span>{{ item }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </article>
+
+        <article class="rounded-3xl border border-ink/10 bg-white p-6 shadow-sm sm:p-8">
+          <div class="flex items-center gap-3">
+            <span class="grid h-10 w-10 place-items-center rounded-xl bg-copper/15 text-copper" aria-hidden="true">→</span>
+            <div>
+              <p class="text-xs font-bold uppercase tracking-[.14em] text-copper">Tervezett</p>
+              <h3 class="mt-1 text-xl font-semibold">Következő integrációk</h3>
+            </div>
+          </div>
+          <ul class="mt-6 grid gap-3 sm:grid-cols-2">
+            {% for app in rollout.planned_apps %}
+              <li class="rounded-xl border border-ink/10 bg-paper/70 px-4 py-3 text-sm font-semibold text-ink/75">{{ app }}</li>
+            {% endfor %}
+          </ul>
+          <p class="mt-5 text-sm leading-6 text-ink/55">Ezek még nem elkészült integrációk; a bevezetésük hátravan.</p>
+        </article>
+      </div>
+
+      <div class="mt-6 grid gap-5 lg:grid-cols-2">
+        <aside class="rounded-2xl border border-copper/20 bg-copper/5 p-6">
+          <h3 class="font-bold">Különálló bejelentkezés</h3>
+          <p class="mt-2 text-sm leading-6 text-ink/65"><strong>kampany.szlg.info</strong> a belátható jövőben továbbra is Google SSO-t fog használni.</p>
+        </aside>
+        <aside class="rounded-2xl border border-ink/10 bg-paper/70 p-6">
+          <h3 class="font-bold">Fiókok és adatbázis-migráció</h3>
+          <p class="mt-2 text-sm leading-6 text-ink/65">A kisebb alkalmazás-adatbázisok átmigrálása még nem kezdődött el. Közvetlenül regisztrálni jelenleg csak külsős fiókok tudnak.</p>
+          <a href="{% url 'register' %}" class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-forest underline decoration-forest/30 underline-offset-4 hover:decoration-forest">Külsős fiók regisztrációja <span aria-hidden="true">→</span></a>
+        </aside>
+      </div>
+
+      <article class="mt-6 overflow-hidden rounded-3xl bg-forest p-6 text-white sm:flex sm:items-center sm:justify-between sm:gap-8 sm:p-8">
+        <div class="max-w-3xl">
+          <p class="text-xs font-bold uppercase tracking-[.16em] text-mint">Tervben</p>
+          <h3 class="mt-2 text-xl font-semibold">SZLG+ bejelentkezés Django Adminhoz</h3>
+          <p class="mt-2 text-sm leading-6 text-white/70">Egy készülő Django app a szükséges titkok megadása után automatizálja az integrációt, és „Bejelentkezés SZLG+-szal” gombot jelenít meg a Django Admin bejelentkezési oldalán.</p>
+        </div>
+        <span class="mt-5 inline-flex shrink-0 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-mint sm:mt-0">Fejlesztésre vár</span>
+      </article>
+    </div>
+  </section>
+
+  <section class="border-t border-ink/10 bg-paper py-16 sm:py-20">
+    <div class="mx-auto flex max-w-5xl flex-col items-start justify-between gap-6 px-5 sm:px-8 md:flex-row md:items-center lg:px-10">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[.16em] text-copper">Kezdd itt</p>
+        <h2 class="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Egy fiók. Egy biztonságos belépés.</h2>
+        <p class="mt-2 text-sm leading-6 text-ink/60">Ismerd meg a használatot, vagy csatlakoztasd az alkalmazásodat az SZLG+-hoz.</p>
+      </div>
+      <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+        <a href="{% url 'docs-users' %}" class="inline-flex min-h-12 items-center justify-center rounded-xl border border-ink/15 bg-white px-5 font-semibold text-ink transition hover:border-forest">Felhasználói súgó</a>
+        <a href="{% url 'docs-app-developers' %}" class="inline-flex min-h-12 items-center justify-center rounded-xl bg-ink px-5 font-semibold text-white transition hover:bg-forest">Fejlesztőknek</a>
+      </div>
+    </div>
+  </section>
+</main>
+{% endblock %}

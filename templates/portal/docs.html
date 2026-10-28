@@ -1,18 +1,9 @@
-<!doctype html>
-<html lang="hu" class="h-full">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ article.title }} · SZLG+ Dokumentáció</title>
-  {% load static %}
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>tailwind.config={theme:{extend:{colors:{ink:'#102a2b',forest:'#174746',mint:'#c8f0df',copper:'#c98454',paper:'#f7f8f4'}}}}</script>
-</head>
-<body class="min-h-full bg-paper font-sans text-ink antialiased">
-  <header class="flex h-16 items-center justify-between border-b border-ink/10 bg-white px-5 sm:px-8">
-    <a href="{% url 'home' %}" class="flex items-center gap-3 font-bold"><span class="grid h-9 w-9 place-items-center rounded-xl bg-ink"><img src="{% static 'img/szlg-bagoly.svg' %}" alt="" class="h-6 w-5 brightness-0 invert"></span><span>SZLG<span class="text-copper">+</span></span></a>
-    <div class="flex items-center gap-3"><a class="hidden text-sm font-medium text-ink/60 hover:text-forest sm:inline" href="{% url 'home' %}">Főoldal</a><a class="rounded-full bg-forest px-4 py-2 text-sm font-semibold text-white hover:bg-ink" href="{% if request.user.is_authenticated %}{% url 'dashboard' %}{% else %}{% url 'login' %}{% endif %}">{% if request.user.is_authenticated %}Dashboard{% else %}Bejelentkezés{% endif %}</a></div>
-  </header>
+{% extends "portal/base.html" %}
+
+{% block title %}{{ article.title }} · SZLG+ dokumentáció{% endblock %}
+{% block meta_description %}{{ article.intro }}{% endblock %}
+
+{% block content %}
   <div class="mx-auto grid max-w-7xl gap-10 px-5 py-10 md:grid-cols-[17rem_minmax(0,1fr)] md:px-8 md:py-14">
     <aside>
       <p class="px-3 text-xs font-bold uppercase tracking-[.18em] text-ink/40">Dokumentáció</p>
@@ -26,7 +17,7 @@
         <p class="mt-2 text-sm leading-6 text-ink/55">A fiókoddal vagy hozzáféréseiddel kapcsolatos kérdésben keresd az iskola adminisztrátorát.</p>
       </div>
     </aside>
-    <main class="min-w-0 rounded-3xl border border-ink/10 bg-white px-6 py-8 shadow-sm sm:px-10 sm:py-11">
+    <main id="main-content" class="min-w-0 rounded-3xl border border-ink/10 bg-white px-6 py-8 shadow-sm sm:px-10 sm:py-11">
       <p class="text-xs font-bold uppercase tracking-[.2em] text-copper">{{ article.eyebrow }}</p>
       <h1 class="mt-4 max-w-3xl text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">{{ article.title }}</h1>
       <p class="mt-7 max-w-3xl text-base leading-8 text-ink/65">{{ article.intro }}</p>
@@ -84,6 +75,4 @@
       </div>
     </main>
   </div>
-  <footer class="border-t border-ink/10 px-5 py-6 text-center text-xs text-ink/45">Kőbányai Szent László Gimnázium · SZLG+</footer>
-</body>
-</html>
+{% endblock %}

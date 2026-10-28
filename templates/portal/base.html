@@ -1,0 +1,110 @@
+{% load static %}
+<!doctype html>
+<html lang="hu" class="h-full scroll-smooth">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102a2b">
+  <meta name="description" content="{% block meta_description %}Az SZLG+ biztonságos, központi bejelentkezést ad az iskola csatlakozó alkalmazásaihoz.{% endblock %}">
+  <title>{% block title %}SZLG+ · Egy fiók az iskolai alkalmazásokhoz{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: "#102a2b",
+            forest: "#174746",
+            mint: "#c8f0df",
+            copper: "#c98454",
+            paper: "#f7f8f4"
+          },
+          boxShadow: {
+            soft: "0 24px 70px rgb(16 42 43 / .11)"
+          }
+        }
+      }
+    };
+  </script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="flex min-h-screen flex-col bg-paper font-sans text-ink antialiased">
+  <a href="#main-content" class="sr-only z-[100] rounded-lg bg-ink px-4 py-3 text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
+    Ugrás a tartalomhoz
+  </a>
+
+  <header class="sticky top-0 z-50 border-b border-ink/10 bg-paper/95 backdrop-blur">
+    <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-3 sm:px-8 lg:px-10">
+      <a href="{% url 'home' %}" class="flex shrink-0 items-center gap-2.5" aria-label="SZLG+ főoldal">
+        <span class="grid h-10 w-10 place-items-center rounded-xl bg-ink">
+          <img src="{% static 'img/szlg-bagoly.svg' %}" alt="" class="h-6 w-5 brightness-0 invert">
+        </span>
+        <span class="text-xl font-bold tracking-tight">SZLG<span class="text-copper">+</span></span>
+      </a>
+
+      <nav class="hidden items-center gap-7 text-sm font-medium text-ink/65 md:flex" aria-label="Fő navigáció">
+        <a class="transition hover:text-forest" href="{% url 'home' %}#mi-az-szlg-plusz">Mi az az SZLG+?</a>
+        <a class="transition hover:text-forest" href="{% url 'home' %}#fejlesztoknek">Fejlesztőknek</a>
+        <a class="transition hover:text-forest" href="{% url 'docs' %}">Dokumentáció</a>
+      </nav>
+
+      <div class="flex shrink-0 items-center gap-2">
+        <a href="{% if request.user.is_authenticated %}{% url 'dashboard' %}{% else %}{% url 'login' %}{% endif %}"
+           class="inline-flex min-h-10 items-center justify-center rounded-xl bg-ink px-3.5 text-sm font-semibold text-white transition hover:bg-forest focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest sm:px-5"
+           aria-label="{% if request.user.is_authenticated %}Dashboard megnyitása{% else %}Bejelentkezés{% endif %}">
+          {% if request.user.is_authenticated %}<span class="hidden sm:inline">Dashboard</span><span class="sm:hidden">Dashboard</span>{% else %}<span class="hidden sm:inline">Bejelentkezés</span><span class="sm:hidden">Belépés</span>{% endif %}
+        </a>
+
+        <details class="relative md:hidden">
+          <summary class="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-xl border border-ink/15 bg-white text-ink transition hover:border-forest">
+            <span class="sr-only">Menü</span>
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"></path>
+            </svg>
+          </summary>
+          <nav class="absolute right-0 top-full mt-3 grid w-64 gap-1 rounded-2xl border border-ink/10 bg-white p-2 shadow-soft" aria-label="Mobil navigáció">
+            <a class="rounded-xl px-3 py-3 text-sm font-medium text-ink/75 hover:bg-paper hover:text-forest" href="{% url 'home' %}#mi-az-szlg-plusz">Mi az az SZLG+?</a>
+            <a class="rounded-xl px-3 py-3 text-sm font-medium text-ink/75 hover:bg-paper hover:text-forest" href="{% url 'home' %}#fejlesztoknek">Fejlesztőknek</a>
+            <a class="rounded-xl px-3 py-3 text-sm font-medium text-ink/75 hover:bg-paper hover:text-forest" href="{% url 'docs' %}">Dokumentáció</a>
+          </nav>
+        </details>
+      </div>
+    </div>
+  </header>
+
+  {% block content %}{% endblock %}
+
+  <footer class="mt-auto border-t border-ink/10 bg-white">
+    <div class="mx-auto grid max-w-7xl gap-8 px-5 py-10 sm:grid-cols-2 sm:px-8 lg:grid-cols-[1fr_auto_auto] lg:px-10">
+      <div>
+        <a href="{% url 'home' %}" class="inline-flex items-center gap-2.5" aria-label="SZLG+ főoldal">
+          <span class="grid h-9 w-9 place-items-center rounded-xl bg-ink">
+            <img src="{% static 'img/szlg-bagoly.svg' %}" alt="" class="h-5 w-4 brightness-0 invert">
+          </span>
+          <span class="text-lg font-bold tracking-tight">SZLG<span class="text-copper">+</span></span>
+        </a>
+        <p class="mt-3 max-w-sm text-sm leading-6 text-ink/55">Egy biztonságos iskolai fiók az összes csatlakozó alkalmazáshoz.</p>
+      </div>
+
+      <div>
+        <h2 class="text-sm font-bold">További információ</h2>
+        <nav class="mt-3 grid gap-2 text-sm text-ink/60" aria-label="Lábléc navigáció">
+          <a class="hover:text-forest hover:underline" href="{% url 'docs' %}">Dokumentáció</a>
+          <a class="hover:text-forest hover:underline" href="{% url 'privacy' %}">Adatvédelmi irányelvek</a>
+        </nav>
+      </div>
+
+      <div>
+        <h2 class="text-sm font-bold">Kapcsolat</h2>
+        <p class="mt-3 text-sm leading-6 text-ink/55">Adatvédelmi megkeresésekhez</p>
+        <a class="mt-1 inline-block text-sm font-medium text-forest underline decoration-forest/30 underline-offset-4 hover:decoration-forest" href="mailto:molnar.attila@szlgbp.hu">molnar.attila@szlgbp.hu</a>
+      </div>
+    </div>
+    <div class="border-t border-ink/10 px-5 py-4 text-center text-xs text-ink/45 sm:px-8">
+      © {% now "Y" %} Kőbányai Szent László Gimnázium · SZLG+
+    </div>
+  </footer>
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

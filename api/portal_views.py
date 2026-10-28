@@ -13,7 +13,7 @@ DOCS = {
             {
                 "title": "Belépés és fiókváltás",
                 "paragraphs": [
-                    "Jelentkezz be az iskolai fiókod e-mail-címével. Használhatsz jelszót, vagy – ha korábban beállítottad – jelkulcsot (passkey). A jelkulcs lehet az eszközödön tárolt ujjlenyomat, arcfelismerés vagy biztonsági kulcs.",
+                    "Jelentkezz be az iskolai fiókod e-mail-címével. Használhatsz jelszót, vagy – ha korábban beállítottad – jelkulcsot. A jelkulcs lehet az eszközödön tárolt ujjlenyomat, arcfelismerés vagy biztonsági kulcs.",
                     "Ha több fiókot használsz ugyanazon az eszközön, a bejelentkezési oldalon választhatsz a megjegyzett fiókok közül, vagy a „Másik fiók használata” lehetőséggel új fiókkal léphetsz be. Elfelejtett jelszó esetén használd a bejelentkezési oldalon található jelszó-visszaállítást.",
                 ],
                 "bullets": [
@@ -86,7 +86,7 @@ DOCS = {
                     "A Közérdekű jelző csak a böngészhető csoportlistában való megjelenést szabályozza; nem hozzáférés-védelem.",
                     "A csoportos postafiókot explicit módon jelöld meg a fiók adatlapján, majd a Címtár teendők felületén kapcsold egy vagy több címtárcsoporthoz.",
                     "Az SZLG+ jogosultsági körök (Django Groups) nem kerülnek az ID token csoportclaimjeibe.",
-                    "Fiók letiltásakor állítsd az aktív állapotot kikapcsoltra a törlés helyett; a passkey-belépés is letiltott lesz.",
+                    "Fiók letiltásakor állítsd az aktív állapotot kikapcsoltra a törlés helyett; a jelkulcsos belépés is letiltott lesz.",
                 ],
             },
             {
@@ -322,13 +322,13 @@ DOCS = {
             {
                 "title": "Projektfelépítés és fontos invariánsok",
                 "paragraphs": [
-                    "Az api/models.py tartalmazza a felhasználó-, profil-, manual group-, SchoolClass-, InstitutionalRole-, csoportos postafiók-, passkey-, alkalmazásprofil- és tartós alkalmazáskapcsolat modelleket. Az api/directory.py egyesíti a számított és kézzel kezelt címtárcsoportokat, az api/dashboard_views.py kezeli a címtárat és a Dashboardot, az api/oauth.py állítja elő az OIDC claim-eket.",
+                    "Az api/models.py tartalmazza a felhasználó-, profil-, manual group-, SchoolClass-, InstitutionalRole-, csoportos postafiók-, jelkulcs-, alkalmazásprofil- és tartós alkalmazáskapcsolat modelleket. Az api/directory.py egyesíti a számított és kézzel kezelt címtárcsoportokat, az api/dashboard_views.py kezeli a címtárat és a Dashboardot, az api/oauth.py állítja elő az OIDC claim-eket.",
                     "A felhasználói modell egyedi (AUTH_USER_MODEL = api.CustomUser), ezért új adatbázisoknál mindig a projekt migrációival indulj. Már élesített user tábla átállítása más user modellre nem egyszerű migráció: adatkonverzió és külön terv szükséges.",
                 ],
                 "bullets": [
                     "A kliensprotokoll Authorization Code + kötelező PKCE (S256), RS256 ID tokennel; implicit és password grant, dinamikus kliensregisztráció és wildcards nincsenek engedélyezve.",
                     "Az OIDC sub stabil UUID. A groups scope a smart_groups, manual_groups és school_groups mellett az app-specifikus application_required_groups és application_group_access claimet is adja. Django jogosultsági csoportok nem OIDC claim-ek és nem címtárcsoportok.",
-                    "A jelszó- és passkey-végpontok rate limitedek. Több worker esetén közös cache szükséges ahhoz, hogy a limitek közösek legyenek.",
+                    "A jelszavas és jelkulcsos végpontok rate limitedek. Több worker esetén közös cache szükséges ahhoz, hogy a limitek közösek legyenek.",
                 ],
             },
             {
@@ -360,6 +360,23 @@ DOCS = {
     },
 }
 
+LANDING_ROLLOUT = {
+    "available": [
+        "Az SZLG+ projekt és a dokumentáció nyilvánosan elérhető.",
+        "Az SZLG+-bejelentkezés elkészült az Igazoláskezelő alkalmazásban.",
+        "Az SZLG+-bejelentkezés elkészült az FTV alkalmazásban.",
+    ],
+    "planned_apps": [
+        "sport.szlg.info",
+        "Stúdió",
+        "app.szlg.info",
+        "NodeWS",
+        "szlg.info",
+        "zsuri.szlg.info",
+    ],
+}
+
+
 DOC_LINKS = [
     {"slug": "felhasznalok", "label": "Felhasználóknak", "name": "docs-users"},
     {"slug": "adminok", "label": "SZLG+ adminisztrátoroknak", "name": "docs-admins"},
@@ -378,7 +395,7 @@ DOC_LINKS = [
 
 @require_GET
 def landing(request):
-    return render(request, "portal/landing.html", privacy_context())
+    return render(request, "portal/landing.html", {"rollout": LANDING_ROLLOUT})
 
 
 @require_GET
