@@ -242,35 +242,38 @@ class CustomUser(AbstractUser):
         """Check if the user has a student profile."""
         if self.is_group_mailbox:
             return False
+        info = email_info(self.email)
+        if not info.is_in_school_domain:
+            return False
         if hasattr(self, "student_profile"):
             return True
         if hasattr(self, "teacher_profile"):
             return False
-        if email_info(self.email).is_student:
-            return True
-        return False
+        return info.is_student
 
     @property
     def is_part_time_student(self) -> bool:
         """Check if the user has a part-time student profile."""
-        if self.is_group_mailbox:
+        info = email_info(self.email)
+        if self.is_group_mailbox or not info.is_in_school_domain:
             return False
         if hasattr(self, "part_time_student_profile"):
             return True
         if hasattr(self, "teacher_profile") and not hasattr(self, "student_profile"):
             return False
-        if email_info(self.email).is_part_time_student:
-            return True
-        return False
+        return info.is_part_time_student
 
     @property
     def is_computer_test_account(self) -> bool:
         """Check if the user has a computer test account profile."""
         if self.is_group_mailbox:
             return False
+        info = email_info(self.email)
+        if not info.is_in_school_domain:
+            return False
         if hasattr(self, "computer_test_account_profile"):
             return True
-        if email_info(self.email).is_computer_test_account:
+        if info.is_computer_test_account:
             return True
         return False
 
@@ -284,9 +287,12 @@ class CustomUser(AbstractUser):
         """Check if the user has a teacher or school employee profile."""
         if self.is_group_mailbox:
             return False
+        info = email_info(self.email)
+        if not info.is_in_school_domain:
+            return False
         if hasattr(self, "teacher_profile") or hasattr(self, "teacher_or_school_employee_profile"):
             return True
-        if email_info(self.email).is_teacher_or_school_employee:
+        if info.is_teacher_or_school_employee:
             return True
         return False
 
@@ -294,21 +300,35 @@ class CustomUser(AbstractUser):
     def account_type(self) -> str:
         if self.is_group_mailbox:
             return "Csoportos e-mail"
+        if self.is_student and self.is_teacher:
+            return "Diák és tanár"
+        if self.is_student:
+            return (
+                "Esti tagozatos diák"
+                if self.is_part_time_student
+                else "Nappali tagozatos diák"
+            )
         account_types = [
-            (self.is_student, "Nappali tagozatos diák"),
-            (self.is_part_time_student, "Esti tagozatos diák"),
+            (self.is_teacher, "Tanár/iskolai alkalmazott"),
             (self.is_computer_test_account, "Számítógéptermi teszt fiók"),
             (self.is_group_email, "Csoportos e-mail"),
-            (self.is_teacher_or_school_employee, "Tanár/iskolai alkalmazott"),
         ]
         for attr_value, description in account_types:
             if attr_value:
                 return description
-        return "Ismeretlen"
+        return (
+            "Egyéb SZLG-s profil"
+            if email_info(self.email).is_in_school_domain
+            else "Külsős profil"
+        )
 
     @property
     def is_teacher(self) -> bool:
-        return not self.is_group_mailbox and hasattr(self, "teacher_profile")
+        return (
+            not self.is_group_mailbox
+            and email_info(self.email).is_in_school_domain
+            and hasattr(self, "teacher_profile")
+        )
 
     @property
     def smart_groups(self) -> dict[str, bool]:
@@ -327,6 +347,13 @@ class CustomUser(AbstractUser):
 
     def save(self, *args, **kwargs):
         self.email = self.email.strip().lower()
+
+        school_domain = (get_school_domain() or "").strip().lower()
+        if school_domain and not school_domain.startswith("@"):
+            school_domain = "@" + school_domain.lstrip("@")
+        if school_domain and self.email.endswith(school_domain):
+            self.email_verified = True
+
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:

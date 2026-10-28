@@ -1,0 +1,32 @@
+{% extends "admin/mptt_change_list.html" %}
+
+{% block content %}
+  <div class="module" id="smart-groups">
+    <h2>SmartGroupok <span class="quiet">(csak olvasható)</span></h2>
+    <p>
+      Ezek számított csoportok: a tagságuk a profiladatokból vagy a fiók jelzőiből
+      származik. Itt nem jelölhetők ki és nem szerkeszthetők.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Csoport</th>
+          <th scope="col">Azonosító</th>
+          <th scope="col">Leírás</th>
+          <th scope="col">Aktív tagok</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for group in smart_groups %}
+          <tr>
+            <th scope="row">{{ group.name }}</th>
+            <td><code>{{ group.key }}</code></td>
+            <td>{{ group.description }}</td>
+            <td>{{ group.member_count }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {{ block.super }}
+{% endblock %}

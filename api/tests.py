@@ -1014,6 +1014,103 @@ class DashboardTests(TestCase):
     SESSION_COOKIE_SECURE=False,
     CSRF_COOKIE_SECURE=False,
 )
+class ManualGroupAdminTests(TestCase):
+    def setUp(self):
+        self.admin = CustomUser.objects.create_superuser(
+            email="admin@example.org", password="admin-password-123!x"
+        )
+        self.client.force_login(self.admin)
+
+    def test_changelist_shows_calculated_smart_groups_read_only(self):
+        student = CustomUser.objects.create_user(email="student@example.org")
+        StudentProfile.objects.create(user=student)
+
+        response = self.client.get("/admin/api/manualgroup/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "SmartGroupok")
+        self.assertContains(response, "csak olvasható")
+        self.assertContains(response, "smart-student")
+        student_group = next(
+            group
+            for group in response.context["smart_groups"]
+            if group["key"] == "smart-student"
+        )
+        self.assertEqual(student_group["member_count"], 1)
+
+    def test_bulk_actions_change_public_flag(self):
+        group = ManualGroup.objects.create(name="Stúdiósok", slug="studiosok")
+
+        public_response = self.client.post(
+            "/admin/api/manualgroup/",
+            {
+                "action": "make_selected_groups_public",
+                "_selected_action": [str(group.pk)],
+            },
+        )
+        self.assertEqual(public_response.status_code, 302)
+        group.refresh_from_db()
+        self.assertTrue(group.is_public)
+
+        private_response = self.client.post(
+            "/admin/api/manualgroup/",
+            {
+                "action": "make_selected_groups_private",
+                "_selected_action": [str(group.pk)],
+            },
+        )
+        self.assertEqual(private_response.status_code, 302)
+        group.refresh_from_db()
+        self.assertFalse(group.is_public)
+
+    def test_bulk_move_preserves_selected_subtree(self):
+        destination = ManualGroup.objects.create(name="Szakkörök", slug="szakkorok")
+        source = ManualGroup.objects.create(name="Stúdiósok", slug="studiosok")
+        child = ManualGroup.objects.create(
+            name="Betanulók", slug="betanulok", parent=source
+        )
+
+        action_response = self.client.post(
+            "/admin/api/manualgroup/",
+            {
+                "action": "move_selected_groups_under_parent",
+                "_selected_action": [str(source.pk), str(child.pk)],
+            },
+        )
+        self.assertEqual(action_response.status_code, 200)
+        self.assertContains(action_response, "Új szülőcsoport")
+
+        move_response = self.client.post(
+            "/admin/api/manualgroup/bulk-move/",
+            {
+                "_selected_action": [str(source.pk), str(child.pk)],
+                "parent": str(destination.pk),
+            },
+        )
+        self.assertEqual(move_response.status_code, 302)
+        source.refresh_from_db()
+        child.refresh_from_db()
+        self.assertEqual(source.parent, destination)
+        self.assertEqual(child.parent, source)
+
+        cycle_response = self.client.post(
+            "/admin/api/manualgroup/bulk-move/",
+            {
+                "_selected_action": [str(source.pk)],
+                "parent": str(child.pk),
+            },
+        )
+        self.assertEqual(cycle_response.status_code, 200)
+        self.assertIn("parent", cycle_response.context["form"].errors)
+        source.refresh_from_db()
+        self.assertEqual(source.parent, destination)
+
+
+@override_settings(
+    SECURE_SSL_REDIRECT=False,
+    SESSION_COOKIE_SECURE=False,
+    CSRF_COOKIE_SECURE=False,
+)
 class GlobalConfigTests(TestCase):
     def setUp(self):
         self.admin = CustomUser.objects.create_superuser(

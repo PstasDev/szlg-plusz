@@ -45,7 +45,7 @@ ALLOWED_FIELDS = {
     "om_id",
     "tagozat",
     "employee_number",
-    "is_student",
+    "import_role",
 }
 
 FIELD_LABELS = {
@@ -59,6 +59,65 @@ FIELD_LABELS = {
     "tagozat": "Tagozat",
     "employee_number": "Munkatársi azonosító",
 }
+
+STUDENT_ROLE = "student"
+TEACHER_ROLE = "teacher"
+
+
+def _profile_roles(
+    record,
+    info,
+    *,
+    existing_student_profile=False,
+    existing_teacher_profile=False,
+):
+    if not info or not info.is_in_school_domain:
+        return set()
+
+    record = record if isinstance(record, dict) else {}
+    import_role = record.get("import_role")
+    allowed_import_roles = {STUDENT_ROLE, TEACHER_ROLE, "school_other", "external"}
+    if not isinstance(import_role, str) or import_role not in allowed_import_roles:
+        import_role = None
+    has_student_data = any(
+        record.get(field) not in (None, "")
+        for field in ("osztaly", "kezdes_eve", "szekcio", "om_id", "tagozat")
+    )
+    employee_number = record.get("employee_number")
+    has_employee_number = isinstance(employee_number, str) and bool(employee_number.strip())
+
+    roles = set()
+    if existing_student_profile:
+        roles.add(STUDENT_ROLE)
+    if existing_teacher_profile:
+        roles.add(TEACHER_ROLE)
+
+    if import_role in {STUDENT_ROLE, TEACHER_ROLE}:
+        roles.add(import_role)
+        return roles
+    if import_role in {"school_other", "external"}:
+        return roles
+
+    student_from_email = (
+        not existing_teacher_profile
+        and not has_employee_number
+        and (info.is_student or info.is_part_time_student)
+    )
+    if not existing_teacher_profile and (has_student_data or student_from_email):
+        roles.add(STUDENT_ROLE)
+    if has_employee_number:
+        roles.add(TEACHER_ROLE)
+    return roles
+
+
+def _profile_label(roles, info):
+    if STUDENT_ROLE in roles and TEACHER_ROLE in roles:
+        return "Diák és tanár"
+    if STUDENT_ROLE in roles:
+        return "Diák"
+    if TEACHER_ROLE in roles:
+        return "Tanár"
+    return "Egyéb SZLG-s profil" if info and info.is_in_school_domain else "Külsős profil"
 
 
 def superuser_required(view_func):
@@ -212,15 +271,25 @@ def _tagozat_index(tagozatok=None):
     return index
 
 
+def _default_import_role(roles, info):
+    if STUDENT_ROLE in roles:
+        return STUDENT_ROLE
+    if TEACHER_ROLE in roles:
+        return TEACHER_ROLE
+    return "school_other" if info and info.is_in_school_domain else "external"
+
+
 def _normalize_record(
     record,
     tagozat_index=None,
     school_domain=None,
     *,
     allow_unresolved_tagozat=False,
+    existing_student_profile=False,
+    existing_teacher_profile=False,
 ):
     if not isinstance(record, dict):
-        return None, ["A rekordnak JSON-objektumnak kell lennie."]
+        return None, ["A rekordnak JSON-objektumnak kell lennie."], set()
 
     errors = []
     unknown = sorted(set(record) - ALLOWED_FIELDS)
@@ -241,24 +310,14 @@ def _normalize_record(
             errors.append("Az e-mail-cím legfeljebb 254 karakter lehet.")
 
     normalized = {"email": email} if email else {}
-    user_fields = (
+    for key, label, max_length in (
         ("last_name", "Vezetéknév", 150),
         ("first_name", "Keresztnév", 150),
         ("phone", "Telefonszám", 32),
-        ("om_id", "OM azonosító", 32),
-        ("employee_number", "Munkatársi azonosító", 32),
-    )
-    for key, label, max_length in user_fields:
+    ):
         value = _text_value(record, key, label, errors, max_length=max_length)
         if value:
             normalized[key] = value
-
-    is_student = record.get("is_student")
-    if is_student is not None:
-        if not isinstance(is_student, bool):
-            errors.append("Az „is_student” mező logikai érték legyen.")
-        else:
-            normalized["is_student"] = is_student
 
     birth_date = record.get("date_of_birth")
     if birth_date not in (None, ""):
@@ -270,94 +329,128 @@ def _normalize_record(
         else:
             normalized["date_of_birth"] = parsed_birth_date.isoformat()
 
-    osztaly = _text_value(record, "osztaly", "Osztály", errors, max_length=40)
+    info = email_info(email, school_domain=school_domain) if email else None
+    import_role = record.get("import_role")
+    allowed_roles = {STUDENT_ROLE, TEACHER_ROLE, "school_other", "external"}
+    if import_role not in (None, ""):
+        if not isinstance(import_role, str) or import_role not in allowed_roles:
+            errors.append("Válassz érvényes importprofilt.")
+            import_role = None
+        elif import_role == "external" and info and info.is_in_school_domain:
+            errors.append("SZLG-s e-mail-címhez az importprofil csak diák, tanár vagy egyéb SZLG-s lehet.")
+        elif import_role != "external" and info and not info.is_in_school_domain:
+            errors.append("Külsős e-mail-címhez csak külsős importprofil választható.")
+
+    raw_osztaly = record.get("osztaly")
     raw_year = record.get("kezdes_eve")
     raw_section = record.get("szekcio")
     has_direct_class = raw_year not in (None, "") or raw_section not in (None, "")
-    if osztaly and has_direct_class:
-        errors.append("Az „osztaly” mező mellett ne add meg külön a „kezdes_eve” és „szekcio” mezőt.")
-    elif osztaly:
-        try:
-            start_year, section = _parse_class(osztaly)
-            normalized["kezdes_eve"] = start_year
-            normalized["szekcio"] = section
-        except ValueError as error:
-            errors.append(str(error))
-    elif has_direct_class:
-        if raw_year in (None, "") or raw_section in (None, ""):
-            errors.append("A „kezdes_eve” és „szekcio” mezőt együtt add meg.")
-        else:
-            start_year = None
-            if isinstance(raw_year, bool) or not (
-                isinstance(raw_year, int)
-                or isinstance(raw_year, str)
-                and raw_year.strip().isdigit()
-            ):
-                errors.append("A „kezdes_eve” pozitív egész évszám legyen.")
-            else:
-                start_year = int(raw_year)
-                if start_year < 1900 or start_year > _current_school_year() + 5:
-                    errors.append("A „kezdes_eve” nem érvényes évszám.")
-            section = _text_value(
-                {"szekcio": raw_section},
-                "szekcio",
-                "Szekció",
-                errors,
-                max_length=10,
-                uppercase=True,
-            )
-            if start_year is not None and section:
+    roles = _profile_roles(
+        record,
+        info,
+        existing_student_profile=existing_student_profile,
+        existing_teacher_profile=existing_teacher_profile,
+    )
+    if import_role:
+        normalized["import_role"] = import_role
+
+    if STUDENT_ROLE in roles:
+        om_id = _text_value(record, "om_id", "OM azonosító", errors, max_length=32)
+        if om_id:
+            normalized["om_id"] = om_id
+
+        osztaly = _text_value(record, "osztaly", "Osztály", errors, max_length=40)
+        if osztaly and has_direct_class:
+            errors.append("Az „osztaly” mező mellett ne add meg külön a „kezdes_eve” és „szekcio” mezőt.")
+        elif osztaly:
+            try:
+                start_year, section = _parse_class(osztaly)
                 normalized["kezdes_eve"] = start_year
                 normalized["szekcio"] = section
+            except ValueError as error:
+                errors.append(str(error))
+        elif has_direct_class:
+            if raw_year in (None, "") or raw_section in (None, ""):
+                errors.append("A „kezdes_eve” és „szekcio” mezőt együtt add meg.")
+            else:
+                start_year = None
+                if isinstance(raw_year, bool) or not (
+                    isinstance(raw_year, int)
+                    or isinstance(raw_year, str)
+                    and raw_year.strip().isdigit()
+                ):
+                    errors.append("A „kezdes_eve” pozitív egész évszám legyen.")
+                else:
+                    start_year = int(raw_year)
+                    if start_year < 1900 or start_year > _current_school_year() + 5:
+                        errors.append("A „kezdes_eve” nem érvényes évszám.")
+                section = _text_value(
+                    {"szekcio": raw_section},
+                    "szekcio",
+                    "Szekció",
+                    errors,
+                    max_length=10,
+                    uppercase=True,
+                )
+                if start_year is not None and section:
+                    normalized["kezdes_eve"] = start_year
+                    normalized["szekcio"] = section
 
-    if (
-        not osztaly
-        and not has_direct_class
-        and email
-        and is_student is not False
-        and (is_student is True or not normalized.get("employee_number"))
-    ):
-        inferred_class = email_info(
-            email,
-            school_domain=school_domain,
-        ).class_from_email
-        if inferred_class:
-            normalized["kezdes_eve"], normalized["szekcio"] = inferred_class
+        if not osztaly and not has_direct_class and info:
+            inferred_class = info.class_from_email
+            if inferred_class:
+                normalized["kezdes_eve"], normalized["szekcio"] = inferred_class
 
-    tagozat_value = _text_value(
-        record, "tagozat", "Tagozat", errors, max_length=120
-    )
-    if tagozat_value:
-        if tagozat_index is None:
-            tagozatok = list(
-                Tagozat.objects.filter(
-                    Q(slug__iexact=tagozat_value) | Q(name__iexact=tagozat_value)
-                ).only("id", "name", "slug")[:2]
-            )
-        else:
-            tagozatok = tagozat_index.get(tagozat_value.casefold(), [])[:2]
-        if len(tagozatok) == 1:
-            normalized["tagozat"] = tagozatok[0].slug
-        elif allow_unresolved_tagozat:
-            normalized["is_student"] = True
-        elif tagozatok:
-            errors.append(f"A(z) „{tagozat_value}” tagozatnév nem egyértelmű.")
-        else:
-            errors.append(f"Nem található ilyen tagozat: „{tagozat_value}”.")
-
-    student_data = any(
-        normalized.get(field)
-        for field in ("kezdes_eve", "szekcio", "om_id", "tagozat")
-    ) or bool(tagozat_value)
-    if is_student is False and student_data:
-        errors.append(
-            "A rekordot nem diákként jelölted meg, de diákadat-mezőt is kitöltöttél. "
-            "Jelöld diáknak, vagy töröld az osztály-, tagozat- és OM-adatokat."
+        tagozat_value = _text_value(
+            record, "tagozat", "Tagozat", errors, max_length=120
         )
+        if tagozat_value:
+            if tagozat_index is None:
+                tagozatok = list(
+                    Tagozat.objects.filter(
+                        Q(slug__iexact=tagozat_value) | Q(name__iexact=tagozat_value)
+                    ).only("id", "name", "slug")[:2]
+                )
+            else:
+                tagozatok = tagozat_index.get(tagozat_value.casefold(), [])[:2]
+            if len(tagozatok) == 1:
+                normalized["tagozat"] = tagozatok[0].slug
+            elif allow_unresolved_tagozat:
+                pass
+            elif tagozatok:
+                errors.append(f"A(z) „{tagozat_value}” tagozatnév nem egyértelmű.")
+            else:
+                errors.append(f"Nem található ilyen tagozat: „{tagozat_value}”.")
+    if TEACHER_ROLE in roles:
+        employee_number = _text_value(
+            record,
+            "employee_number",
+            "Munkatársi azonosító",
+            errors,
+            max_length=32,
+        )
+        if employee_number:
+            normalized["employee_number"] = employee_number
 
     if errors:
-        return None, errors
-    return normalized, []
+        return None, errors, roles
+    return normalized, [], roles
+
+
+def _profile_role_warnings(record, roles):
+    if not isinstance(record, dict):
+        return []
+    student_values = any(
+        record.get(field)
+        for field in ("osztaly", "kezdes_eve", "szekcio", "om_id", "tagozat")
+    )
+    employee_number = record.get("employee_number")
+    warnings = []
+    if STUDENT_ROLE not in roles and student_values:
+        warnings.append("A diákprofil-mezők nem relevánsak a felismert profilnál, ezért kimaradnak.")
+    if TEACHER_ROLE not in roles and employee_number:
+        warnings.append("A munkatársi azonosító nem releváns a felismert profilnál, ezért kimarad.")
+    return warnings
 
 
 def _preview_records(records, school_domain=None):
@@ -368,7 +461,7 @@ def _preview_records(records, school_domain=None):
     tagozat_by_slug = {tagozat.slug: tagozat for tagozat in tagozatok}
     school_domain = school_domain if school_domain is not None else get_school_domain()
     for index, record in enumerate(records, start=1):
-        normalized, errors = _normalize_record(
+        normalized, errors, roles = _normalize_record(
             record,
             tagozat_index,
             school_domain,
@@ -390,40 +483,18 @@ def _preview_records(records, school_domain=None):
             else None
         )
         email_class = email_record_info.class_from_email if email_record_info else None
-        raw_student = record.get("is_student") if isinstance(record, dict) else None
-        raw_employee_number = (
-            record.get("employee_number") if isinstance(record, dict) else None
-        )
-        if isinstance(raw_employee_number, str):
-            raw_employee_number = raw_employee_number.strip()
-        explicit_student = isinstance(record, dict) and bool(
-            raw_student is True
-            or record.get("osztaly")
-            or record.get("kezdes_eve") not in (None, "")
-            or record.get("szekcio") not in (None, "")
-            or record.get("om_id")
-            or record.get("tagozat")
-        )
-        email_student = bool(
-            email_record_info
-            and (email_record_info.is_student or email_record_info.is_part_time_student)
-        )
-        student_hint = bool(
-            explicit_student
-            or (
-                raw_student is not False
-                and not raw_employee_number
-                and email_student
-            )
-        )
         raw_tagozat = (
             record.get("tagozat", "").strip()
             if isinstance(record, dict) and isinstance(record.get("tagozat"), str)
             else ""
         )
         unresolved_tagozat = bool(
-            normalized is not None and raw_tagozat and not normalized.get("tagozat")
+            normalized is not None
+            and STUDENT_ROLE in roles
+            and raw_tagozat
+            and not normalized.get("tagozat")
         )
+        profile_warnings = _profile_role_warnings(record, roles)
         prepared.append(
             {
                 "index": index,
@@ -433,15 +504,17 @@ def _preview_records(records, school_domain=None):
                 "class_inferred": bool(
                     email_class
                     and not has_explicit_class
-                    and isinstance(record, dict)
-                    and record.get("is_student") is not False
-                    and (
-                        record.get("is_student") is True
-                        or not record.get("employee_number")
-                    )
-                    and student_hint
+                    and normalized is not None
+                    and STUDENT_ROLE in roles
                 ),
-                "student_hint": student_hint,
+                "roles": roles,
+                "role_label": _profile_label(roles, email_record_info),
+                "import_role": (
+                    normalized.get("import_role")
+                    if normalized
+                    else _default_import_role(roles, email_record_info)
+                ),
+                "profile_warnings": profile_warnings,
                 "unresolved_tagozat": unresolved_tagozat,
                 "tagozat_warning": (
                     f"A(z) „{raw_tagozat}” tagozat nem azonosítható; válassz helyette tagozatot bulkban."
@@ -463,7 +536,7 @@ def _preview_records(records, school_domain=None):
 
     existing_users = {}
     existing_profiles = {}
-    existing_teacher_profiles = set()
+    existing_teacher_profiles = {}
     valid_emails = [
         row["data"]["email"] for row in prepared if row["data"] is not None
     ]
@@ -478,34 +551,65 @@ def _preview_records(records, school_domain=None):
                 user_id__in=[user.pk for user in existing_users.values()]
             ).select_related("tagozat")
         }
-        existing_teacher_profiles = set(
+        existing_teacher_profiles = dict(
             TeacherProfile.objects.filter(
                 user_id__in=[user.pk for user in existing_users.values()]
-            ).values_list("user_id", flat=True)
+            ).values_list("user_id", "employee_number")
         )
 
     for row in prepared:
-        data = row["data"]
-        if data is None or not row["class_inferred"]:
+        if row["data"] is None:
             continue
         existing_user = existing_users.get(row["email"])
-        teacher_profile = bool(
+        original_record = records[row["index"] - 1]
+        student_profile = existing_profiles.get(existing_user.pk) if existing_user else None
+        teacher_profile_exists = bool(
             existing_user and existing_user.pk in existing_teacher_profiles
         )
-        original_record = records[row["index"] - 1]
-        explicitly_student = isinstance(original_record, dict) and bool(
-            original_record.get("is_student") is True
-            or original_record.get("osztaly")
+        normalized, errors, roles = _normalize_record(
+            original_record,
+            tagozat_index,
+            school_domain,
+            allow_unresolved_tagozat=True,
+            existing_student_profile=student_profile is not None,
+            existing_teacher_profile=teacher_profile_exists,
+        )
+        row["data"] = normalized
+        row["errors"] = errors
+        row["roles"] = roles
+        info = email_info(row["email"], school_domain=school_domain) if row["email"] else None
+        row["role_label"] = _profile_label(roles, info)
+        row["import_role"] = (
+            normalized.get("import_role")
+            if normalized
+            else _default_import_role(roles, info)
+        )
+        has_explicit_class = isinstance(original_record, dict) and bool(
+            (isinstance(original_record.get("osztaly"), str) and original_record["osztaly"].strip())
             or original_record.get("kezdes_eve") not in (None, "")
             or original_record.get("szekcio") not in (None, "")
-            or original_record.get("om_id")
-            or original_record.get("tagozat")
         )
-        if teacher_profile and not explicitly_student:
-            data.pop("kezdes_eve", None)
-            data.pop("szekcio", None)
-            data["is_student"] = False
-            row["class_inferred"] = False
+        row["class_inferred"] = bool(
+            normalized
+            and STUDENT_ROLE in roles
+            and info
+            and info.class_from_email
+            and not has_explicit_class
+        )
+        row["unresolved_tagozat"] = bool(
+            normalized
+            and STUDENT_ROLE in roles
+            and original_record.get("tagozat")
+            and not normalized.get("tagozat")
+        )
+        row["tagozat_warning"] = (
+            f"A(z) „{original_record.get('tagozat')}” tagozat nem azonosítható; válassz helyette tagozatot bulkban."
+            if row["unresolved_tagozat"]
+            else ""
+        )
+        row["profile_warnings"] = (
+            _profile_role_warnings(original_record, roles)
+        )
 
     rows = []
     counts = {"new": 0, "existing": 0, "invalid": 0}
@@ -517,10 +621,17 @@ def _preview_records(records, school_domain=None):
             display_name = ""
             class_label = ""
             tagozat_label = ""
+            om_id_label = ""
+            employee_number_label = ""
             needs_tagozat = False
-            is_student = row["student_hint"]
+            roles = row["roles"]
+            is_student = STUDENT_ROLE in roles
+            is_teacher = TEACHER_ROLE in roles
             has_student_profile = False
-            warnings = [row["tagozat_warning"]] if row["tagozat_warning"] else []
+            has_teacher_profile = False
+            warnings = [*row["profile_warnings"]]
+            if row["tagozat_warning"]:
+                warnings.append(row["tagozat_warning"])
             counts["invalid"] += 1
         else:
             email = data["email"]
@@ -535,53 +646,58 @@ def _preview_records(records, school_domain=None):
             else:
                 counts["new"] += 1
             profile = existing_profiles.get(existing_user.pk) if existing_user else None
-            has_student_profile = profile is not None
-            profile_tagozat = profile.tagozat if profile and profile.tagozat_id else None
-            record_tagozat = tagozat_by_slug.get(data.get("tagozat"))
-            known_tagozat = profile_tagozat or record_tagozat
-            tagozat_label = known_tagozat.name if known_tagozat else ""
-
-            class_year = data.get("kezdes_eve")
-            class_section = data.get("szekcio")
-            if class_year is None and profile:
-                class_year = profile.kezdes_eve
-            if not class_section and profile:
-                class_section = profile.szekcio
-            if class_year is not None and class_section:
-                class_label = f"{class_year}{class_section}"
-
-            email_info_for_row = email_info(email, school_domain=school_domain)
-            teacher_profile = bool(
+            teacher_employee_number = (
+                existing_teacher_profiles.get(existing_user.pk) if existing_user else ""
+            )
+            roles = row["roles"]
+            is_student = STUDENT_ROLE in roles
+            is_teacher = TEACHER_ROLE in roles
+            has_student_profile = bool(profile and is_student)
+            has_teacher_profile = bool(
                 existing_user and existing_user.pk in existing_teacher_profiles
             )
-            is_student = bool(
-                data.get("is_student") is True
-                or data.get("om_id")
-                or data.get("kezdes_eve") is not None
-                or data.get("tagozat")
-                or profile
-                or (
-                    data.get("is_student") is not False
-                    and not data.get("employee_number")
-                    and not teacher_profile
-                    and (
-                        email_info_for_row.is_student
-                        or email_info_for_row.is_part_time_student
-                    )
-                )
-            )
-            needs_tagozat = is_student and known_tagozat is None
-            warnings = [row["tagozat_warning"]] if row["tagozat_warning"] else []
+            class_label = ""
+            tagozat_label = ""
+            om_id_label = ""
+            employee_number_label = ""
+            needs_tagozat = False
+            if is_student:
+                profile_tagozat = profile.tagozat if profile and profile.tagozat_id else None
+                record_tagozat = tagozat_by_slug.get(data.get("tagozat"))
+                known_tagozat = profile_tagozat or record_tagozat
+                tagozat_label = known_tagozat.name if known_tagozat else ""
+                class_year = data.get("kezdes_eve")
+                class_section = data.get("szekcio")
+                if class_year is None and profile:
+                    class_year = profile.kezdes_eve
+                if not class_section and profile:
+                    class_section = profile.szekcio
+                if class_year is not None and class_section:
+                    class_label = f"{class_year}{class_section}"
+                om_id_label = data.get("om_id") or (profile.om_id if profile else "")
+                needs_tagozat = known_tagozat is None
+            if is_teacher:
+                employee_number_label = data.get("employee_number") or teacher_employee_number or ""
+            warnings = [*row["profile_warnings"]]
+            if row["tagozat_warning"]:
+                warnings.append(row["tagozat_warning"])
         rows.append(
             {
                 "index": row["index"],
                 "email": email,
                 "display_name": display_name,
+                "profile_role_label": row["role_label"],
+                "profile_roles": sorted(roles),
+                "import_role": row["import_role"],
                 "class_label": class_label,
                 "class_inferred": row["class_inferred"],
                 "is_student": is_student,
+                "is_teacher": is_teacher,
                 "has_student_profile": has_student_profile,
+                "has_teacher_profile": has_teacher_profile,
                 "tagozat_label": tagozat_label,
+                "om_id_label": om_id_label,
+                "employee_number_label": employee_number_label,
                 "needs_tagozat": needs_tagozat,
                 "warnings": warnings,
                 "status": status,
@@ -611,6 +727,22 @@ def _apply_import_record(data, source_apps):
         if created:
             # No password is imported or guessed. Django stores an unusable password.
             user = CustomUser.objects.create_user(email=data["email"])
+
+        try:
+            existing_student_profile = user.student_profile
+        except StudentProfile.DoesNotExist:
+            existing_student_profile = None
+        try:
+            user.teacher_profile
+            existing_teacher_profile = True
+        except TeacherProfile.DoesNotExist:
+            existing_teacher_profile = False
+        roles = _profile_roles(
+            data,
+            email_info(user.email),
+            existing_student_profile=existing_student_profile is not None,
+            existing_teacher_profile=existing_teacher_profile,
+        )
 
         added = []
         preserved = []
@@ -664,11 +796,7 @@ def _apply_import_record(data, source_apps):
         if user_updates:
             user.save(update_fields=user_updates)
 
-        has_student_data = data.get("is_student") is True or any(
-            data.get(field)
-            for field in ("kezdes_eve", "szekcio", "om_id", "tagozat")
-        )
-        if has_student_data:
+        if STUDENT_ROLE in roles:
             profile, profile_created = _profile_for(
                 user, "student_profile", StudentProfile
             )
@@ -728,21 +856,8 @@ def _apply_import_record(data, source_apps):
                     section=final_section,
                 )
 
-        employee_number = data.get("employee_number")
-        force_teacher_profile = (
-            data.get("is_student") is False
-            and not user.is_group_mailbox
-            and email_info(user.email).class_from_email is not None
-        )
-        if force_teacher_profile:
-            try:
-                user.student_profile
-            except StudentProfile.DoesNotExist:
-                pass
-            else:
-                force_teacher_profile = False
-
-        if employee_number or force_teacher_profile:
+        if TEACHER_ROLE in roles:
+            employee_number = data.get("employee_number")
             profile, profile_created = _profile_for(
                 user, "teacher_profile", TeacherProfile
             )
@@ -796,6 +911,7 @@ def user_import_page(request):
             "tagozatok": Tagozat.objects.order_by("name"),
             "max_import_records": MAX_IMPORT_RECORDS,
             "max_import_sources": MAX_IMPORT_SOURCES,
+            "school_domain": get_school_domain(),
         },
     )
     response["Cache-Control"] = "no-store"
@@ -833,7 +949,23 @@ def user_import_one(request):
         source_apps = _source_applications(payload["source_app_ids"])
     except ImportInputError as error:
         return JsonResponse({"error": str(error)}, status=400)
-    normalized, errors = _normalize_record(payload["user"])
+    record = payload["user"]
+    existing_user = None
+    if isinstance(record, dict) and isinstance(record.get("email"), str):
+        existing_user = CustomUser.objects.filter(email__iexact=record["email"].strip()).first()
+    try:
+        existing_student_profile = existing_user.student_profile if existing_user else None
+    except StudentProfile.DoesNotExist:
+        existing_student_profile = None
+    try:
+        existing_teacher_profile = bool(existing_user and existing_user.teacher_profile)
+    except TeacherProfile.DoesNotExist:
+        existing_teacher_profile = False
+    normalized, errors, _roles = _normalize_record(
+        record,
+        existing_student_profile=existing_student_profile is not None,
+        existing_teacher_profile=existing_teacher_profile,
+    )
     if errors:
         return JsonResponse({"error": "A rekord ellenőrzése nem sikerült.", "details": errors}, status=400)
 

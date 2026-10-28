@@ -14,15 +14,14 @@
     <p class="lead">A beillesztendő adat egy JSON-tömb: minden elem egy felhasználó. Az <code>email</code> kötelező, ez alapján keressük meg a már létező fiókot.</p>
     <pre class="import-code"><code>[
   {
-    "email": "anna.minta@szlgbp.hu",
+    "email": "anna.minta.23f@szlgbp.hu",
     "last_name": "Minta",
     "first_name": "Anna",
     "phone": "+36 30 123 4567",
     "date_of_birth": "2008-03-21",
     "osztaly": "2023F",
-    "om_id": "12345678901",
 {% if tagozatok %}    "tagozat": "{{ tagozatok.0.slug }}",
-{% endif %}    "employee_number": "M-1042"
+{% endif %}    "om_id": "12345678901"
   }
 ]</code></pre>
 
@@ -31,12 +30,12 @@
       <div><code>last_name</code>, <code>first_name</code><span>Vezetéknév és keresztnév.</span></div>
       <div><code>phone</code><span>Telefonszám szövegként, például <code>+36 30 123 4567</code>.</span></div>
       <div><code>date_of_birth</code><span>Opcionális születési dátum, <code>ÉÉÉÉ-HH-NN</code> formátumban.</span></div>
-      <div><code>osztaly</code><span>Opcionális évfolyam és szekció, például <code>2023F</code>, <code>23F</code>, <code>10. F</code> vagy <code>KNYA</code>. Hiányzó osztályt diáknál az SZLG-s e-mail-címből következtetünk ki; munkatársi azonosítóval megadott tanárhoz nem rendelünk automatikusan osztályt. Külön mezőként a <code>kezdes_eve</code> és <code>szekcio</code> együtt adható meg.</span></div>
-      <div><code>is_student</code><span>Opcionális logikai érték: <code>true</code>, ha diák, <code>false</code>, ha az e-mail-címe alapján tévesen diáknak tűnne (például tanárként). Ismeretlen e-mail-formátum esetén a <code>true</code> tagozat-hozzárendelést ajánl fel.</span></div>
-      <div><code>om_id</code><span>Opcionális OM azonosító.</span></div>
-      <div><code>tagozat</code><span>A lenti meglévő tagozat neve vagy slugja. Ismeretlen régi értéknél az előnézetben kiválaszthatod a megfelelőt, vagy üresen hagyhatod.</span></div>
-      <div><code>employee_number</code><span>Opcionális munkatársi azonosító; tanári profilt hoz létre, ha még nincs.</span></div>
+      <div><code>osztaly</code><span>Opcionális évfolyam és szekció, például <code>2023F</code>, <code>23F</code>, <code>10. F</code> vagy <code>KNYA</code>. Diákprofilnál hiányzó osztályt az SZLG-s e-mail-címből következtetünk ki; meglévő tanárprofil önmagában nem kap osztályt. Külön mezőként a <code>kezdes_eve</code> és <code>szekcio</code> együtt adható meg.</span></div>
+      <div><code>om_id</code><span>Opcionális OM azonosító; diákprofilnál jelenik meg.</span></div>
+      <div><code>tagozat</code><span>Diákprofilnál a lenti meglévő tagozat neve vagy slugja. Ismeretlen régi értéknél az előnézetben kiválaszthatod a megfelelőt, vagy üresen hagyhatod.</span></div>
+      <div><code>employee_number</code><span>Tanárprofilnál opcionális munkatársi azonosító. A profilt az alkalmazás, e-mail és meglévő profilok alapján következtetjük ki; régi diák- és tanárprofil együtt is megmaradhat.</span></div>
     </div>
+    <p class="import-options"><strong>Profilbesorolás:</strong> nem tárolunk külön profil-típus mezőt a felhasználón. A meglévő diák- és tanárprofilból, az e-mail-domainből és az importadatokból következtetünk; egy öregdiák egyszerre mindkét profilhoz tartozhat. Szerkesztéskor az importhoz ideiglenesen felülbírálhatod a besorolást.</p>
 
     {% if tagozatok %}
       <p class="import-options"><strong>Használható tagozatok:</strong>
@@ -52,7 +51,7 @@
   <section class="panel">
     <h2>Adatok beillesztése</h2>
     <p class="lead">Az import először ellenőrzi a JSON-t. Az előnézetben soronként javíthatod az adatokat vagy kihagyhatod a rekordot; az adatbázis csak az importálás indításakor változik.</p>
-    <form id="user-import-form" data-preview-url="{% url 'user-import-preview' %}" data-import-url="{% url 'user-import-one' %}" data-max-import-sources="{{ max_import_sources }}">
+    <form id="user-import-form" data-preview-url="{% url 'user-import-preview' %}" data-import-url="{% url 'user-import-one' %}" data-max-import-sources="{{ max_import_sources }}" data-school-domain="{{ school_domain }}">
       {% csrf_token %}
       <fieldset class="import-source-picker">
         <legend>Forrásalkalmazások <span class="required-label">(kötelező)</span></legend>
@@ -103,7 +102,7 @@
         <thead>
           <tr>
             <th scope="col"><input type="checkbox" id="user-import-select-all" aria-label="Összes tagozat nélküli diák kijelölése"></th>
-            <th scope="col">#</th><th scope="col">E-mail-cím</th><th scope="col">Név</th><th scope="col">Osztály</th><th scope="col">Tagozat</th><th scope="col">Állapot</th><th scope="col">Részletek</th><th scope="col">Műveletek</th>
+            <th scope="col">#</th><th scope="col">E-mail-cím</th><th scope="col">Név</th><th scope="col">Profil</th><th scope="col">Osztály</th><th scope="col">Tagozat</th><th scope="col">OM azonosító</th><th scope="col">Munkatársi azonosító</th><th scope="col">Állapot</th><th scope="col">Részletek</th><th scope="col">Műveletek</th>
           </tr>
         </thead>
         <tbody id="user-import-rows"></tbody>

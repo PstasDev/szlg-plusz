@@ -1,11 +1,19 @@
-from django.contrib import admin
+from django import forms
+from django.contrib import admin, messages
+from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.auth.admin import GroupAdmin, UserAdmin
 from django.contrib.auth.models import Group
+from django.core.exceptions import PermissionDenied
+from django.db import transaction
+from django.http import HttpResponseRedirect
+from django.shortcuts import render
+from django.urls import path, reverse
 from mptt.admin import DraggableMPTTAdmin
 from oauth2_provider.admin import application_admin_class
 from oauth2_provider.models import get_application_model
 from solo.admin import SingletonModelAdmin
 
+from .directory import SMART_DIRECTORY_GROUPS
 from .models import (
     ApplicationProfile,
     CustomUser,
@@ -19,6 +27,45 @@ from .models import (
 )
 
 Application = get_application_model()
+
+
+class BulkMoveManualGroupsForm(forms.Form):
+    parent = forms.ModelChoiceField(
+        label="Új szülőcsoport",
+        queryset=ManualGroup.objects.none(),
+        required=False,
+        empty_label="Gyökérszint (nincs szülő)",
+        help_text="A kijelölt csoportok a kiválasztott szülő alá kerülnek.",
+    )
+
+    def __init__(self, *args, excluded_parent_ids=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["parent"].queryset = ManualGroup.objects.exclude(
+            pk__in=excluded_parent_ids
+        )
+
+
+def smart_group_summaries():
+    """Build the admin-only, read-only summary of calculated SmartGroups."""
+    groups = SMART_DIRECTORY_GROUPS
+    member_counts = {key: 0 for key, _name, _description in groups}
+    users = CustomUser.objects.filter(is_active=True).select_related(
+        "student_profile", "teacher_profile"
+    )
+    for user in users:
+        for key, enabled in user.smart_groups.items():
+            if enabled and key in member_counts:
+                member_counts[key] += 1
+
+    return [
+        {
+            "key": f"smart-{key}",
+            "name": name,
+            "description": description,
+            "member_count": member_counts[key],
+        }
+        for key, name, description in groups
+    ]
 
 
 class ApplicationProfileInline(admin.StackedInline):
@@ -118,9 +165,151 @@ class PermissionGroupAdmin(GroupAdmin):
 @admin.register(ManualGroup)
 class ManualGroupAdmin(DraggableMPTTAdmin):
     mptt_indent_field = "name"
-    list_display = ("tree_actions", "indented_title", "slug")
+    change_list_template = "admin/api/manualgroup/change_list.html"
+    list_display = ("tree_actions", "indented_title", "slug", "is_public")
+    list_filter = ("is_public",)
     prepopulated_fields = {"slug": ("name",)}
     search_fields = ("name", "slug", "description")
+    actions = (
+        "make_selected_groups_public",
+        "make_selected_groups_private",
+        "move_selected_groups_under_parent",
+        "delete_selected",
+    )
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = {
+            **(extra_context or {}),
+            "smart_groups": smart_group_summaries(),
+        }
+        return super().changelist_view(request, extra_context=extra_context)
+
+    @admin.action(
+        description="Kijelölt csoportok közérdekűvé tétele",
+        permissions=("change",),
+    )
+    def make_selected_groups_public(self, request, queryset):
+        updated = queryset.update(is_public=True)
+        self.message_user(
+            request, f"{updated} kijelölt csoport közérdekűvé téve.", messages.SUCCESS
+        )
+
+    @admin.action(
+        description="Kijelölt csoportok közérdekű jelzőjének kikapcsolása",
+        permissions=("change",),
+    )
+    def make_selected_groups_private(self, request, queryset):
+        updated = queryset.update(is_public=False)
+        self.message_user(
+            request,
+            f"{updated} kijelölt csoport közérdekű jelzője kikapcsolva.",
+            messages.SUCCESS,
+        )
+
+    @admin.action(
+        description="Kijelölt csoportok áthelyezése szülő alá…",
+        permissions=("change",),
+    )
+    def move_selected_groups_under_parent(self, request, queryset):
+        groups = list(queryset)
+        excluded_parent_ids = self._excluded_parent_ids(groups)
+        return render(
+            request,
+            "admin/api/manualgroup/bulk_move.html",
+            {
+                **self.admin_site.each_context(request),
+                "opts": self.model._meta,
+                "title": "Kijelölt csoportok áthelyezése",
+                "groups": groups,
+                "selected_ids": [str(group.pk) for group in groups],
+                "form": BulkMoveManualGroupsForm(
+                    excluded_parent_ids=excluded_parent_ids
+                ),
+                "cancel_url": reverse("admin:api_manualgroup_changelist"),
+            },
+        )
+
+    def _excluded_parent_ids(self, groups):
+        excluded_ids = set()
+        for group in groups:
+            excluded_ids.add(group.pk)
+            excluded_ids.update(
+                group.get_descendants().values_list("pk", flat=True)
+            )
+        return excluded_ids
+
+    def get_urls(self):
+        custom_urls = [
+            path(
+                "bulk-move/",
+                self.admin_site.admin_view(self.bulk_move_view),
+                name="api_manualgroup_bulk_move",
+            ),
+        ]
+        return custom_urls + super().get_urls()
+
+    def bulk_move_view(self, request):
+        if not self.has_change_permission(request):
+            raise PermissionDenied
+        if request.method != "POST":
+            return HttpResponseRedirect(reverse("admin:api_manualgroup_changelist"))
+
+        try:
+            requested_ids = {
+                int(group_id)
+                for group_id in request.POST.getlist(ACTION_CHECKBOX_NAME)
+            }
+        except (TypeError, ValueError):
+            requested_ids = set()
+        groups = list(self.get_queryset(request).filter(pk__in=requested_ids))
+        if not groups or {group.pk for group in groups} != requested_ids:
+            self.message_user(
+                request,
+                "A kijelölt csoportok nem találhatók; az áthelyezés nem történt meg.",
+                messages.ERROR,
+            )
+            return HttpResponseRedirect(reverse("admin:api_manualgroup_changelist"))
+
+        excluded_parent_ids = self._excluded_parent_ids(groups)
+        form = BulkMoveManualGroupsForm(
+            request.POST, excluded_parent_ids=excluded_parent_ids
+        )
+        if form.is_valid():
+            selected_ids = {group.pk for group in groups}
+            roots = [
+                group
+                for group in groups
+                if not any(
+                    ancestor.pk in selected_ids
+                    for ancestor in group.get_ancestors()
+                )
+            ]
+            parent = form.cleaned_data["parent"]
+            with transaction.atomic():
+                for group in roots:
+                    group.move_to(parent, position="last-child")
+
+            self.message_user(
+                request,
+                f"{len(roots)} csoport áthelyezve; "
+                "a kijelölt csoportok alatti hierarchia megmaradt.",
+                messages.SUCCESS,
+            )
+            return HttpResponseRedirect(reverse("admin:api_manualgroup_changelist"))
+
+        return render(
+            request,
+            "admin/api/manualgroup/bulk_move.html",
+            {
+                **self.admin_site.each_context(request),
+                "opts": self.model._meta,
+                "title": "Kijelölt csoportok áthelyezése",
+                "groups": groups,
+                "selected_ids": [str(group.pk) for group in groups],
+                "form": form,
+                "cancel_url": reverse("admin:api_manualgroup_changelist"),
+            },
+        )
 
 
 @admin.register(Passkey)

@@ -144,7 +144,7 @@ class UserImportTests(TestCase):
             [
                 {"email": "teacher.23a@example.org", "employee_number": "T-43"},
                 {"email": existing_teacher.email},
-                {"email": "explicit.teacher.23a@example.org", "is_student": False},
+                {"email": "explicit.teacher.23a@example.org", "import_role": "teacher"},
             ]
         )
 
@@ -231,19 +231,81 @@ class UserImportTests(TestCase):
             self.tagozat,
         )
 
-    def test_student_marker_creates_profile_even_when_optional_fields_are_blank(self):
+    def test_import_role_creates_profile_without_persisting_a_role_field(self):
         response = self._import_one(
-            {"email": "external-student@example.org", "is_student": True}
+            {"email": "student@example.org", "import_role": "student"}
         )
 
         self.assertEqual(response.status_code, 200, response.content)
-        profile = StudentProfile.objects.get(user__email="external-student@example.org")
+        user = CustomUser.objects.get(email="student@example.org")
+        self.assertFalse(hasattr(user, "profile_type"))
+        profile = StudentProfile.objects.get(user=user)
         self.assertIsNone(profile.kezdes_eve)
         self.assertEqual(profile.szekcio, "")
         self.assertIsNone(profile.tagozat_id)
         self.assertEqual(profile.om_id, "")
 
-    def test_import_creates_user_and_student_teacher_profiles(self):
+    def test_other_school_email_does_not_gain_a_student_or_teacher_profile(self):
+        response = self._preview([{"email": "other.person@example.org"}])
+        self.assertEqual(response.status_code, 200)
+        row = response.json()["rows"][0]
+        self.assertEqual(row["profile_role_label"], "Egyéb SZLG-s profil")
+        self.assertFalse(row["is_student"])
+        self.assertFalse(row["is_teacher"])
+
+        imported = self._import_one(row["data"])
+        self.assertEqual(imported.status_code, 200, imported.content)
+        user = CustomUser.objects.get(email="other.person@example.org")
+        self.assertEqual(user.account_type, "Egyéb SZLG-s profil")
+        self.assertFalse(StudentProfile.objects.filter(user=user).exists())
+        self.assertFalse(TeacherProfile.objects.filter(user=user).exists())
+
+    def test_alumnus_can_keep_student_profile_and_gain_teacher_profile(self):
+        alumnus = CustomUser.objects.create_user(email="alumni.23f@example.org")
+        student_profile = StudentProfile.objects.create(
+            user=alumnus,
+            kezdes_eve=2023,
+            szekcio="F",
+            tagozat=self.tagozat,
+        )
+
+        response = self._preview(
+            [{"email": alumnus.email, "import_role": "teacher", "employee_number": "T-42"}]
+        )
+        self.assertEqual(response.status_code, 200)
+        row = response.json()["rows"][0]
+        self.assertEqual(row["profile_role_label"], "Diák és tanár")
+        self.assertTrue(row["is_student"])
+        self.assertTrue(row["is_teacher"])
+
+        imported = self._import_one(row["data"])
+        self.assertEqual(imported.status_code, 200, imported.content)
+        student_profile.refresh_from_db()
+        alumnus.refresh_from_db()
+        self.assertEqual((student_profile.kezdes_eve, student_profile.szekcio), (2023, "F"))
+        self.assertEqual(TeacherProfile.objects.get(user=alumnus).employee_number, "T-42")
+        self.assertTrue(alumnus.is_student)
+        self.assertTrue(alumnus.is_teacher)
+        self.assertEqual(alumnus.account_type, "Diák és tanár")
+
+    def test_external_email_cannot_create_student_or_teacher_profiles(self):
+        for import_role in ("student", "teacher"):
+            with self.subTest(import_role=import_role):
+                response = self._import_one(
+                    {"email": "person@external.test", "import_role": import_role}
+                )
+                self.assertEqual(response.status_code, 400)
+
+        self.assertFalse(CustomUser.objects.filter(email="person@external.test").exists())
+
+        outside_user = CustomUser.objects.create_user(email="outside@external.test")
+        StudentProfile.objects.create(user=outside_user)
+        TeacherProfile.objects.create(user=outside_user)
+        self.assertFalse(outside_user.is_student)
+        self.assertFalse(outside_user.is_teacher)
+        self.assertEqual(outside_user.account_type, "Külsős profil")
+
+    def test_import_creates_user_and_student_profile(self):
         record = {
             "email": "anna@example.org",
             "last_name": "Minta",
@@ -253,7 +315,6 @@ class UserImportTests(TestCase):
             "osztaly": "2023F",
             "om_id": "12345678901",
             "tagozat": "nappali",
-            "employee_number": "M-1042",
         }
 
         response = self._import_one(record)
@@ -265,7 +326,7 @@ class UserImportTests(TestCase):
         self.assertIn("OM azonosító", result["added"])
         user = CustomUser.objects.get(email="anna@example.org")
         self.assertTrue(user.is_active)
-        self.assertFalse(user.email_verified)
+        self.assertTrue(user.email_verified)
         self.assertFalse(user.has_usable_password())
         self.assertEqual(
             user.import_sources,
@@ -286,7 +347,6 @@ class UserImportTests(TestCase):
         self.assertTrue(
             SchoolClass.objects.filter(start_year=2023, section="F").exists()
         )
-        self.assertEqual(TeacherProfile.objects.get(user=user).employee_number, "M-1042")
 
     def test_existing_account_is_only_enriched_and_import_is_idempotent(self):
         existing = CustomUser.objects.create_user(

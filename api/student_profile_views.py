@@ -23,8 +23,9 @@ def _student_profile_state(user):
         teacher_profile = user.teacher_profile
     except TeacherProfile.DoesNotExist:
         teacher_profile = None
-
     info = email_info(user.email)
+    if not info.is_in_school_domain:
+        return profile, {"tagozat": False, "om_id": False}, False
     is_student = bool(
         profile
         or (

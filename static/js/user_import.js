@@ -23,6 +23,8 @@
   const selectAllCheckbox = document.getElementById("user-import-select-all");
   const tagMessage = document.getElementById("user-import-tagozat-message");
   const maxImportSources = Number(form.dataset.maxImportSources || 20);
+  let schoolDomain = (form.dataset.schoolDomain || "@szlgbp.hu").trim().toLowerCase();
+  if (schoolDomain && !schoolDomain.startsWith("@")) schoolDomain = `@${schoolDomain}`;
   const csrfToken = form.querySelector("[name=csrfmiddlewaretoken]").value;
 
   let records = [];
@@ -109,10 +111,17 @@
       if (normalized.kezdes_eve != null && normalized.szekcio) {
         return `${normalized.kezdes_eve}${normalized.szekcio}`;
       }
+      if (record.is_student && record.class_label) return record.class_label;
       return "";
     }
     const value = raw[key] ?? normalized[key] ?? "";
-    return typeof value === "string" ? value : String(value);
+    if (value !== "") return typeof value === "string" ? value : String(value);
+    if (key === "tagozat" && record.is_student) return record.tagozat_label || "";
+    if (key === "om_id" && record.is_student) return record.om_id_label || "";
+    if (key === "employee_number" && record.is_teacher) {
+      return record.employee_number_label || "";
+    }
+    return "";
   }
 
   function makeEditorField(record, key, labelText, type = "text", maxLength = null) {
@@ -137,49 +146,153 @@
     editorRow.className = "import-editor-row";
     editorRow.hidden = true;
     const cell = document.createElement("td");
-    cell.colSpan = 9;
+    cell.colSpan = 12;
     const editor = document.createElement("div");
     editor.className = "import-editor";
-    const fields = document.createElement("div");
-    fields.className = "import-editor-fields";
-    const inputs = {};
-    const definitions = [
+    const commonFields = document.createElement("div");
+    commonFields.className = "import-editor-fields";
+    const commonInputs = {};
+    const commonDefinitions = [
       ["email", "E-mail-cím", "email", 254],
       ["last_name", "Vezetéknév", "text", 150],
       ["first_name", "Keresztnév", "text", 150],
       ["phone", "Telefonszám", "text", 32],
       ["date_of_birth", "Születési dátum", "date", null],
+    ];
+    for (const [key, label, type, maxLength] of commonDefinitions) {
+      const field = makeEditorField(record, key, label, type, maxLength);
+      commonInputs[key] = field.input;
+      commonFields.append(field.wrapper);
+    }
+    editor.append(commonFields);
+
+    const profileRoleField = document.createElement("div");
+    profileRoleField.className = "import-edit-field import-profile-role-field";
+    const profileRoleId = `import-edit-${record.localId}-import-role`;
+    const profileRoleLabel = document.createElement("label");
+    profileRoleLabel.htmlFor = profileRoleId;
+    profileRoleLabel.textContent = "Profilbesorolás (csak ehhez az importhoz)";
+    const profileRoleSelect = document.createElement("select");
+    profileRoleSelect.id = profileRoleId;
+    profileRoleSelect.className = "import-role-select";
+    profileRoleField.append(profileRoleLabel, profileRoleSelect);
+    editor.append(profileRoleField);
+    let roleOverrideChanged = Boolean(rawRecord(record).import_role);
+
+    const studentFields = document.createElement("div");
+    studentFields.className = "import-editor-fields import-editor-student-fields";
+    studentFields.hidden = !record.is_student;
+    const studentInputs = {};
+    for (const [key, label, type, maxLength] of [
       ["osztaly", "Osztály (pl. 2023F vagy 10. F)", "text", 40],
       ["om_id", "OM azonosító", "text", 32],
       ["tagozat", "Tagozat neve vagy slugja", "text", 120],
-      ["employee_number", "Munkatársi azonosító", "text", 32],
-    ];
-    for (const [key, label, type, maxLength] of definitions) {
+    ]) {
       const field = makeEditorField(record, key, label, type, maxLength);
-      inputs[key] = field.input;
-      fields.append(field.wrapper);
+      studentInputs[key] = field.input;
+      studentFields.append(field.wrapper);
     }
-    editor.append(fields);
+    editor.append(studentFields);
 
-    const roleLabel = document.createElement("label");
-    roleLabel.className = "import-editor-student";
-    const studentCheckbox = document.createElement("input");
-    studentCheckbox.type = "checkbox";
-    studentCheckbox.checked = record.has_student_profile
-      || (typeof rawRecord(record).is_student === "boolean"
-        ? rawRecord(record).is_student
-        : Boolean(record.is_student));
-    studentCheckbox.addEventListener("change", () => {
-      if (!studentCheckbox.checked) {
-        inputs.osztaly.value = "";
-        inputs.om_id.value = "";
-        inputs.tagozat.value = "";
+    const teacherFields = document.createElement("div");
+    teacherFields.className = "import-editor-fields import-editor-teacher-fields";
+    teacherFields.hidden = !record.is_teacher;
+    const employeeField = makeEditorField(
+      record,
+      "employee_number",
+      "Munkatársi azonosító",
+      "text",
+      32,
+    );
+    teacherFields.append(employeeField.wrapper);
+    editor.append(teacherFields);
+
+    const roleOptions = [
+      ["student", "Diák"],
+      ["teacher", "Tanár"],
+      ["school_other", "Egyéb SZLG-s profil"],
+      ["external", "Külsős profil"],
+    ];
+    function allowedRoleOptions(email) {
+      return schoolDomain && email.toLowerCase().endsWith(schoolDomain)
+        ? roleOptions.filter(([value]) => value !== "external")
+        : roleOptions.filter(([value]) => value === "external");
+    }
+    function defaultImportRole(email) {
+      const options = allowedRoleOptions(email);
+      if (options.length === 1) return "external";
+      if (record.is_student) return "student";
+      if (record.is_teacher) return "teacher";
+      return "school_other";
+    }
+    function updateRoleOptions(clearHidden = false) {
+      const email = commonInputs.email.value.trim().toLowerCase();
+      const options = allowedRoleOptions(email);
+      const oldValue = profileRoleSelect.value || record.import_role;
+      profileRoleSelect.replaceChildren();
+      for (const [value, label] of options) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        profileRoleSelect.append(option);
       }
+      if (options.some(([value]) => value === oldValue)) {
+        profileRoleSelect.value = oldValue;
+      } else {
+        profileRoleSelect.value = defaultImportRole(email);
+        roleOverrideChanged = true;
+      }
+
+      const role = profileRoleSelect.value;
+      const useStudentFields = record.has_student_profile
+        || (roleOverrideChanged ? role === "student" : record.is_student);
+      const useTeacherFields = record.has_teacher_profile
+        || (roleOverrideChanged ? role === "teacher" : record.is_teacher);
+      studentFields.hidden = !useStudentFields;
+      teacherFields.hidden = !useTeacherFields;
+      record.import_role = role;
+      record.profileRoleCell.textContent = useStudentFields && useTeacherFields
+        ? "Diák és tanár"
+        : useStudentFields
+          ? "Diák"
+          : useTeacherFields
+            ? "Tanár"
+            : roleOptions.find(([value]) => value === role)?.[1] || "–";
+      record.classCell.textContent = useStudentFields
+        ? (studentInputs.osztaly.value.trim() || record.class_label || "–")
+        : "–";
+      if (record.class_inferred && useStudentFields && record.classCell.textContent !== "–") {
+        record.classCell.textContent += " (e-mailből)";
+      }
+      record.tagozatCell.textContent = useStudentFields
+        ? (studentInputs.tagozat.value.trim() || record.tagozat_label || "–")
+        : "–";
+      record.omIdCell.textContent = useStudentFields
+        ? (studentInputs.om_id.value.trim() || record.om_id_label || "–")
+        : "–";
+      record.employeeNumberCell.textContent = useTeacherFields
+        ? (employeeField.input.value.trim() || record.employee_number_label || "–")
+        : "–";
+
+      if (clearHidden && !useStudentFields) {
+        for (const input of Object.values(studentInputs)) input.value = "";
+      }
+      if (clearHidden && !useTeacherFields) employeeField.input.value = "";
+    }
+    profileRoleSelect.addEventListener("change", () => {
+      roleOverrideChanged = true;
+      updateRoleOptions(true);
     });
-    const studentText = document.createElement("span");
-    studentText.textContent = "Diákprofilként kezeljük";
-    roleLabel.append(studentCheckbox, studentText);
-    editor.append(roleLabel);
+    commonInputs.email.addEventListener("input", () => updateRoleOptions(false));
+    for (const input of [
+      studentInputs.osztaly,
+      studentInputs.om_id,
+      studentInputs.tagozat,
+      employeeField.input,
+    ]) {
+      input.addEventListener("input", () => updateRoleOptions(false));
+    }
+    updateRoleOptions();
 
     const actions = document.createElement("div");
     actions.className = "import-editor-actions";
@@ -190,11 +303,23 @@
     saveButton.addEventListener("click", async () => {
       if (importing || validating) return;
       const edited = {};
-      for (const [key, input] of Object.entries(inputs)) {
+      for (const [key, input] of Object.entries(commonInputs)) {
         const value = input.value.trim();
         if (value) edited[key] = value;
       }
-      edited.is_student = studentCheckbox.checked;
+      if (roleOverrideChanged || rawRecord(record).import_role) {
+        edited.import_role = profileRoleSelect.value;
+      }
+      if (!studentFields.hidden) {
+        for (const [key, input] of Object.entries(studentInputs)) {
+          const value = input.value.trim();
+          if (value) edited[key] = value;
+        }
+      }
+      if (!teacherFields.hidden) {
+        const employeeNumber = employeeField.input.value.trim();
+        if (employeeNumber) edited.employee_number = employeeNumber;
+      }
       const previous = record.rawData;
       record.rawData = edited;
       saveButton.disabled = true;
@@ -269,15 +394,23 @@
       addCell(row, String(index + 1));
       addCell(row, record.email);
       addCell(row, record.display_name);
-      let classLabel = record.class_label || "";
+      record.profileRoleCell = addCell(row, record.profile_role_label || "Ismeretlen profil");
+      let classLabel = record.is_student ? (record.class_label || "–") : "–";
       if (record.class_inferred && classLabel) classLabel += " (e-mailből)";
-      addCell(row, classLabel);
+      record.classCell = addCell(row, classLabel);
       const tagCell = addCell(
         row,
-        record.tagozat_label || (record.needs_tagozat ? "Hiányzik (üresen hagyható)" : ""),
+        !record.is_student
+          ? "–"
+          : (record.tagozat_label || (record.needs_tagozat ? "Hiányzik (üresen hagyható)" : "–")),
         "row-tagozat",
       );
       record.tagozatCell = tagCell;
+      record.omIdCell = addCell(row, record.is_student ? (record.om_id_label || "–") : "–");
+      record.employeeNumberCell = addCell(
+        row,
+        record.is_teacher ? (record.employee_number_label || "–") : "–",
+      );
       const status = addCell(
         row,
         record.excluded ? "Kihagyva" : (statusLabels[record.status] || "Ellenőrizve"),
@@ -613,8 +746,7 @@
     const tagozatName = bulkTagSelect.selectedOptions[0].textContent.trim();
     for (const record of selectedRecords) {
       record.data.tagozat = slug;
-      record.data.is_student = true;
-      record.rawData = { ...rawRecord(record), tagozat: slug, is_student: true };
+      record.rawData = { ...rawRecord(record), tagozat: slug };
       record.needs_tagozat = false;
       record.tagozat_label = tagozatName;
       record.is_student = true;

@@ -18,7 +18,7 @@ from oauth2_provider.models import (
 )
 
 from .forms import ApplicationForm
-from .models import Passkey, UserAppConnection
+from .models import Passkey, UserAppConnection, email_info
 from .scopes import describe_scopes
 
 MAX_APPLICATIONS_PER_USER = 10
@@ -34,13 +34,18 @@ def _own_application(request, pk):
 @require_GET
 def dashboard(request):
     user = request.user
+    student_profile = getattr(user, "student_profile", None)
+    teacher_profile = getattr(user, "teacher_profile", None)
+    if not email_info(user.email).is_in_school_domain:
+        student_profile = None
+        teacher_profile = None
     return render(
         request,
         "dashboard/profile.html",
         {
             "section": "profile",
-            "student_profile": getattr(user, "student_profile", None),
-            "teacher_profile": getattr(user, "teacher_profile", None),
+            "student_profile": student_profile,
+            "teacher_profile": teacher_profile,
             "school_groups": user.manual_groups.all(),
             "permission_groups": user.groups.all(),
             "has_password": user.has_usable_password(),

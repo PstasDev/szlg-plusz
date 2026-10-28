@@ -1,0 +1,37 @@
+{% extends "admin/base_site.html" %}
+
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Kezdőlap</a>
+    › <a href="{% url 'admin:api_manualgroup_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+    › {{ title }}
+  </div>
+{% endblock %}
+
+{% block content %}
+  <div id="content-main">
+    <p>
+      Válaszd ki az új szülőcsoportot. A gyökérszint választásával a csoportok
+      legfelső szintre kerülnek. Ha egy kijelölt csoport alatt további kijelölt
+      csoport is van, a belső hierarchia megmarad.
+    </p>
+    <p><strong>Kijelölt csoportok:</strong></p>
+    <ul>
+      {% for group in groups %}
+        <li>{{ group.full_path }}</li>
+      {% endfor %}
+    </ul>
+
+    <form method="post" action="{% url 'admin:api_manualgroup_bulk_move' %}">
+      {% csrf_token %}
+      {% for group_id in selected_ids %}
+        <input type="hidden" name="_selected_action" value="{{ group_id }}">
+      {% endfor %}
+      {{ form.as_p }}
+      <div class="submit-row">
+        <input type="submit" value="Áthelyezés" class="default">
+        <a href="{{ cancel_url }}" class="button">Mégse</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

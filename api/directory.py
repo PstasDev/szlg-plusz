@@ -90,10 +90,14 @@ def visible_person(viewer, pk):
 
 def ensure_school_classes():
     """Create class records for every class currently represented by a student profile."""
+    suffix = school_domain_suffix()
+    if not suffix:
+        return
     classes = {
         (year, section.strip().upper())
         for year, section in StudentProfile.objects.filter(
-            kezdes_eve__isnull=False
+            kezdes_eve__isnull=False,
+            user__email__iendswith=suffix,
         ).exclude(szekcio="").values_list("kezdes_eve", "szekcio")
         if section and section.strip()
     }
@@ -143,6 +147,7 @@ def directory_groups(query="", *, browsable_only=False):
     ensure_school_classes()
     query = (query or "").strip()
     result = []
+    school_suffix = school_domain_suffix()
 
     for key, name, description in SMART_DIRECTORY_GROUPS:
         result.append(
@@ -166,7 +171,10 @@ def directory_groups(query="", *, browsable_only=False):
                 type_label="Tagozat",
                 description="A tagozathoz rendelt diákok automatikus csoportja.",
                 members=_ordered_users(
-                    CustomUser.objects.filter(student_profile__tagozat=tagozat)
+                    CustomUser.objects.filter(
+                        student_profile__tagozat=tagozat,
+                        email__iendswith=school_suffix,
+                    ) if school_suffix else CustomUser.objects.none()
                 ),
                 managers=(),
                 mailboxes=_mailboxes_for(key),
@@ -176,9 +184,10 @@ def directory_groups(query="", *, browsable_only=False):
     sections = sorted(
         {
             section.strip().upper()
-            for section in StudentProfile.objects.exclude(szekcio="").values_list(
-                "szekcio", flat=True
-            )
+            for section in StudentProfile.objects.filter(
+                user__email__iendswith=school_suffix
+            ).exclude(szekcio="").values_list("szekcio", flat=True)
+            if school_suffix
             if section and section.strip()
         },
         key=str.casefold,
@@ -192,7 +201,10 @@ def directory_groups(query="", *, browsable_only=False):
                 type_label="Szekció",
                 description="Az azonos szekcióba tartozó diákok automatikus csoportja.",
                 members=_ordered_users(
-                    CustomUser.objects.filter(student_profile__szekcio__iexact=section)
+                    CustomUser.objects.filter(
+                        student_profile__szekcio__iexact=section,
+                        email__iendswith=school_suffix,
+                    )
                 ),
                 managers=(),
                 mailboxes=_mailboxes_for(key),
@@ -220,6 +232,7 @@ def directory_groups(query="", *, browsable_only=False):
                         CustomUser.objects.filter(
                             student_profile__kezdes_eve=school_class.start_year,
                             student_profile__szekcio__iexact=school_class.section,
+                            email__iendswith=school_suffix,
                         )
                     ),
                     managers=teachers,
@@ -322,7 +335,12 @@ def user_school_group_keys(user):
             for ancestor in group.get_ancestors(include_self=True)
         )
 
-    student = getattr(user, "student_profile", None)
+    suffix = school_domain_suffix()
+    student = (
+        getattr(user, "student_profile", None)
+        if suffix and user.email.lower().endswith(suffix)
+        else None
+    )
     if student:
         if student.tagozat_id:
             keys.add(f"tagozat-{student.tagozat.slug}")

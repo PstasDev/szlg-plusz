@@ -246,8 +246,8 @@ dl.data code { font-size: .85rem; }
 .import-editor-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .75rem; }
 .import-edit-field { min-width: 0; }
 .import-edit-field label { display: block; margin-bottom: .25rem; color: var(--muted); font-size: .82rem; }
-.import-edit-field input { width: 100%; min-width: 0; padding: .5rem .6rem; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: .45rem; }
-.import-edit-field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.import-edit-field input, .import-edit-field select { width: 100%; min-width: 0; padding: .5rem .6rem; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: .45rem; }
+.import-edit-field input:focus, .import-edit-field select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .import-editor-student { display: flex; align-items: center; gap: .5rem; color: var(--muted); font-size: .9rem; }
 .import-editor-student input { accent-color: var(--primary); }
 .import-editor-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
