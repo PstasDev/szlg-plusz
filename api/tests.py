@@ -582,6 +582,9 @@ class ConsentScreenTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Igazoláskezelő")
+        self.assertContains(
+            response, "Bejelentkezés az Igazoláskezelő szolgáltatásba"
+        )
         self.assertNotContains(response, "Fejlesztő:")
 
     def test_pages_are_dark_by_default(self):

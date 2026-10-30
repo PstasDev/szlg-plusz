@@ -19,7 +19,7 @@
           </div>
           <div class="muted">{% if grant.application.profile.developer %}Fejlesztő: {{ grant.application.profile.developer }}{% endif %}{% if grant.application.profile.short_description %}{% if grant.application.profile.developer %} · {% endif %}{{ grant.application.profile.short_description }}{% endif %}</div>
         </div>
-        <form method="post" action="{% url 'grant-revoke' grant.application.pk %}" data-confirm="Visszavonod {{ decide_prefix_a_or_az(grant.application.name, uppercase=False) }} {{ grant.application.name }} hozzáférését?">
+        <form method="post" action="{% url 'grant-revoke' grant.application.pk %}" data-confirm="Visszavonod {{ grant.application.name|decide_prefix_a_or_az }} {{ grant.application.name }} hozzáférését?">
           {% csrf_token %}
           <button type="submit" class="btn danger">Visszavonás</button>
         </form>

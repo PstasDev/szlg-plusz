@@ -12,7 +12,7 @@
     </div>
     <div class="form-actions" style="margin:0">
       <a class="btn outline" href="{% url 'application-edit' application.pk %}">Szerkesztés</a>
-      <form method="post" action="{% url 'application-delete' application.pk %}" data-confirm="Biztosan törlöd {{ decide_prefix_a_or_az(application.name, uppercase=False) }} {{ application.name }} alkalmazást? Minden felhasználó hozzáférése megszűnik.">
+      <form method="post" action="{% url 'application-delete' application.pk %}" data-confirm="Biztosan törlöd {{ application.name|decide_prefix_a_or_az }} {{ application.name }} alkalmazást? Minden felhasználó hozzáférése megszűnik.">
         {% csrf_token %}
         <button type="submit" class="btn danger">Törlés</button>
       </form>

@@ -9,7 +9,7 @@
   {% if generic_resend_message %}
     <p class="success" role="status">{{ generic_resend_message }}</p>
   {% elif email_sent %}
-    <p class="success" role="status">Megerősítő levelet küldtünk {{ decide_prefix_a_or_az(email, uppercase=False) }} <strong>{{ email }}</strong> címre. A fiók a megerősítésig nem használható bejelentkezésre.</p>
+    <p class="success" role="status">Megerősítő levelet küldtünk {{ email|decide_prefix_a_or_az }} <strong>{{ email }}</strong> címre. A fiók a megerősítésig nem használható bejelentkezésre.</p>
   {% else %}
     <p class="error" role="alert">A fiók létrejött, de a megerősítő levelet most nem sikerült elküldeni. Kérd a levél újbóli küldését, vagy fordulj az SZLG+ rendszergazdáihoz.</p>
   {% endif %}
