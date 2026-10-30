@@ -50,7 +50,7 @@ def decide_prefix_a_or_az(string, uppercase=False):
     if starts_with_number(string):
         string = pronounce_numbers_in_string(string)
     if string.startswith("SZLG"):
-        return "AZ" if uppercase else "az"
+        return "Az" if uppercase else "az"
     if is_vowel(string[0]):
-        return "AZ" if uppercase else "az"
+        return "Az" if uppercase else "az"
     return "A" if uppercase else "a"
