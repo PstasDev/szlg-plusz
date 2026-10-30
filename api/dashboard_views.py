@@ -18,6 +18,7 @@ from oauth2_provider.models import (
 )
 
 from api.utils import decide_prefix_a_or_az
+from .forms import ApplicationForm
 from .models import Passkey, UserAppConnection, email_info
 from .scopes import describe_scopes
 
