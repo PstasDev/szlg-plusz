@@ -1,0 +1,54 @@
+Kedves Tanulók, Kedves Tanárok, Kedves Felhasználók!
+
+Értesítünk, hogy az SZLG alkalmazásaiban a fiókodat SZLG+ fiókra állítottunk át.
+
+Mi az SZLG+?
+
+Az SZLG+ egy új, központi felhasználói fiókrendszer, amely az SZLG alkalmazásaiban való bejelentkezést és azonosítást kezeli. Mostantól egyetlen, központi, biztonságos helyen tároljuk az összes felhasználói fiókadatot, beleértve a bejelentkezési információkat, személyes adatokat, valamint valamennyi fontos iskolai csoportot, például: osztályok, szakkörök és egyéb iskolai közösségek.
+
+Miért jó ez számodra?
+
+Egy fiók. Egy jelszó. Egy kattintás.
+
+Mostantól bizonyos SZLG-s alkalmazásokhoz, vagy a korábbi bejelentkezési formák mellett, vagy azok helyett az SZLG+ fiókoddal tudsz majd bejelentkezni. Ez azt jelenti, hogy egyetlen felhasználónévvel és jelszóval férhetsz hozzá az összes SZLG-s alkalmazáshoz, így egyszerűbbé és biztonságosabbá válik a bejelentkezés folyamata.
+
+Emellett az SZLG+ fiók központi bejelentkezési felülete támogatja a Jelkulcsok használatát is, ami azt jelenti, hogy Face ID vagy Touch ID segítségével is be tudsz majd jelentkezni az SZLG-s alkalmazásokba.
+
+Ha korábban egy adott böngészőben már bejelentkeztél az SZLG+ fiókoddal, azt egy jó darabig meg fogja jegyezni a böngésző, így nem kell minden alkalommal újra bejelentkezned, egy eszközön több fiók is kezelhető és azt is beállíthatod, hogy csupán egy kattintással bejelentkezhess az applikációkba.
+
+Biztonság
+
+A központi fiókrendszer továbbá az üzemeltetők számára sokkal egyszerűbbé teszi a karbantartást és a támogatást, az adataid kezelése pedig biztonságosabbá válik.
+
+Az sso.szlg.info honlap kezelőfelületén keresztül tudod kezelni az SZLG+ fiókodat, például módosíthatod a jelszavadat, kezelheted jelkulcsaidat, megtekintheted a csoporttagságaidat, valamint kezelheted bármely alkalmazás hozzáférését is. Amikor először jelentkezel be egy új applikációba, tájékoztatást kapsz arról, milyen adatokhoz fér hozzá az adott alkalmazás, és engedélyezheted vagy megtagadhatod a hozzáférést. A kezelőfelületen bármikor visszavonhatod ezt a meghatalmazást.
+
+Mit jelent ez számodra?
+
+Az SZLG+ fiókra való átállás azt jelenti, hogy a jövőben az SZLG-s alkalmazásokba történő bejelentkezéshez az SZLG+ fiókodat kell használnod. Ez magában foglalja a korábbi felhasználói fiókadataid migrálását az új rendszerbe, így nem kell újra létrehoznod a fiókodat, és az összes korábbi beállításod és csoporttagságod megmarad.
+
+Fontos azonban, hogy mivel titkosított formában tároljuk a jelszavaidat, azokhoz mi sem férünk hozzá. Nem tudjuk átköltöztetni a korábban megadott jelszavaidat SZLG+ fiókodba, ezért a következő bejelentkezéskor új jelszót kell majd megadnod az SZLG+ fiókodhoz. Ezt az "Iskolai fiókom van és még nincs jelszavam" opció kiválasztásával teheted meg a bejelentkezési felületen.
+
+Ha bármikor elfelejtenéd a jelszavadat, az sso.szlg.info oldalon keresztül könnyedén visszaállíthatod azt az "Elfelejtett jelszó" opció segítségével.
+
+Mi várható a jövőben?
+
+Az SZLG+ központi rendszer révén a jövőben lehetőség nyílik az alkalmazás fejlesztők számára, hogy olyan közérdekű adatokat kérdezhessenek le, melyek több alkalmazás számára is fontosak lehetnek (pl.: tanév rendje, órarend, stb.), ezzel egyszerűsítve az adatokhoz való hozzáférést és csökkentve a redundanciát az adatok kezelésében.
+
+Az SZLG+ SSO - Központi bejelentkezést már a mai naptól bárki integrálhatja saját alkalmazásaiba, így egyszerűsítve a felhasználók azonosítását és a hozzáférés kezelését.
+
+További információk
+
+Ha szeretnél többet megtudni az SZLG+ fiókrendszerről, látogasd meg az sso.szlg.info oldalt, ahol részletes útmutatókat és gyakran ismételt kérdéseket találsz. Itt tájékozódhatsz a fiók létrehozásáról, a jelszókezelésről, a jelkulcsok használatáról, valamint az alkalmazásokhoz való hozzáférés kezeléséről is.
+
+Az SZLG+-al és az ellenőrzött SZLG-s applikációkkal kapcsolatos megújult Adatvédelmi Tájékoztatót megtekintheted a https://sso.szlg.info/adatvedelem/ oldalon.
+
+Az SZLG+ fiókrendszerrel támogatott alkalmazások listáját megtekintheted a https://sso.szlg.info/tamogatott-alkalmazasok/ oldalon.
+
+Fejlesztők számára készült útmutatókat és dokumentációkat a https://sso.szlg.info/docs/alkalmazas-fejlesztok/ oldalon találhatsz.
+
+Ha bármilyen kérdésed van az SZLG+ fiókrendszerrel kapcsolatban, vedd fel a kapcsolatot a molnar.attila@szlgbp.hu vagy a balla.botond.23f@szlgbp.hu címen.
+
+Üdvözlettel,
+Balla Botond, 11F
+Stúdióvezető-helyettes, iskolai alkalmazások fejlesztője
+balla.botond.23f@szlgbp.hu

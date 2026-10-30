@@ -871,6 +871,33 @@ class DashboardTests(TestCase):
         again = self.client.get(f"/apps/{application.pk}/")
         self.assertNotContains(again, secret)
 
+    def test_application_can_be_edited(self):
+        application = self._create_application(self.user)
+
+        edit_page = self.client.get(f"/apps/{application.pk}/edit/")
+
+        self.assertEqual(edit_page.status_code, 200)
+        response = self.client.post(
+            f"/apps/{application.pk}/edit/",
+            {
+                "name": "Módosított app",
+                "short_description": "Módosított leírás",
+                "developer": "Módosított fejlesztő",
+                "client_type": Application.CLIENT_PUBLIC,
+                "redirect_uris": "https://client.example/updated-callback",
+            },
+        )
+
+        self.assertRedirects(
+            response, f"/apps/{application.pk}/", fetch_redirect_response=False
+        )
+        application.refresh_from_db()
+        self.assertEqual(application.name, "Módosított app")
+        self.assertEqual(application.client_type, Application.CLIENT_PUBLIC)
+        self.assertEqual(application.redirect_uris, "https://client.example/updated-callback")
+        self.assertEqual(application.profile.developer, "Módosított fejlesztő")
+        self.assertEqual(application.profile.short_description, "Módosított leírás")
+
     def test_users_cannot_choose_protocol_settings(self):
         self._app_post(
             authorization_grant_type=Application.GRANT_PASSWORD,

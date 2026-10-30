@@ -1,12 +1,18 @@
+import logging
+from smtplib import SMTPException
+
 from django import forms
 from django.contrib import admin, messages
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.auth.admin import GroupAdmin, UserAdmin
 from django.contrib.auth.models import Group
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.mail import EmailMultiAlternatives
+from django.core.validators import validate_email
 from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
+from django.template.loader import render_to_string
 from django.urls import path, reverse
 from django.utils.html import format_html
 from mptt.admin import DraggableMPTTAdmin
@@ -30,6 +36,12 @@ from .models import (
 )
 
 Application = get_application_model()
+
+logger = logging.getLogger(__name__)
+SZLG_PLUS_MIGRATION_SUBJECT = (
+    "SZLG+ Fiókra állítottunk át az SZLG alkalmazásaiban."
+)
+SZLG_PLUS_MIGRATION_FROM_EMAIL = "SZLG Plusz <szlghonlap.ftv@gmail.com>"
 
 
 class BulkMoveManualGroupsForm(forms.Form):
@@ -98,6 +110,7 @@ class TeacherProfileInline(admin.StackedInline):
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
+    actions = ("send_szlg_plus_migration_notice",)
     ordering = ("email",)
     list_display = (
         "email",
@@ -162,6 +175,61 @@ class CustomUserAdmin(UserAdmin):
         ),
     )
     inlines = (StudentProfileInline, TeacherProfileInline)
+
+    @admin.action(
+        description="SZLG+ átállásról szóló e-mail küldése a kijelölteknek",
+        permissions=("change",),
+    )
+    def send_szlg_plus_migration_notice(self, request, queryset):
+        text_body = render_to_string(
+            "emails/szlg_plus_account_migration.txt"
+        ).strip()
+        html_body = render_to_string("emails/szlg_plus_account_migration.html")
+        sent_count = 0
+        skipped_count = 0
+        failed_count = 0
+
+        for user in queryset.iterator():
+            recipient = (user.email or "").strip()
+            try:
+                validate_email(recipient)
+            except ValidationError:
+                skipped_count += 1
+                continue
+
+            message = EmailMultiAlternatives(
+                subject=SZLG_PLUS_MIGRATION_SUBJECT,
+                body=text_body,
+                from_email=SZLG_PLUS_MIGRATION_FROM_EMAIL,
+                to=[recipient],
+            )
+            message.attach_alternative(html_body, "text/html")
+            try:
+                if message.send():
+                    sent_count += 1
+                else:
+                    failed_count += 1
+            except (OSError, SMTPException):
+                failed_count += 1
+                logger.exception(
+                    "Could not send the SZLG+ migration notice to user %s", user.pk
+                )
+
+        details = [f"{sent_count} felhasználónak elküldtük az értesítést."]
+        if skipped_count:
+            details.append(
+                f"{skipped_count} hiányzó vagy hibás e-mail-című felhasználót kihagytunk."
+            )
+        if failed_count:
+            details.append(f"{failed_count} e-mailt nem sikerült elküldeni.")
+        message_level = (
+            messages.WARNING if skipped_count or failed_count else messages.SUCCESS
+        )
+        self.message_user(
+            request,
+            " ".join(details),
+            level=message_level,
+        )
 
     @admin.display(description="Felülvizsgálati állapot", ordering="account_review_status")
     def account_review_badge(self, user):
