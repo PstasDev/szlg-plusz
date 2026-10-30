@@ -1,9 +1,26 @@
 {% for error in form.non_field_errors %}<p class="error" role="alert">{{ error }}</p>{% endfor %}
 {% for field in form %}
-  <div class="fld{% if field.errors %} has-error{% endif %}">
-    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-    {{ field }}
-    {% if field.help_text %}<div class="hint">{{ field.help_text|safe }}</div>{% endif %}
-    {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
-  </div>
+  {% if field.name == "required_group_keys" %}
+    <fieldset class="fld group-selector{% if field.errors %} has-error{% endif %}" data-group-selector>
+      <legend>{{ field.label }}</legend>
+      {% if field.help_text %}<div class="hint" id="id_required_group_keys_help">{{ field.help_text|safe }}</div>{% endif %}
+      <div class="group-selector-tools">
+        <label for="id_required_group_keys_search">Csoportok keresése</label>
+        <input id="id_required_group_keys_search" type="search" placeholder="Pl. osztály, tagozat, szakkör" autocomplete="off" data-group-selector-search hidden>
+        <button class="btn outline sm" type="button" data-group-selector-clear hidden disabled>Kijelölések törlése</button>
+      </div>
+      <p class="group-selector-status" role="status" aria-live="polite" data-group-selector-status hidden></p>
+      <p class="group-selector-empty" data-group-selector-empty hidden>Nincs a keresésnek megfelelő csoport.</p>
+      <p class="group-selector-selected" data-group-selector-selected hidden></p>
+      <div class="group-selector-scroll">{{ field }}</div>
+      {% for error in field.errors %}<p class="field-error" id="id_required_group_keys_errors">{{ error }}</p>{% endfor %}
+    </fieldset>
+  {% else %}
+    <div class="fld{% if field.errors %} has-error{% endif %}">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<div class="hint">{{ field.help_text|safe }}</div>{% endif %}
+      {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+    </div>
+  {% endif %}
 {% endfor %}

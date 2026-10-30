@@ -58,9 +58,9 @@ def _safe_next_url(request, value):
 def _render_completion(request, next_url, missing, *, values=None, errors=None, status=200):
     return render(
         request,
-        "dashboard/student_profile_completion.html",
+        "auth/login.html",
         {
-            "section": "profile",
+            "student_profile_completion": True,
             "next_url": next_url,
             "missing_tagozat": missing["tagozat"],
             "missing_om_id": missing["om_id"],

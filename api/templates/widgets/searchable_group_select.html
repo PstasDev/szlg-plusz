@@ -1,0 +1,7 @@
+<div{% if widget.attrs.id %} id="{{ widget.attrs.id }}"{% endif %} class="group-selector-options" role="group" aria-describedby="id_required_group_keys_help id_required_group_keys_errors">
+  {% for group_name, group_choices, group_index in widget.optgroups %}
+    {% for option in group_choices %}
+      {% include option.template_name with widget=option %}
+    {% endfor %}
+  {% endfor %}
+</div>

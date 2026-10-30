@@ -391,6 +391,30 @@ body.auth-page {
 .auth-destination strong { color: var(--accent); }
 .auth-content .auth-form { margin: 0; }
 .auth-content .field { margin-top: 0; }
+.student-profile-form .field + .field { margin-top: 1.25rem; }
+.student-profile-form .student-profile-hint {
+  margin: .35rem 0 0;
+  color: var(--muted);
+  font-size: .83rem;
+}
+.student-profile-form .student-profile-field-error {
+  margin: .35rem 0 0;
+  color: var(--danger);
+  font-size: .85rem;
+}
+.student-profile-form .om-id-help { margin: .75rem 0 0; }
+.student-profile-form .om-id-help img {
+  display: block;
+  width: min(100%, 28rem);
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: .65rem;
+}
+.student-profile-form .om-id-help figcaption {
+  margin-top: .35rem;
+  color: var(--muted);
+  font-size: .82rem;
+}
 .auth-form-links { margin-top: .45rem; font-size: .9rem; font-weight: 500; }
 .auth-form-links a + br + a { display: inline-block; margin-top: .35rem; }
 .auth-note { margin-top: 2.7rem; font-size: .9rem; }

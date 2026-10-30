@@ -369,6 +369,11 @@ class ManualReviewForm(forms.Form):
         return user, review_request
 
 
+class SearchableGroupSelectMultiple(forms.CheckboxSelectMultiple):
+    template_name = "widgets/searchable_group_select.html"
+    option_template_name = "widgets/searchable_group_option.html"
+
+
 class ApplicationForm(forms.ModelForm):
     """Self-service OAuth client registration with fixed, safe protocol settings."""
 
@@ -386,7 +391,9 @@ class ApplicationForm(forms.ModelForm):
     required_group_keys = forms.MultipleChoiceField(
         label="Az alkalmazáshoz szükséges iskolai csoportok",
         required=False,
-        widget=forms.SelectMultiple(attrs={"size": 7}),
+        widget=SearchableGroupSelectMultiple(
+            attrs={"aria-describedby": "id_required_group_keys_help"}
+        ),
         help_text=(
             "Ha választasz csoportokat, legalább az egyikhez tartoznia kell a felhasználónak. "
             "Ez nem helyettesíti az alkalmazás saját jogosultság-ellenőrzését."
@@ -464,6 +471,9 @@ class ApplicationForm(forms.ModelForm):
         self.instance.skip_authorization = False
 
         self.fields["required_group_keys"].choices = group_choices()
+        self.fields["required_group_keys"].widget.attrs[
+            "aria-describedby"
+        ] = "id_required_group_keys_help id_required_group_keys_errors"
         self.fields["privacy_policy_source"].choices = (
             ("", "Válassz dokumentumot"),
             ("own", "Saját adatkezelési tájékoztató"),

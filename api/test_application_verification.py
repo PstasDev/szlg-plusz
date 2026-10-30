@@ -105,6 +105,26 @@ class ApplicationVerificationTests(TestCase):
         self.application.profile.refresh_from_db()
         self.assertFalse(self.application.profile.verified)
 
+    def test_group_selector_renders_searchable_checkbox_options(self):
+        response = self.client.get(
+            reverse("application-edit", args=[self.application.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-group-selector-search')
+        self.assertContains(response, 'data-group-selector-option')
+        self.assertContains(response, 'type="checkbox"')
+        self.assertContains(response, "Csoportok keresése")
+
+    def test_group_selector_saves_multiple_group_requirements(self):
+        self.complete_metadata(required_group_keys=["smart-student", "smart-teacher"])
+
+        self.application.profile.refresh_from_db()
+        self.assertEqual(
+            self.application.profile.required_group_keys,
+            ["smart-student", "smart-teacher"],
+        )
+
     def test_developer_can_submit_and_admin_can_approve_request(self):
         self.complete_metadata()
         self.application.refresh_from_db()

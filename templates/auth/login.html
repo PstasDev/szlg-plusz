@@ -1,10 +1,13 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Bejelentkezés · SZLG+{% endblock %}
+{% block title %}{% if student_profile_completion %}Diákprofil kiegészítése{% else %}Bejelentkezés{% endif %} · SZLG+{% endblock %}
 {% block body_class %}auth-page{% endblock %}
 {% block shell_class %}auth-shell{% endblock %}
 {% block head_text %}
-  {% if password_step and selected_account %}
+  {% if student_profile_completion %}
+    <h1>A diákprofilod hiányos</h1>
+    <p class="subtitle">A hiányzó adatokkal naprakész lehet az iskolai címtárad.</p>
+  {% elif password_step and selected_account %}
     <h1>{{ selected_account.get_full_name|default:selected_account.email }}</h1>
     <div class="user-chip auth-user-chip">
       <span class="avatar" aria-hidden="true">{{ selected_account.email|slice:":1"|upper }}</span>
@@ -45,6 +48,51 @@
 {% endblock %}
 {% block content %}
   <div class="auth-content">
+  {% if student_profile_completion %}
+    <p class="auth-prompt">Csak az üres mezőket töltjük ki; a megadást most ki is hagyhatod.</p>
+    <form class="auth-form student-profile-form" method="post">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next_url }}">
+
+      {% if errors.non_field %}<p class="error" role="alert">{{ errors.non_field }}</p>{% endif %}
+
+      {% if missing_tagozat %}
+        <div class="field student-profile-field">
+          <label class="field-static-label" for="student-profile-tagozat">Tagozat</label>
+          {% if tagozatok %}
+            <select id="student-profile-tagozat" name="tagozat" aria-describedby="student-profile-tagozat-hint">
+              <option value="">Válassz tagozatot…</option>
+              {% for tagozat in tagozatok %}
+                <option value="{{ tagozat.slug }}"{% if values.tagozat == tagozat.slug %} selected{% endif %}>{{ tagozat.name }}</option>
+              {% endfor %}
+            </select>
+            <p class="student-profile-hint" id="student-profile-tagozat-hint">Ha most nem tudod, hagyd üresen, vagy válaszd a kihagyást.</p>
+          {% else %}
+            <p class="student-profile-hint" id="student-profile-tagozat-hint">Jelenleg nincs elérhető tagozat. Ezt az adatot később pótolhatod.</p>
+          {% endif %}
+          {% if errors.tagozat %}<p class="student-profile-field-error" role="alert">{{ errors.tagozat }}</p>{% endif %}
+        </div>
+      {% endif %}
+
+      {% if missing_om_id %}
+        <div class="field student-profile-field">
+          <input id="student-profile-om-id" name="om_id" type="text" maxlength="32" autocomplete="off" placeholder=" " value="{{ values.om_id }}" aria-describedby="student-profile-om-hint">
+          <label for="student-profile-om-id">OM azonosító</label>
+          <p class="student-profile-hint" id="student-profile-om-hint">Az OM azonosítót a diákigazolványon az „AZONOSÍTÓ SZÁM” feliratnál találod. Ne a „KÁRTYASZÁMOT” írd be.</p>
+          <figure class="om-id-help">
+            <img src="{% static 'img/om-id.gif' %}" alt="Diákigazolvány-példa: az OM azonosító a kártyán az AZONOSÍTÓ SZÁM feliratnál található, nem a KÁRTYASZÁM mezőben.">
+            <figcaption>A képen az „AZONOSÍTÓ SZÁM” mező a keresett OM azonosító.</figcaption>
+          </figure>
+          {% if errors.om_id %}<p class="student-profile-field-error" role="alert">{{ errors.om_id }}</p>{% endif %}
+        </div>
+      {% endif %}
+
+      <div class="actions">
+        <button class="btn" type="submit" name="action" value="save">Mentés és folytatás</button>
+        <button class="btn outline" type="submit" name="action" value="skip">Most kihagyom</button>
+      </div>
+    </form>
+  {% else %}
   {% if confirmed %}<p class="success" role="status">Az e-mail-címedet megerősítettük, most már bejelentkezhetsz.</p>{% endif %}
   {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
   {% if show_account_chooser %}
@@ -118,9 +166,9 @@
           <button class="btn" type="submit">Tovább</button>
         </div>
       </form>
-    {% endif %}
+  {% endif %}
 
-    {% if not show_account_chooser %}
+  {% if not show_account_chooser %}
       <div class="or">vagy</div>
       <button class="btn outline block auth-passkey" id="passkey-login" type="button">
         {% include "partials/icon.html" with name="fingerprint" %}
@@ -129,8 +177,9 @@
       <p id="passkey-error" class="error" role="alert" hidden></p>
     {% endif %}
   {% endif %}
+  {% endif %}
   </div>
 {% endblock %}
 {% block scripts %}
-  <script src="{% static 'js/webauthn.js' %}" defer></script>
+  {% if not student_profile_completion %}<script src="{% static 'js/webauthn.js' %}" defer></script>{% endif %}
 {% endblock %}
