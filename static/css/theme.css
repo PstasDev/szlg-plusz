@@ -318,6 +318,14 @@ a:hover { text-decoration: underline; }
 .application-legal-info a { color: var(--accent); text-decoration: underline; text-underline-offset: .2em; }
 
 .note { margin-top: 1.25rem; font-size: .85rem; }
+.application-consent-legal {
+  padding: .65rem .8rem;
+  border-left: 3px solid var(--accent);
+  border-radius: .4rem;
+  background: var(--tint);
+  text-align: left;
+}
+.application-consent-legal a { color: var(--accent); text-decoration: underline; text-underline-offset: .15em; }
 
 .footer {
   display: flex; align-items: center; justify-content: space-between;

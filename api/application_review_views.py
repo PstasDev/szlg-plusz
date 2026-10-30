@@ -297,17 +297,17 @@ def application_verification_detail(request, pk):
                     None,
                     "A kérelem nem hagyható jóvá, amíg a fejlesztő nem pótolja a hiányzó adatokat.",
                 )
-            elif (
-                action == "approve"
-                and (
-                    verification_request.submitted_by_id == request.user.pk
-                    or application.user_id == request.user.pk
-                )
-            ):
-                form.add_error(
-                    None,
-                    "Saját alkalmazásod ellenőrzési kérelmét nem hagyhatod jóvá.",
-                )
+            # elif (
+            #     action == "approve"
+            #     and (
+            #         verification_request.submitted_by_id == request.user.pk
+            #         or application.user_id == request.user.pk
+            #     )
+            # ):
+            #     form.add_error(
+            #         None,
+            #         "Saját alkalmazásod ellenőrzési kérelmét nem hagyhatod jóvá.",
+            #     )
             else:
                 stale_request = False
                 already_reviewed = False

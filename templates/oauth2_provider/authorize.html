@@ -74,7 +74,20 @@
         </li>
       {% endfor %}
     </ul>
-    {% if application %}{% include "partials/application_legal_info.html" with application=application %}{% endif %}
+    {% if application %}
+      {% with profile=application.profile %}
+        <p class="note muted application-consent-legal">
+          {% if profile.privacy_policy_url or profile.uses_szlg_privacy_policy or profile.terms_of_service_url or profile.uses_szlg_terms_of_service and szlg_terms_url %}
+            Az Engedélyezés gombra kattintva elfogadod
+            {% if profile.privacy_policy_url %}<a href="{{ profile.privacy_policy_url }}" target="_blank" rel="noopener noreferrer">az alkalmazás adatkezelési tájékoztatóját</a>{% elif profile.uses_szlg_privacy_policy %}<a href="{% url 'privacy' %}" target="_blank" rel="noopener noreferrer">az SZLG+ adatkezelési tájékoztatóját</a>{% else %}az alkalmazás adatkezelési tájékoztatóját (nincs megadva){% endif %}
+            és
+            {% if profile.terms_of_service_url %}<a href="{{ profile.terms_of_service_url }}" target="_blank" rel="noopener noreferrer">az alkalmazás ÁSZF-jét</a>{% elif profile.uses_szlg_terms_of_service and szlg_terms_url %}<a href="{{ szlg_terms_url }}" target="_blank" rel="noopener noreferrer">az SZLG+ ÁSZF-jét</a>{% else %}az alkalmazás ÁSZF-jét (nincs megadva){% endif %}.
+          {% else %}
+            Az alkalmazáshoz nem tartozik megadott adatkezelési tájékoztató vagy Általános Szerződési Feltételek.
+          {% endif %}
+        </p>
+      {% endwith %}
+    {% endif %}
     <p class="note muted">Csak olyan alkalmazásnak engedélyezd, amelyben megbízol. A jelszavadat az alkalmazás nem kapja meg.</p>
 
     <form method="post" action="{{ request.get_full_path }}">

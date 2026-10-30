@@ -348,6 +348,10 @@ class ApplicationVerificationTests(TestCase):
         response = self.client.get(f"/o/authorize/?{query}")
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "privacy@app.example.org")
+        self.assertContains(response, "Az Engedélyezés gombra kattintva elfogadod")
+        self.assertContains(response, "az alkalmazás adatkezelési tájékoztatóját")
+        self.assertContains(response, "az alkalmazás ÁSZF-jét")
         self.assertContains(response, "https://app.example.org/privacy/")
         self.assertContains(response, "https://app.example.org/terms/")
+        self.assertNotContains(response, "Adatvédelem és kapcsolattartás")
+        self.assertNotContains(response, "privacy@app.example.org")
