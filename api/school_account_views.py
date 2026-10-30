@@ -27,6 +27,7 @@ from .forms import (
 )
 from .models import (
     AccountReviewStatus,
+    ApplicationVerificationRequest,
     CustomUser,
     ManualReviewRequest,
     SchoolAccountOTP,
@@ -539,9 +540,16 @@ def manual_review_list(request):
         "dashboard/manual_review_list.html",
         {
             "section": "manual-review",
+            "review_tab": "accounts",
             "pending_reviews": pending_reviews,
             "completed_reviews": completed_reviews,
             "pending_count": pending_reviews.count(),
+            "application_pending_count": ApplicationVerificationRequest.objects.filter(
+                status__in=(
+                    ApplicationVerificationRequest.Status.PENDING,
+                    ApplicationVerificationRequest.Status.LEGACY_REVIEW,
+                )
+            ).count(),
         },
     )
 

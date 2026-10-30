@@ -30,12 +30,47 @@
     </section>
   {% endif %}
 
-  {% if not application.profile.verified %}
-    <div class="flash error" role="note">
-      Ez az alkalmazás még nem ellenőrzött: az engedélyezéskor a felhasználók figyelmeztetést látnak. Ellenőrzést az alábbi SZLG+ kapcsolattartóktól kérhetsz.
-      {% include "partials/administrator_contacts.html" %}
+  <section class="panel">
+    <div class="row">
+      <div>
+        <h2>Iskolai ellenőrzés</h2>
+        <p class="muted">Az ellenőrzés a beküldött alkalmazásadatok SZLG+ általi felülvizsgálatát jelzi; nem jelent teljes körű biztonsági tanúsítványt.</p>
+      </div>
+      <span class="badge{% if verification_status_kind == 'approved' %} review-approved{% elif verification_status_kind == 'pending' %} review-pending{% elif verification_status_kind == 'rejected' or verification_status_kind == 'changes_requested' %} review-rejected{% endif %}">{{ verification_status }}</span>
     </div>
-  {% endif %}
+
+    {% if verification_request.status == "legacy_review" %}
+      <p class="flash info" role="status">Ezt az alkalmazást a korábbi automatikus szabály ellenőrzöttnek jelölte. Az SZLG+ most felülvizsgálja ezt a régi jelölést; ez nem általad beküldött kérelem.</p>
+    {% endif %}
+
+    {% if verification_request.reviewer_note and not verification_open %}
+      <p class="flash info" role="status"><strong>Visszajelzés:</strong> {{ verification_request.reviewer_note }}</p>
+    {% endif %}
+
+    {% if verification_missing_requirements %}
+      <div class="flash info" role="status">
+        <strong>Az ellenőrzési kérelem előtt pótold ezeket:</strong>
+        <ul>{% for item in verification_missing_requirements %}<li>{{ item }}</li>{% endfor %}</ul>
+      </div>
+    {% endif %}
+
+    {% if can_request_verification %}
+      <form method="post" action="{% url 'application-verification-request' application.pk %}">
+        {% csrf_token %}
+        <div class="fld">
+          <label for="developer-note">Megjegyzés az ellenőrzést végző adminisztrátoroknak (nem kötelező)</label>
+          <textarea id="developer-note" name="developer_note" rows="3" maxlength="2000"></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn" type="submit">Ellenőrzés kérése</button>
+        </div>
+      </form>
+    {% elif verification_missing_requirements %}
+      <a class="btn outline" href="{% url 'application-edit' application.pk %}">Alkalmazásadatok kiegészítése</a>
+    {% elif verification_open and verification_request.status != "legacy_review" %}
+      <p class="muted">A kérelmet {{ verification_request.submitted_at|date:"Y. m. d. H:i" }} időpontban küldted be. Az alkalmazás a döntésig ellenőrizetlen marad.</p>
+    {% endif %}
+  </section>
 
   <div class="two">
     <section class="panel">
@@ -43,6 +78,8 @@
       <dl class="data">
         <div><dt>Leírás</dt><dd>{{ application.profile.short_description|default:"–" }}</dd></div>
         <div><dt>Fejlesztő</dt><dd>{{ application.profile.developer|default:"–" }}</dd></div>
+        <div><dt>Indítási URL</dt><dd>{% if application.profile.launch_url %}<a href="{{ application.profile.launch_url }}" target="_blank" rel="noopener noreferrer">{{ application.profile.launch_url }}</a>{% else %}–{% endif %}</dd></div>
+        {% if application.profile.required_group_keys %}<div><dt>Szükséges iskolai csoportok</dt><dd>{{ application.profile.required_group_keys|join:", " }}</dd></div>{% endif %}
         <div>
           <dt>Átirányítási URI-k</dt>
           <dd>{% for uri in redirect_uris %}<div><code>{{ uri }}</code></div>{% endfor %}</dd>
@@ -81,4 +118,6 @@
       </div>
     </section>
   </div>
+
+  {% include "partials/application_legal_info.html" with application=application %}
 {% endblock %}

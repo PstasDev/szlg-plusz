@@ -3,10 +3,15 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.forms import PasswordResetForm
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+from django.utils.html import format_html
 from oauth2_provider.models import Application
 
+from .application_verification import application_verification_snapshot, szlg_terms_url
+from .directory import group_choices
 from .models import (
     ApplicationProfile,
+    ApplicationVerificationRequest,
     CustomUser,
     ManualReviewRequest,
     SchoolClass,
@@ -373,6 +378,50 @@ class ApplicationForm(forms.ModelForm):
         max_length=160,
         help_text="Egy mondat arról, hogy mit csinál az alkalmazás. Ezt látják a felhasználók az engedélyezéskor.",
     )
+    launch_url = forms.URLField(
+        label="Indítási URL",
+        required=False,
+        help_text="Az alkalmazáskatalógusban megjelenő indítási oldal.",
+    )
+    required_group_keys = forms.MultipleChoiceField(
+        label="Az alkalmazáshoz szükséges iskolai csoportok",
+        required=False,
+        widget=forms.SelectMultiple(attrs={"size": 7}),
+        help_text=(
+            "Ha választasz csoportokat, legalább az egyikhez tartoznia kell a felhasználónak. "
+            "Ez nem helyettesíti az alkalmazás saját jogosultság-ellenőrzését."
+        ),
+    )
+    privacy_contact_name = forms.CharField(
+        label="Adatvédelmi kapcsolattartó neve vagy szervezete",
+        max_length=120,
+        required=False,
+    )
+    privacy_contact_email = forms.EmailField(
+        label="Adatvédelmi kapcsolattartó e-mail-címe",
+        required=False,
+        help_text="Ez az e-mail-cím nyilvánosan megjelenik az alkalmazás adatlapján.",
+    )
+    privacy_policy_source = forms.ChoiceField(
+        label="Melyik adatkezelési tájékoztató vonatkozik az alkalmazásra?",
+        choices=(),
+        required=False,
+    )
+    privacy_policy_url = forms.URLField(
+        label="Saját adatkezelési tájékoztató URL-je",
+        max_length=500,
+        required=False,
+    )
+    terms_of_service_source = forms.ChoiceField(
+        label="Melyik Általános Szerződési Feltételek vonatkoznak az alkalmazásra?",
+        choices=(),
+        required=False,
+    )
+    terms_of_service_url = forms.URLField(
+        label="Saját ÁSZF URL-je",
+        max_length=500,
+        required=False,
+    )
     logo = forms.ImageField(
         label="Logó",
         required=False,
@@ -414,15 +463,88 @@ class ApplicationForm(forms.ModelForm):
         self.instance.algorithm = Application.RS256_ALGORITHM
         self.instance.skip_authorization = False
 
+        self.fields["required_group_keys"].choices = group_choices()
+        self.fields["privacy_policy_source"].choices = (
+            ("", "Válassz dokumentumot"),
+            ("own", "Saját adatkezelési tájékoztató"),
+            (
+                "szlg",
+                "Nyilatkozom, hogy az SZLG+ adatkezelési tájékoztatója kiterjed erre az alkalmazásra",
+            ),
+        )
+        self.fields["terms_of_service_source"].choices = (
+            ("", "Válassz dokumentumot"),
+            ("own", "Saját Általános Szerződési Feltételek"),
+            (
+                "szlg",
+                "Nyilatkozom, hogy az SZLG+ ÁSZF-je kiterjed erre az alkalmazásra",
+            ),
+        )
         profile = getattr(self.instance, "profile", None) if self.instance.pk else None
         if profile is not None:
             self.fields["developer"].initial = profile.developer
             self.fields["short_description"].initial = profile.short_description
             self.fields["logo"].initial = profile.logo
+            self.fields["launch_url"].initial = profile.launch_url
+            self.fields["required_group_keys"].initial = profile.required_group_keys
+            self.fields["privacy_contact_name"].initial = profile.privacy_contact_name
+            self.fields["privacy_contact_email"].initial = profile.privacy_contact_email
+            self.fields["privacy_policy_source"].initial = (
+                "szlg"
+                if profile.uses_szlg_privacy_policy
+                else "own"
+                if profile.privacy_policy_url
+                else ""
+            )
+            self.fields["privacy_policy_url"].initial = profile.privacy_policy_url
+            self.fields["terms_of_service_source"].initial = (
+                "szlg"
+                if profile.uses_szlg_terms_of_service
+                else "own"
+                if profile.terms_of_service_url
+                else ""
+            )
+            self.fields["terms_of_service_url"].initial = profile.terms_of_service_url
         else:
             self.fields["developer"].initial = user.get_full_name() or user.email
+
+        self.fields["privacy_policy_source"].help_text = format_html(
+            'Az SZLG+ adatkezelési tájékoztatója: <a href="{}" target="_blank" '
+            'rel="noopener noreferrer">megnyitás</a>. Az ellenőrzési kérelemhez '
+            "minden alkalmazásnál választanod kell a saját dokumentum és az SZLG+ tájékoztatója között.",
+            "/adatvedelem/",
+        )
+        central_terms_url = szlg_terms_url()
+        if central_terms_url:
+            self.fields["terms_of_service_source"].help_text = format_html(
+                'Az SZLG+ ÁSZF-je: <a href="{}" target="_blank" '
+                'rel="noopener noreferrer">megnyitás</a>. Az ellenőrzési kérelemhez '
+                "minden alkalmazásnál választanod kell a saját dokumentum és az SZLG+ ÁSZF-je között.",
+                central_terms_url,
+            )
+        else:
+            self.fields["terms_of_service_source"].help_text = (
+                "Az SZLG+ ÁSZF URL-jét az adminisztrátornak kell beállítania. "
+                "Addig válaszd a saját dokumentum URL-jét."
+            )
+
         self.order_fields(
-            ["name", "short_description", "developer", "logo", "client_type", "redirect_uris"]
+            [
+                "name",
+                "short_description",
+                "developer",
+                "launch_url",
+                "required_group_keys",
+                "privacy_contact_name",
+                "privacy_contact_email",
+                "privacy_policy_source",
+                "privacy_policy_url",
+                "terms_of_service_source",
+                "terms_of_service_url",
+                "logo",
+                "client_type",
+                "redirect_uris",
+            ]
         )
 
     def clean_redirect_uris(self):
@@ -447,21 +569,134 @@ class ApplicationForm(forms.ModelForm):
                 )
         return logo
 
+    def clean(self):
+        cleaned_data = super().clean()
+        for source_key, url_key, label in (
+            (
+                "privacy_policy_source",
+                "privacy_policy_url",
+                "adatkezelési tájékoztató",
+            ),
+            ("terms_of_service_source", "terms_of_service_url", "ÁSZF"),
+        ):
+            source = cleaned_data.get(source_key, "")
+            url = cleaned_data.get(url_key, "")
+            if source == "own" and not url:
+                self.add_error(url_key, f"Add meg a saját {label} URL-jét.")
+            elif source == "szlg" and url:
+                self.add_error(
+                    url_key,
+                    f"Az SZLG+ {label} választásakor ne adj meg saját URL-t.",
+                )
+            elif not source and url:
+                self.add_error(source_key, f"Válaszd ki, melyik {label} vonatkozik az alkalmazásra.")
+            elif source == "szlg" and label == "ÁSZF" and not szlg_terms_url():
+                self.add_error(
+                    source_key,
+                    "Az SZLG+ ÁSZF URL-je még nincs beállítva; válaszd a saját dokumentumot, vagy keresd az adminisztrátort.",
+                )
+        return cleaned_data
+
     def save(self, commit=True):
+        original_snapshot = None
+        if self.instance.pk:
+            original_application = Application.objects.select_related("profile").get(
+                pk=self.instance.pk
+            )
+            original_snapshot = application_verification_snapshot(original_application)
+
         application = super().save(commit=commit)
         if not commit:
             return application
 
         profile = getattr(application, "profile", None) or ApplicationProfile(
             application=application,
-            verified=self.user.is_staff,
+            verified=False,
         )
         profile.developer = self.cleaned_data["developer"]
         profile.short_description = self.cleaned_data["short_description"]
+        profile.launch_url = self.cleaned_data.get("launch_url", "")
+        profile.required_group_keys = list(self.cleaned_data.get("required_group_keys", []))
+        profile.privacy_contact_name = self.cleaned_data.get(
+            "privacy_contact_name", ""
+        ).strip()
+        profile.privacy_contact_email = self.cleaned_data.get(
+            "privacy_contact_email", ""
+        ).strip()
+        privacy_source = self.cleaned_data.get("privacy_policy_source", "")
+        profile.privacy_policy_url = (
+            self.cleaned_data.get("privacy_policy_url", "")
+            if privacy_source == "own"
+            else ""
+        )
+        profile.uses_szlg_privacy_policy = privacy_source == "szlg"
+        terms_source = self.cleaned_data.get("terms_of_service_source", "")
+        profile.terms_of_service_url = (
+            self.cleaned_data.get("terms_of_service_url", "")
+            if terms_source == "own"
+            else ""
+        )
+        profile.uses_szlg_terms_of_service = terms_source == "szlg"
         logo = self.cleaned_data.get("logo")
         if logo is False:
             profile.logo.delete(save=False)
         elif logo:
             profile.logo = logo
+
+        updated_snapshot = application_verification_snapshot(
+            application, profile=profile
+        )
+        details_changed = (
+            original_snapshot is not None and original_snapshot != updated_snapshot
+        )
+        if details_changed:
+            # A previous approval only covered the exact configuration reviewed.
+            profile.verified = False
         profile.save()
+
+        if details_changed:
+            ApplicationVerificationRequest.objects.filter(
+                application=application,
+                status__in=(
+                    ApplicationVerificationRequest.Status.PENDING,
+                    ApplicationVerificationRequest.Status.LEGACY_REVIEW,
+                ),
+            ).update(
+                status=ApplicationVerificationRequest.Status.SUPERSEDED,
+                reviewed_at=timezone.now(),
+                reviewer_note=(
+                    "Az alkalmazás adatai a kérelem beküldése után módosultak. "
+                    "A friss adatokkal új ellenőrzési kérelmet kell beküldeni."
+                ),
+            )
         return application
+
+
+class ApplicationVerificationSubmissionForm(forms.Form):
+    developer_note = forms.CharField(
+        label="Megjegyzés az ellenőrzést végző adminisztrátoroknak",
+        required=False,
+        max_length=2000,
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
+
+
+class ApplicationVerificationDecisionForm(forms.Form):
+    reviewer_note = forms.CharField(
+        label="Visszajelzés a fejlesztőnek",
+        required=False,
+        max_length=4000,
+        widget=forms.Textarea(attrs={"rows": 4}),
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        action = self.data.get("action")
+        if action in {"reject", "changes_requested"} and not (
+            cleaned_data.get("reviewer_note") or ""
+        ).strip():
+            self.add_error(
+                "reviewer_note",
+                "Elutasításkor vagy javítás kérésénél írd le a fejlesztőnek, mit kell módosítania.",
+            )
+        return cleaned_data

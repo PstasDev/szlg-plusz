@@ -18,8 +18,19 @@ from oauth2_provider.models import (
 )
 
 from api.utils import decide_prefix_a_or_az
+from .application_verification import (
+    application_verification_checked_at,
+    verification_checked_at_subquery,
+    verification_missing_requirements,
+)
 from .forms import ApplicationForm
-from .models import Passkey, UserAppConnection, email_info
+from .models import (
+    ApplicationProfile,
+    ApplicationVerificationRequest,
+    Passkey,
+    UserAppConnection,
+    email_info,
+)
 from .scopes import describe_scopes
 
 MAX_APPLICATIONS_PER_USER = 10
@@ -110,6 +121,61 @@ def _application_limit_reached(user) -> bool:
 
 
 def _render_application(request, application, new_secret=None, status=200):
+    try:
+        profile = application.profile
+    except ApplicationProfile.DoesNotExist:
+        profile = None
+    verification_request = application.verification_requests.order_by(
+        "-submitted_at", "-pk"
+    ).first()
+    verification_open = bool(
+        verification_request
+        and verification_request.status
+        in (
+            ApplicationVerificationRequest.Status.PENDING,
+            ApplicationVerificationRequest.Status.LEGACY_REVIEW,
+        )
+    )
+    if profile and profile.verified:
+        verification_status = "Ellenőrzött"
+        verification_status_kind = "approved"
+        application.verification_checked_at = application_verification_checked_at(
+            application
+        )
+    elif verification_request is None:
+        verification_status = "Még nem kért ellenőrzés"
+        verification_status_kind = "not_requested"
+    else:
+        verification_statuses = {
+            ApplicationVerificationRequest.Status.PENDING: (
+                "Felülvizsgálatra vár",
+                "pending",
+            ),
+            ApplicationVerificationRequest.Status.LEGACY_REVIEW: (
+                "Korábbi ellenőrzött státusz felülvizsgálatra vár",
+                "pending",
+            ),
+            ApplicationVerificationRequest.Status.CHANGES_REQUESTED: (
+                "Javítás szükséges",
+                "changes_requested",
+            ),
+            ApplicationVerificationRequest.Status.REJECTED: (
+                "Elutasítva; új kérelem küldhető",
+                "rejected",
+            ),
+            ApplicationVerificationRequest.Status.SUPERSEDED: (
+                "Az adatok módosultak; új kérelem szükséges",
+                "changes_requested",
+            ),
+            ApplicationVerificationRequest.Status.APPROVED: (
+                "Az ellenőrzés a módosítások miatt már nem érvényes",
+                "changes_requested",
+            ),
+        }
+        verification_status, verification_status_kind = verification_statuses[
+            verification_request.status
+        ]
+
     return render(
         request,
         "dashboard/application_detail.html",
@@ -118,6 +184,21 @@ def _render_application(request, application, new_secret=None, status=200):
             "application": application,
             "redirect_uris": application.redirect_uris.split(),
             "new_secret": new_secret,
+            "verification_request": verification_request,
+            "verification_status": verification_status,
+            "verification_status_kind": verification_status_kind,
+            "verification_open": verification_open,
+            "can_request_verification": bool(
+                profile
+                and not profile.verified
+                and not verification_open
+                and not verification_missing_requirements(application)
+            ),
+            "verification_missing_requirements": (
+                verification_missing_requirements(application)
+                if profile is not None and not profile.verified
+                else []
+            ),
         },
         status=status,
     )
@@ -232,7 +313,11 @@ def _active_grants(user):
             "application_id", flat=True
         )
     )
-    for application in Application.objects.filter(pk__in=application_ids).select_related("profile"):
+    for application in (
+        Application.objects.filter(pk__in=application_ids)
+        .select_related("profile")
+        .annotate(verification_checked_at=verification_checked_at_subquery())
+    ):
         tokens = AccessToken.objects.filter(user=user, application=application).order_by("-created")
         latest = tokens.first()
         connection = connections.get(application.pk)

@@ -29,6 +29,7 @@
           {% for scope in grant.scopes %}<li class="badge" title="{{ scope.description }}">{{ scope.title }}</li>{% endfor %}
         </ul>
       {% endif %}
+      {% include "partials/application_legal_info.html" with application=grant.application %}
       <div class="when">
         {% if grant.authorized_at %}Első engedélyezés: {{ grant.authorized_at|date:"Y. m. d. H:i" }}{% endif %}
         {% if grant.last_used %} · legutóbbi belépés: {{ grant.last_used|date:"Y. m. d. H:i" }}{% endif %}

@@ -9,6 +9,15 @@
     <span class="badge review-pending">{% include "partials/icon.html" with name="clock" %} {{ pending_count }} függőben</span>
   </div>
 
+  <nav class="form-actions review-tabs" aria-label="Felülvizsgálatok típusa">
+    <a class="btn{% if review_tab == 'accounts' %}{% else %} outline{% endif %}" href="{% url 'manual-review-list' %}"{% if review_tab == "accounts" %} aria-current="page"{% endif %}>
+      Fiókok <span class="badge">{{ pending_count }}</span>
+    </a>
+    <a class="btn{% if review_tab == 'applications' %}{% else %} outline{% endif %}" href="{% url 'application-review-list' %}"{% if review_tab == "applications" %} aria-current="page"{% endif %}>
+      Alkalmazások <span class="badge">{{ application_pending_count }}</span>
+    </a>
+  </nav>
+
   <section class="panel">
     <h2>Felülvizsgálatra vár</h2>
     {% if pending_reviews %}

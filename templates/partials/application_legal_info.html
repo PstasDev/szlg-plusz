@@ -1,0 +1,48 @@
+<section class="application-legal-info mt-5 rounded-xl border border-ink/10 bg-paper/70 p-4 text-sm leading-6 text-ink/70" aria-label="Alkalmazás adatvédelmi és jogi adatai">
+  <h3 class="font-semibold text-ink">Adatvédelem és kapcsolattartás</h3>
+  <dl class="mt-2 grid gap-2">
+    <div>
+      <dt class="font-semibold text-ink/80">Adatkezelési tájékoztató</dt>
+      <dd class="m-0 break-words">
+        {% if application.profile.privacy_policy_url %}
+          <a href="{{ application.profile.privacy_policy_url }}" target="_blank" rel="noopener noreferrer">A fejlesztő tájékoztatója</a>
+        {% elif application.profile.uses_szlg_privacy_policy %}
+          <a href="{% url 'privacy' %}" target="_blank" rel="noopener noreferrer">Az SZLG+ adatkezelési tájékoztatója</a>
+        {% else %}
+          Nincs megadva
+        {% endif %}
+      </dd>
+    </div>
+    <div>
+      <dt class="font-semibold text-ink/80">Általános Szerződési Feltételek</dt>
+      <dd class="m-0 break-words">
+        {% if application.profile.terms_of_service_url %}
+          <a href="{{ application.profile.terms_of_service_url }}" target="_blank" rel="noopener noreferrer">A fejlesztő ÁSZF-je</a>
+        {% elif application.profile.uses_szlg_terms_of_service and szlg_terms_url %}
+          <a href="{{ szlg_terms_url }}" target="_blank" rel="noopener noreferrer">Az SZLG+ ÁSZF-je</a>
+        {% elif application.profile.uses_szlg_terms_of_service %}
+          Az SZLG+ ÁSZF hivatkozása jelenleg nem érhető el.
+        {% else %}
+          Nincs megadva
+        {% endif %}
+      </dd>
+    </div>
+    <div>
+      <dt class="font-semibold text-ink/80">Adatvédelmi kapcsolattartó</dt>
+      <dd class="m-0 break-words">
+        {% if application.profile.privacy_contact_email %}
+          {% if application.profile.privacy_contact_name %}{{ application.profile.privacy_contact_name }} · {% endif %}
+          <a href="mailto:{{ application.profile.privacy_contact_email }}">{{ application.profile.privacy_contact_email }}</a>
+        {% else %}
+          Nincs megadva
+        {% endif %}
+      </dd>
+    </div>
+    {% if application.profile.verified and application.verification_checked_at %}
+      <div>
+        <dt class="font-semibold text-ink/80">Utoljára ellenőrizve</dt>
+        <dd class="m-0">{{ application.verification_checked_at|date:"Y. F j." }}</dd>
+      </div>
+    {% endif %}
+  </dl>
+</section>

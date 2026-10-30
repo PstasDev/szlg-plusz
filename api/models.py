@@ -6,6 +6,7 @@ from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser, Group
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 from django.utils.text import slugify
 from mptt.fields import TreeForeignKey
 from mptt.models import MPTTModel
@@ -760,6 +761,34 @@ class ApplicationProfile(models.Model):
         blank=True,
         help_text="Az alkalmazás kezdőlapja, ahová a felhasználó az appcsempéről továbblép.",
     )
+    privacy_contact_name = models.CharField(
+        "adatvédelmi kapcsolattartó",
+        max_length=120,
+        blank=True,
+        help_text="A katalógusban és az engedélyek között megjelenő név vagy szervezet.",
+    )
+    privacy_contact_email = models.EmailField(
+        "adatvédelmi kapcsolattartó e-mail-címe",
+        blank=True,
+    )
+    privacy_policy_url = models.URLField(
+        "saját adatkezelési tájékoztató URL-je",
+        max_length=500,
+        blank=True,
+    )
+    uses_szlg_privacy_policy = models.BooleanField(
+        "az SZLG+ adatkezelési tájékoztatója kiterjed az alkalmazásra",
+        default=False,
+    )
+    terms_of_service_url = models.URLField(
+        "saját ÁSZF URL-je",
+        max_length=500,
+        blank=True,
+    )
+    uses_szlg_terms_of_service = models.BooleanField(
+        "az SZLG+ ÁSZF-je kiterjed az alkalmazásra",
+        default=False,
+    )
     logo = models.ImageField(
         "logó",
         upload_to="app-logos/",
@@ -776,8 +805,123 @@ class ApplicationProfile(models.Model):
         verbose_name = "alkalmazásprofil"
         verbose_name_plural = "alkalmazásprofilok"
 
+    def save(self, *args, **kwargs):
+        previous = None
+        if self.pk:
+            previous = type(self).objects.filter(pk=self.pk).first()
+
+        verification_fields = (
+            "developer",
+            "short_description",
+            "launch_url",
+            "required_group_keys",
+            "privacy_contact_name",
+            "privacy_contact_email",
+            "privacy_policy_url",
+            "uses_szlg_privacy_policy",
+            "terms_of_service_url",
+            "uses_szlg_terms_of_service",
+        )
+        details_changed = bool(
+            previous
+            and (
+                any(
+                    getattr(previous, field) != getattr(self, field)
+                    for field in verification_fields
+                )
+                or previous.logo.name != self.logo.name
+            )
+        )
+        if details_changed:
+            self.verified = False
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None:
+                kwargs["update_fields"] = set(update_fields) | {"verified"}
+
+        super().save(*args, **kwargs)
+
+        if details_changed:
+            ApplicationVerificationRequest.objects.filter(
+                application_id=self.application_id,
+                status__in=("pending", "legacy_review"),
+            ).update(
+                status="superseded",
+                reviewed_at=timezone.now(),
+                reviewer_note=(
+                    "Az alkalmazás adatai a kérelem beküldése után módosultak. "
+                    "A friss adatokkal új ellenőrzési kérelmet kell beküldeni."
+                ),
+            )
+
     def __str__(self) -> str:
         return f"{self.application.name} ({self.developer})"
+
+
+class ApplicationVerificationRequest(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Felülvizsgálatra vár"
+        APPROVED = "approved", "Ellenőrzött"
+        REJECTED = "rejected", "Elutasítva"
+        CHANGES_REQUESTED = "changes_requested", "Javítás szükséges"
+        LEGACY_REVIEW = "legacy_review", "Korábbi státusz felülvizsgálata"
+        SUPERSEDED = "superseded", "Módosítás miatt új beküldés szükséges"
+
+    application = models.ForeignKey(
+        "oauth2_provider.Application",
+        on_delete=models.CASCADE,
+        related_name="verification_requests",
+        verbose_name="alkalmazás",
+    )
+    submitted_by = models.ForeignKey(
+        "api.CustomUser",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="application_verification_requests",
+        verbose_name="kérelmező",
+    )
+    status = models.CharField(
+        "állapot",
+        max_length=24,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    developer_note = models.TextField("fejlesztői megjegyzés", blank=True)
+    reviewer_note = models.TextField("felülvizsgálói megjegyzés", blank=True)
+    submitted_snapshot = models.JSONField(
+        "beküldött alkalmazásadatok",
+        default=dict,
+        blank=True,
+        help_text="A kérelem beküldésekor aktuális alkalmazásadatok a változások követéséhez.",
+    )
+    submitted_at = models.DateTimeField("beküldés ideje", auto_now_add=True)
+    reviewed_at = models.DateTimeField("felülvizsgálat ideje", null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        "api.CustomUser",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="application_verification_reviews",
+        verbose_name="felülvizsgáló",
+    )
+
+    class Meta:
+        ordering = ("-submitted_at",)
+        verbose_name = "alkalmazás-ellenőrzési kérelem"
+        verbose_name_plural = "alkalmazás-ellenőrzési kérelmek"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("application",),
+                condition=models.Q(
+                    status__in=("pending", "legacy_review")
+                ),
+                name="api_unique_open_application_verification",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.application.name} · {self.get_status_display()}"
 
 
 class UserAppConnection(models.Model):
@@ -854,6 +998,17 @@ class GlobalConfig(SingletonModel):
         null=True,
     )
 
+    terms_of_service_url = models.URLField(
+        "az SZLG+ ÁSZF URL-je",
+        max_length=500,
+        blank=True,
+        help_text=(
+            "A hivatalos, alkalmazásokra is kiterjedő SZLG+ ÁSZF nyilvános URL-je. "
+            "Csak akkor engedélyezd az alkalmazásoknál az SZLG+ ÁSZF-re hivatkozást, "
+            "ha ez a dokumentum ténylegesen alkalmazható rájuk."
+        ),
+    )
+
     administrator_contacts = models.ManyToManyField(
         "api.CustomUser",
         verbose_name="SZLG+ kapcsolattartók",
@@ -868,6 +1023,40 @@ class GlobalConfig(SingletonModel):
 
     class Meta:
         verbose_name = "globális beállítások"
+
+    def save(self, *args, **kwargs):
+        previous_terms_url = None
+        if self.pk:
+            previous_terms_url = type(self).objects.filter(pk=self.pk).values_list(
+                "terms_of_service_url", flat=True
+            ).first()
+
+        super().save(*args, **kwargs)
+
+        update_fields = kwargs.get("update_fields")
+        terms_url_was_saved = update_fields is None or "terms_of_service_url" in update_fields
+        if (
+            previous_terms_url is not None
+            and terms_url_was_saved
+            and previous_terms_url != self.terms_of_service_url
+        ):
+            application_ids = ApplicationProfile.objects.filter(
+                uses_szlg_terms_of_service=True
+            ).values_list("application_id", flat=True)
+            ApplicationProfile.objects.filter(
+                uses_szlg_terms_of_service=True
+            ).update(verified=False)
+            ApplicationVerificationRequest.objects.filter(
+                application_id__in=application_ids,
+                status__in=("pending", "legacy_review"),
+            ).update(
+                status="superseded",
+                reviewed_at=timezone.now(),
+                reviewer_note=(
+                    "Az alkalmazásokra hivatkozott SZLG+ ÁSZF URL-je megváltozott. "
+                    "Az új URL ellenőrzése után új kérelmet kell beküldeni."
+                ),
+            )
 
     def delete(self, *args, **kwargs):
         # The single configuration row must always exist.

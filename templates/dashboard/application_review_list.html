@@ -1,0 +1,73 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Alkalmazások felülvizsgálata{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>Manuális felülvizsgálat</h1>
+      <p class="muted">Az alkalmazások ellenőrzési kérelmeinek és korábbi ellenőrzött jelöléseinek kezelése.</p>
+    </div>
+    <span class="badge review-pending">{{ pending_count }} függőben</span>
+  </div>
+
+  <nav class="form-actions review-tabs" aria-label="Felülvizsgálatok típusa">
+    <a class="btn outline" href="{% url 'manual-review-list' %}">Fiókok <span class="badge">{{ account_pending_count }}</span></a>
+    <a class="btn" href="{% url 'application-review-list' %}" aria-current="page">Alkalmazások <span class="badge">{{ pending_count }}</span></a>
+  </nav>
+
+  <section class="panel">
+    <h2>Felülvizsgálatra vár</h2>
+    {% if pending_requests %}
+      <div class="review-table-wrap">
+        <table class="review-table">
+          <thead><tr><th>Alkalmazás</th><th>Tulajdonos</th><th>Beküldve</th><th>Állapot</th><th></th></tr></thead>
+          <tbody>
+            {% for verification_request in pending_requests %}
+              <tr>
+                <td>
+                  <strong>{{ verification_request.application.name }}</strong>
+                  <div class="muted">{{ verification_request.application.profile.developer|default:"Fejlesztő nincs megadva" }}</div>
+                </td>
+                <td>{% if verification_request.application.user_id %}{{ verification_request.application.user.email }}{% else %}Nincs tulajdonos{% endif %}</td>
+                <td>{{ verification_request.submitted_at|date:"Y. F j. H:i" }}</td>
+                <td>
+                  {% if verification_request.status == "legacy_review" %}
+                    <span class="badge review-pending">Korábbi státusz ellenőrzése</span>
+                  {% else %}
+                    <span class="badge review-pending">Felülvizsgálatra vár</span>
+                  {% endif %}
+                </td>
+                <td><a class="btn outline sm" href="{% url 'application-review-detail' verification_request.pk %}">Megnyitás</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Nincs felülvizsgálatra váró alkalmazás.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Korábbi kérelmek és döntések</h2>
+    {% if completed_requests %}
+      <div class="review-table-wrap">
+        <table class="review-table">
+          <thead><tr><th>Alkalmazás</th><th>Tulajdonos</th><th>Beküldve</th><th>Döntés ideje</th><th>Állapot</th></tr></thead>
+          <tbody>
+            {% for verification_request in completed_requests %}
+              <tr>
+                <td>{{ verification_request.application.name }}</td>
+                <td>{% if verification_request.application.user_id %}{{ verification_request.application.user.email }}{% else %}Nincs tulajdonos{% endif %}</td>
+                <td>{{ verification_request.submitted_at|date:"Y. m. d. H:i" }}</td>
+                <td>{% if verification_request.reviewed_at %}{{ verification_request.reviewed_at|date:"Y. m. d. H:i" }}{% else %}–{% endif %}</td>
+                <td>{{ verification_request.get_status_display }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Még nincs lezárt alkalmazás-ellenőrzési kérelem.</p>
+    {% endif %}
+  </section>
+{% endblock %}

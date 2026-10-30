@@ -3,6 +3,7 @@ from django.urls import include, path
 from django.views.generic.base import RedirectView
 
 from api import dashboard_views, password_reset_views
+from api import application_review_views
 from api import portal_views
 from api import registration_views
 from api import school_account_views
@@ -74,6 +75,16 @@ urlpatterns = [
         school_account_views.manual_review_detail,
         name="manual-review-detail",
     ),
+    path(
+        "admin/manual-review/applications/",
+        application_review_views.application_verification_list,
+        name="application-review-list",
+    ),
+    path(
+        "admin/manual-review/applications/<int:pk>/",
+        application_review_views.application_verification_detail,
+        name="application-review-detail",
+    ),
     path("admin/", admin.site.urls),
     path("login/", login_page, name="login"),
     path("register/", registration_views.register, name="register"),
@@ -126,6 +137,11 @@ urlpatterns = [
     path("apps/", dashboard_views.applications, name="applications"),
     path("apps/new/", dashboard_views.application_new, name="application-new"),
     path("apps/<int:pk>/", dashboard_views.application_detail, name="application-detail"),
+    path(
+        "apps/<int:pk>/request-verification/",
+        application_review_views.request_application_verification,
+        name="application-verification-request",
+    ),
     path("apps/<int:pk>/edit/", dashboard_views.application_edit, name="application-edit"),
     path(
         "apps/<int:pk>/rotate-secret/",

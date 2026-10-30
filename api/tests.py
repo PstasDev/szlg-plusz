@@ -910,13 +910,13 @@ class DashboardTests(TestCase):
         self.assertFalse(application.skip_authorization)
         self.assertEqual(application.algorithm, Application.RS256_ALGORITHM)
 
-    def test_staff_registered_applications_are_verified(self):
+    def test_staff_registered_applications_start_unverified(self):
         self.user.is_staff = True
         self.user.save()
 
         self._app_post()
 
-        self.assertTrue(Application.objects.get(name="Új app").profile.verified)
+        self.assertFalse(Application.objects.get(name="Új app").profile.verified)
 
     def test_insecure_or_invalid_redirect_uris_are_rejected(self):
         production_like = {**settings.OAUTH2_PROVIDER, "ALLOWED_REDIRECT_URI_SCHEMES": ["https"]}
@@ -1051,6 +1051,9 @@ class DashboardTests(TestCase):
 )
 class ManualGroupAdminTests(TestCase):
     def setUp(self):
+        config = GlobalConfig.get_solo()
+        config.school_domain = "@example.org"
+        config.save()
         self.admin = CustomUser.objects.create_superuser(
             email="admin@example.org", password="admin-password-123!x"
         )

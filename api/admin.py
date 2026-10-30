@@ -15,6 +15,7 @@ from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.urls import path, reverse
 from django.utils.html import format_html
+from django.utils import timezone
 from mptt.admin import DraggableMPTTAdmin
 from oauth2_provider.admin import application_admin_class
 from oauth2_provider.models import get_application_model
@@ -24,6 +25,7 @@ from .directory import SMART_DIRECTORY_GROUPS
 from .models import (
     AccountReviewStatus,
     ApplicationProfile,
+    ApplicationVerificationRequest,
     CustomUser,
     GlobalConfig,
     ManualReviewRequest,
@@ -88,6 +90,7 @@ class ApplicationProfileInline(admin.StackedInline):
     extra = 0
     max_num = 1
     can_delete = False
+    readonly_fields = ("verified",)
 
 
 admin.site.unregister(Application)
@@ -96,6 +99,36 @@ admin.site.unregister(Application)
 @admin.register(Application)
 class SZLGApplicationAdmin(application_admin_class):
     inlines = (ApplicationProfileInline,)
+
+    def save_model(self, request, obj, form, change):
+        previous = None
+        if change:
+            previous = Application.objects.filter(pk=obj.pk).values(
+                "name", "client_type", "redirect_uris"
+            ).first()
+        super().save_model(request, obj, form, change)
+        if previous and any(
+            previous[field] != getattr(obj, field)
+            for field in ("name", "client_type", "redirect_uris")
+        ):
+            profile = ApplicationProfile.objects.filter(application=obj).first()
+            if profile and profile.verified:
+                profile.verified = False
+                profile.save(update_fields=["verified"])
+            ApplicationVerificationRequest.objects.filter(
+                application=obj,
+                status__in=(
+                    ApplicationVerificationRequest.Status.PENDING,
+                    ApplicationVerificationRequest.Status.LEGACY_REVIEW,
+                ),
+            ).update(
+                status=ApplicationVerificationRequest.Status.SUPERSEDED,
+                reviewed_at=timezone.now(),
+                reviewer_note=(
+                    "Az alkalmazás OIDC-adatai a kérelem beküldése után módosultak. "
+                    "A friss adatokkal új ellenőrzési kérelmet kell beküldeni."
+                ),
+            )
 
 
 class StudentProfileInline(admin.StackedInline):

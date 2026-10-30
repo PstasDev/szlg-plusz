@@ -302,6 +302,21 @@ a:hover { text-decoration: underline; }
 .scopes b { display: block; font-weight: 500; }
 .scopes .desc { display: block; font-size: .9rem; color: var(--muted); }
 
+.application-legal-info {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: .9rem;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+}
+.application-legal-info h3 { margin: 0; font-size: .95rem; font-weight: 600; }
+.application-legal-info dl { display: grid; gap: .65rem; margin: .7rem 0 0; }
+.application-legal-info dt { color: var(--text); font-weight: 600; }
+.application-legal-info dd { margin: 0; overflow-wrap: anywhere; color: var(--muted); }
+.application-legal-info a { color: var(--accent); text-decoration: underline; text-underline-offset: .2em; }
+
 .note { margin-top: 1.25rem; font-size: .85rem; }
 
 .footer {

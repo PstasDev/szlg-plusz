@@ -23,7 +23,8 @@ from oauth2_provider.scopes import get_scopes_backend
 from oauth2_provider.settings import oauth2_settings
 from oauth2_provider.views import AuthorizationView
 
-from api.models import UserAppConnection
+from api.application_verification import application_verification_checked_at
+from api.models import ApplicationProfile, UserAppConnection
 from api.scopes import describe_scopes
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,15 @@ class SZLGAuthorizationView(AuthorizationView):
         if not context.get("scopes"):
             context["scopes"] = data.get("scope", "").split()
         context["scope_items"] = describe_scopes(context["scopes"])
+        application = context.get("application")
+        if application is not None:
+            try:
+                if application.profile.verified:
+                    application.verification_checked_at = (
+                        application_verification_checked_at(application)
+                    )
+            except ApplicationProfile.DoesNotExist:
+                pass
         return context
 
     @staticmethod

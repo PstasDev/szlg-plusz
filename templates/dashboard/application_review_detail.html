@@ -1,0 +1,79 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{{ application.name }} · alkalmazás-ellenőrzés{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>Alkalmazás ellenőrzése</h1>
+      <p class="muted">Nézd át a fejlesztő által megadott adatokat és az alkalmazás OIDC-beállításait.</p>
+    </div>
+    <a class="btn text" href="{% url 'application-review-list' %}">Vissza a kérelmekhez</a>
+  </div>
+
+  {% if is_legacy_review %}
+    <div class="flash info" role="note">
+      Ez az alkalmazás egy korábbi migráció miatt automatikusan ellenőrzöttnek látszott. A jelölést a rendszer visszavonta; csak mostani, tényleges felülvizsgálat után jelöld újra ellenőrzöttnek.
+    </div>
+  {% endif %}
+
+  <section class="panel highlight">
+    <div class="row">
+      <div>
+        <h2>{{ application.name }}</h2>
+        <p class="muted">
+          Fejlesztő: {{ application.profile.developer|default:"Nincs megadva" }} ·
+          Tulajdonos: {% if application.user_id %}{{ application.user.email }}{% else %}Nincs megadva{% endif %}
+        </p>
+        <p class="muted">Kérelem érkezett: {{ verification_request.submitted_at|date:"Y. F j. H:i" }}</p>
+      </div>
+      <span class="badge review-pending">{{ verification_request.get_status_display }}</span>
+    </div>
+  </section>
+
+  <div class="two">
+    <section class="panel">
+      <h2>Alkalmazás és OIDC-beállítások</h2>
+      <dl class="data">
+        <div><dt>Leírás</dt><dd>{{ application.profile.short_description|default:"Nincs megadva" }}</dd></div>
+        <div><dt>Kliens típusa</dt><dd>{{ application.get_client_type_display }}</dd></div>
+        <div><dt>Indítási URL</dt><dd>{% if application.profile.launch_url %}<a href="{{ application.profile.launch_url }}" target="_blank" rel="noopener noreferrer">{{ application.profile.launch_url }}</a>{% else %}Nincs megadva{% endif %}</dd></div>
+        <div><dt>Átirányítási URI-k</dt><dd>{% for uri in redirect_uris %}<div><code>{{ uri }}</code></div>{% empty %}Nincs megadva{% endfor %}</dd></div>
+        {% if application.profile.required_group_keys %}<div><dt>Szükséges csoportok</dt><dd>{{ application.profile.required_group_keys|join:", " }}</dd></div>{% endif %}
+      </dl>
+      {% if verification_request.developer_note %}
+        <p class="flash info"><strong>Fejlesztői megjegyzés:</strong> {{ verification_request.developer_note }}</p>
+      {% endif %}
+    </section>
+
+    <section class="panel">
+      <h2>Adatvédelmi adatok és dokumentumok</h2>
+      {% include "partials/application_legal_info.html" with application=application %}
+    </section>
+  </div>
+
+  {% if missing_requirements %}
+    <section class="panel">
+      <h2>Hiányzó vagy javítandó adatok</h2>
+      <p class="muted">A kérelem jóváhagyásához ezeket a fejlesztőnek pótolnia vagy javítania kell:</p>
+      <ul>{% for item in missing_requirements %}<li>{{ item }}</li>{% endfor %}</ul>
+    </section>
+  {% endif %}
+
+  <section class="panel">
+    <h2>Felülvizsgálati döntés</h2>
+    <p class="lead muted">Az ellenőrzött jelölés nem teljes körű biztonsági tanúsítvány; csak a megadott adatok és konfiguráció felülvizsgálatát jelenti.</p>
+    {% for error in form.non_field_errors %}<p class="flash error" role="alert">{{ error }}</p>{% endfor %}
+    <form method="post">
+      {% csrf_token %}
+      <div class="fld{% if form.reviewer_note.errors %} has-error{% endif %}">
+        <label for="{{ form.reviewer_note.id_for_label }}">{{ form.reviewer_note.label }}</label>
+        {{ form.reviewer_note }}
+        {% for error in form.reviewer_note.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+      </div>
+      <div class="actions review-actions">
+        <button class="btn outline" type="submit" name="action" value="changes_requested">Javítás kérése</button>
+        <button class="btn danger" type="submit" name="action" value="reject">Elutasítás</button>
+        <button class="btn" type="submit" name="action" value="approve"{% if missing_requirements %} disabled aria-disabled="true"{% endif %}>Jóváhagyás</button>
+      </div>
+    </form>
+  </section>
+{% endblock %}

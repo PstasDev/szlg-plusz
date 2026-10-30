@@ -8,6 +8,9 @@
     </div>
   </div>
   <section class="panel" style="max-width:40rem">
+    <div class="flash info" role="note">
+      Az alkalmazás regisztrációja önmagában nem jelent iskolai ellenőrzést. Ellenőrzés kéréséhez minden alkalmazásnál meg kell adnod az adatvédelmi kapcsolattartót, és külön ki kell választanod, hogy az adatkezelési tájékoztatóra és az ÁSZF-re saját dokumentumod vagy az SZLG+ dokumentuma vonatkozik. A megadott jogi és kapcsolattartási adatok nyilvánosan megjelennek a katalógusban és az engedélyek között.
+    </div>
     <form method="post" enctype="multipart/form-data" novalidate>
       {% csrf_token %}
       {% include "partials/form_fields.html" %}

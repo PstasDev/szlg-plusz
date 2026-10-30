@@ -4,6 +4,7 @@ from django.shortcuts import render
 from django.views.decorators.http import require_GET
 from oauth2_provider.models import Application
 
+from .application_verification import verification_checked_at_subquery
 from .privacy import privacy_context
 
 
@@ -104,8 +105,10 @@ DOCS = {
             {
                 "title": "Alkalmazások ellenőrzése és indítócsempék",
                 "paragraphs": [
-                    "Az adminfelületen ellenőrizd az OAuth alkalmazás regisztrációját, a tulajdonost, a pontos átirányítási URI-kat és az alkalmazásprofil nyilvános adatait. Nem staff felhasználó új alkalmazása alapértelmezésben ellenőrizetlen; staff felhasználó regisztrációja ellenőrzöttként indul. Az ellenőrzött státuszt az adminfelületen lehet módosítani. Ellenőrizetlen alkalmazásnál a felhasználók figyelmeztetést látnak.",
-                    "A felhasználói Alkalmazásaim űrlap nem teszi közzé automatikusan az alkalmazást a Dashboardon. Csempe csak akkor jelenik meg az adott felhasználónak, ha az alkalmazásprofilban van „Indítási URL”, és a felhasználó már engedélyezte az alkalmazást. Az app nevét, rövid leírását, fejlesztőjét és logóját az engedélyező képernyőn is látják a felhasználók.",
+                    "Az adminfelületen ellenőrizd az OAuth alkalmazás regisztrációját, a tulajdonost, a pontos átirányítási URI-kat és az alkalmazásprofil nyilvános adatait. Minden új alkalmazás ellenőrizetlenként indul, staff fejlesztő esetén is. A fejlesztő az alkalmazás részleteinél kérhet ellenőrzést; a kérelmeket a Manuális felülvizsgálat / Alkalmazások oldalon kell elbírálni. Csak jóváhagyás után jelenik meg az ellenőrzött jelölés. Ellenőrizetlen alkalmazásnál a felhasználók figyelmeztetést látnak.",
+                    "A felhasználói Alkalmazásaim űrlap nem teszi közzé automatikusan az alkalmazást a Dashboardon. Csempe csak akkor jelenik meg az adott felhasználónak, ha az alkalmazásprofilban van „Indítási URL”, és a felhasználó már engedélyezte az alkalmazást. Az app nevét, rövid leírását, fejlesztőjét, adatvédelmi kapcsolattartóját, a megadott jogi dokumentumokat és az ellenőrzés dátumát az engedélyező képernyőn, a katalógusban és a felhasználó Engedélyek oldalán is látják.",
+                    "Ellenőrzési kérelemhez adj meg adatvédelmi kapcsolattartót, és külön válaszd ki, hogy az alkalmazásra saját adatkezelési tájékoztató és ÁSZF vonatkozik-e, vagy az SZLG+ dokumentumai. Saját dokumentum esetén HTTPS-link szükséges; az SZLG+ ÁSZF-re csak akkor hivatkozhatsz, ha az adminisztrátor beállította annak hivatalos URL-jét. Iskolai fiókkal regisztrált appnál is ki kell tölteni mindkét választást.",
+                    "A beküldés után az alkalmazás ellenőrizetlen marad a döntésig. A felülvizsgálók kérhetnek javítást vagy elutasíthatják a kérelmet; a fejlesztő e-mailben és az Alkalmazásaim oldalon kap tájékoztatást. Az ellenőrzött jelölés a megadott adatok felülvizsgálatát jelzi, nem teljes körű biztonsági tanúsítványt.",
                 ],
                 "bullets": [
                     "A rendszer Authorization Code grantot, RS256 aláírást és kötelező PKCE-t állít be; ezeket ne változtasd meg kliensenként.",
@@ -117,7 +120,7 @@ DOCS = {
             {
                 "title": "Globális adminbeállítások",
                 "paragraphs": [
-                    "A Globális beállítások egyetlen rekordja szabályozza a jelszavas belépés utáni jelkulcs-ajánlatot és az iskolai e-mail-domain konfigurációját. A címtár normál felhasználói keresése és a csoporttag-választó ezt a domaint használja; staff/admin keresésnél nincs domainkorlátozás. A csoportos postafiók besorolása explicit adminisztrátori jelölés, nem pusztán e-mail-cím formátumából következik.",
+                    "A Globális beállítások egyetlen rekordja szabályozza a jelszavas belépés utáni jelkulcs-ajánlatot, az iskolai e-mail-domain konfigurációját és az alkalmazásokra is kiterjedő hivatalos SZLG+ ÁSZF URL-jét. Az SZLG+ ÁSZF-re csak beállított dokumentum esetén hivatkozhat fejlesztő. A címtár normál felhasználói keresése és a csoporttag-választó az iskolai domaint használja; staff/admin keresésnél nincs domainkorlátozás. A csoportos postafiók besorolása explicit adminisztrátori jelölés, nem pusztán e-mail-cím formátumából következik.",
                     "A kiszolgáló titkait, HTTPS-t, OIDC aláírókulcsot, e-mail-küldést és adatbázist ne ezen az adminfelületen kezeld: ezek telepítési beállítások, a SZLG+ fejlesztői/üzemeltetői feladathoz tartoznak.",
                 ],
             },
@@ -138,6 +141,7 @@ DOCS = {
                     "A callback URI-k pontos egyezést igényelnek; élesben HTTPS szükséges.",
                     "Az SZLG+ Authorization Code + PKCE (S256) és RS256 beállítása rögzített.",
                     "Egy felhasználói fiók legfeljebb 10 alkalmazást regisztrálhat; ellenőrzött státuszt az iskola adminisztrátora adhat.",
+                    "Külsős fejlesztő is kérhet ellenőrzést, ha adatvédelmi kapcsolattartót ad meg, és mind az adatkezelési tájékoztatóhoz, mind az ÁSZF-hez saját dokumentumot vagy az SZLG+ dokumentumainak alkalmazhatóságáról szóló nyilatkozatot választ.",
                 ],
             },
             {
@@ -301,6 +305,8 @@ DOCS = {
                     "A sub a stabil fiókkulcs; ne e-mail-címmel azonosíts tartósan felhasználót.",
                     "Soha ne naplózz tokent, kliensjelszót, authorization code-ot vagy PKCE titkot.",
                     "A kliens titka nem kerülhet böngészőbe vagy mobilalkalmazásba; ezek nyilvános kliensek.",
+                    "Új alkalmazás ellenőrizetlenként indul. Ellenőrzést az alkalmazás részleteinél kérhetsz; a döntésig ne jelenítsd meg saját felületed biztonsági tanúsítványaként az SZLG+ jelölést.",
+                    "Az adatvédelmi kapcsolattartó, a tájékoztató és az ÁSZF adatait a felhasználók az engedélyezés előtt és a későbbi Engedélyek oldalon is megtekinthetik.",
                 ],
             },
         ],
@@ -407,7 +413,9 @@ def supported_applications(request):
     verified_only = request.GET.get("verified") == "1"
     applications = Application.objects.filter(
         authorization_grant_type=Application.GRANT_AUTHORIZATION_CODE
-    ).select_related("profile")
+    ).select_related("profile").annotate(
+        verification_checked_at=verification_checked_at_subquery()
+    )
 
     if search_query:
         applications = applications.filter(
