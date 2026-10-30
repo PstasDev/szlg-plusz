@@ -14,7 +14,16 @@
       </nav>
       <div class="mt-8 rounded-2xl border border-ink/10 bg-white p-5">
         <p class="text-sm font-bold">Segítségre van szükséged?</p>
-        <p class="mt-2 text-sm leading-6 text-ink/55">A fiókoddal vagy hozzáféréseiddel kapcsolatos kérdésben keresd az iskola adminisztrátorát.</p>
+        <p class="mt-2 text-sm leading-6 text-ink/55">A fiókoddal vagy hozzáféréseiddel kapcsolatos kérdésben keresd az SZLG+ kapcsolattartók egyikét:</p>
+        {% if administrator_contacts %}
+          <ul class="mt-2 space-y-1 text-sm">
+            {% for contact in administrator_contacts %}
+              <li><a href="mailto:{{ contact.email }}">{{ contact.get_full_name|default:contact.email }} · {{ contact.email }}</a></li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="mt-2 text-sm leading-6 text-ink/55">Jelenleg nincs SZLG+ kapcsolattartó beállítva. Kérjük, fordulj az iskola adminisztrációjához.</p>
+        {% endif %}
       </div>
     </aside>
     <main id="main-content" class="min-w-0 rounded-3xl border border-ink/10 bg-white px-6 py-8 shadow-sm sm:px-10 sm:py-11">

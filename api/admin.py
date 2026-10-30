@@ -8,6 +8,7 @@ from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import path, reverse
+from django.utils.html import format_html
 from mptt.admin import DraggableMPTTAdmin
 from oauth2_provider.admin import application_admin_class
 from oauth2_provider.models import get_application_model
@@ -15,9 +16,11 @@ from solo.admin import SingletonModelAdmin
 
 from .directory import SMART_DIRECTORY_GROUPS
 from .models import (
+    AccountReviewStatus,
     ApplicationProfile,
     CustomUser,
     GlobalConfig,
+    ManualReviewRequest,
     ManualGroup,
     Passkey,
     PermissionGroup,
@@ -96,12 +99,21 @@ class TeacherProfileInline(admin.StackedInline):
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
     ordering = ("email",)
-    list_display = ("email", "last_name", "first_name", "is_active", "is_staff")
+    list_display = (
+        "email",
+        "last_name",
+        "first_name",
+        "is_active",
+        "is_staff",
+        "account_review_badge",
+    )
+    list_filter = ("is_active", "is_staff", "account_review_status")
     search_fields = ("email", "last_name", "first_name")
     filter_horizontal = ("groups", "user_permissions", "manual_groups")
-    readonly_fields = ("privacy_consent_at", "import_sources")
+    readonly_fields = ("privacy_consent_at", "import_sources", "account_review_status")
     fieldsets = (
         (None, {"fields": ("email", "password")}),
+        ("Manuális felülvizsgálat", {"fields": ("account_review_status",)}),
         (
             "Személyes adatok",
             {
@@ -150,6 +162,19 @@ class CustomUserAdmin(UserAdmin):
         ),
     )
     inlines = (StudentProfileInline, TeacherProfileInline)
+
+    @admin.display(description="Felülvizsgálati állapot", ordering="account_review_status")
+    def account_review_badge(self, user):
+        labels = {
+            AccountReviewStatus.PENDING: ("#805600", "◷ Felülvizsgálatra vár"),
+            AccountReviewStatus.APPROVED: ("#146c2e", "✓ Jóváhagyva"),
+            AccountReviewStatus.REJECTED: ("#b3261e", "✕ Elutasítva"),
+        }
+        color, label = labels.get(
+            user.account_review_status,
+            ("#5f6a6c", "— Nincs szükség felülvizsgálatra"),
+        )
+        return format_html('<span style="color: {}; font-weight: 600">{}</span>', color, label)
 
 
 # The built-in Group is shown as "Jogosultsági kör" (access-rights circle) so it
@@ -317,6 +342,18 @@ class PasskeyAdmin(admin.ModelAdmin):
     list_display = ("name", "user", "created_at", "last_used_at")
     search_fields = ("name", "user__email")
     readonly_fields = ("credential_id", "public_key", "sign_count")
+
+
+@admin.register(ManualReviewRequest)
+class ManualReviewRequestAdmin(admin.ModelAdmin):
+    list_display = ("user", "applicant_type", "review_status", "submitted_at", "reviewed_at")
+    list_filter = ("applicant_type", "user__account_review_status")
+    search_fields = ("user__email", "user__first_name", "user__last_name", "position")
+    readonly_fields = ("submitted_at", "reviewed_at", "reviewed_by")
+
+    @admin.display(description="Állapot", ordering="user__account_review_status")
+    def review_status(self, review_request):
+        return review_request.user.get_account_review_status_display()
 
 
 @admin.register(GlobalConfig)

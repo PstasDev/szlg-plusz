@@ -472,7 +472,7 @@ class RegistrationTests(TestCase):
         self.assertEqual(login_response.status_code, 302)
         self.assertIn("_auth_user_id", self.client.session)
 
-    def test_school_domain_registration_is_blocked_and_lists_configured_contacts(self):
+    def test_school_domain_registration_redirects_to_school_account_flow(self):
         contact = CustomUser.objects.create_user(
             email="admin@example.org", first_name="Attila", last_name="Admin"
         )
@@ -483,9 +483,14 @@ class RegistrationTests(TestCase):
             self._registration_data(email="diak.23a@SZLGBP.HU"),
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Iskolai e-mail-címmel nem lehet önállóan regisztrálni")
-        self.assertContains(response, "admin@example.org")
+        self.assertRedirects(
+            response,
+            "/account/school/",
+            fetch_redirect_response=False,
+        )
+        setup = self.client.get(response["Location"])
+        self.assertContains(setup, "Iskolai fiókom van és még nincs jelszavam")
+        self.assertContains(setup, 'value="diak.23a@szlgbp.hu"')
         self.assertFalse(CustomUser.objects.filter(email__iexact="diak.23a@szlgbp.hu").exists())
         self.assertEqual(len(mail.outbox), 0)
 

@@ -69,6 +69,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "api.context_processors.school_access",
+                "api.context_processors.administrator_contacts",
             ],
         },
     },

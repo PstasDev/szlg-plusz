@@ -1,0 +1,9 @@
+{% if administrator_contacts %}
+  <ul class="list administrator-contact-list">
+    {% for contact in administrator_contacts %}
+      <li><a href="mailto:{{ contact.email }}">{{ contact.get_full_name|default:contact.email }} · {{ contact.email }}</a></li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="muted">Jelenleg nincs SZLG+ kapcsolattartó beállítva. Kérjük, fordulj az iskola adminisztrációjához.</p>
+{% endif %}

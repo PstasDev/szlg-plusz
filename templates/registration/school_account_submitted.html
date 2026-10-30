@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Felülvizsgálat · SZLG+{% endblock %}
+{% block head_text %}
+  <h1>Felülvizsgálatra vár</h1>
+  <p class="subtitle">A fiók létrehozását rögzítettük.</p>
+{% endblock %}
+{% block content %}
+  <p class="success" role="status">A(z) <strong>{{ email }}</strong> címhez tartozó fiókot az adminisztrátoroknak még jóvá kell hagyniuk.</p>
+  <div class="review-notice">
+    <span class="review-state review-pending">{% include "partials/icon.html" with name="clock" %} Felülvizsgálatra vár</span>
+    <p>A fiók a jóváhagyásig nem tud bejelentkezni, és nem fér hozzá az SZLG+ szolgáltatásaihoz. Az adminisztratív ellenőrzés a fiókod és a platform biztonságát szolgálja.</p>
+  </div>
+  <p class="muted">Ha kérdésed van a jelentkezésről, keresd az SZLG+ kapcsolattartók egyikét:</p>
+  {% include "partials/administrator_contacts.html" %}
+  <div class="actions"><a class="btn" href="{% url 'login' %}">Vissza a bejelentkezéshez</a></div>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Manuális Felülvizsgálat{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>Manuális Felülvizsgálat</h1>
+      <p class="muted">Itt ellenőrizheted és kezelheted a hozzáférés előtt adminisztrátori jóváhagyást igénylő fiókokat.</p>
+    </div>
+    <span class="badge review-pending">{% include "partials/icon.html" with name="clock" %} {{ pending_count }} függőben</span>
+  </div>
+
+  <section class="panel">
+    <h2>Felülvizsgálatra vár</h2>
+    {% if pending_reviews %}
+      <div class="review-table-wrap">
+        <table class="review-table">
+          <thead><tr><th>Név</th><th>E-mail-cím</th><th>Típus</th><th>Érkezett</th><th>Állapot</th><th></th></tr></thead>
+          <tbody>
+            {% for review in pending_reviews %}
+              <tr>
+                <td>{{ review.user.get_full_name|default:"Nincs megadva" }}</td>
+                <td>{{ review.user.email }}</td>
+                <td>{{ review.get_applicant_type_display }}</td>
+                <td>{{ review.submitted_at|date:"Y. F j. H:i" }}</td>
+                <td>{% include "partials/review_status_badge.html" with review_status=review.user.account_review_status %}</td>
+                <td><a class="btn outline sm" href="{% url 'manual-review-detail' review.pk %}">Megnyitás</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Nincs felülvizsgálatra váró fiók.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Korábbi döntések</h2>
+    {% if completed_reviews %}
+      <div class="review-table-wrap">
+        <table class="review-table">
+          <thead><tr><th>Név</th><th>E-mail-cím</th><th>Típus</th><th>Döntés ideje</th><th>Állapot</th></tr></thead>
+          <tbody>
+            {% for review in completed_reviews %}
+              <tr>
+                <td>{{ review.user.get_full_name|default:"Nincs megadva" }}</td>
+                <td>{{ review.user.email }}</td>
+                <td>{{ review.get_applicant_type_display }}</td>
+                <td>{% if review.reviewed_at %}{{ review.reviewed_at|date:"Y. F j. H:i" }}{% else %}–{% endif %}</td>
+                <td>{% include "partials/review_status_badge.html" with review_status=review.user.account_review_status %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Még nincs lezárt felülvizsgálat.</p>
+    {% endif %}
+  </section>
+{% endblock %}

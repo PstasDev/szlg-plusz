@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}E-mail ellenőrzése · SZLG+{% endblock %}
+{% block head_text %}
+  <h1>E-mail-cím ellenőrzése</h1>
+  <p class="subtitle">Küldtünk egy egyszer használatos kódot a(z) <strong>{{ email }}</strong> címre.</p>
+{% endblock %}
+{% block content %}
+  <p class="muted">A kód 10 percig érvényes. Ha nem találod, nézd meg a levélszemét mappát is.</p>
+  {% for error in form.non_field_errors %}<p class="error" role="alert">{{ error }}</p>{% endfor %}
+  <form method="post">
+    {% csrf_token %}
+    <div class="field">
+      {{ form.code }}
+      <label for="{{ form.code.id_for_label }}">{{ form.code.label }}</label>
+    </div>
+    {% for error in form.code.errors %}<p class="error" role="alert">{{ error }}</p>{% endfor %}
+    <div class="actions">
+      <a class="btn text" href="{% url 'school-account-setup' %}">Új kód kérése</a>
+      <button class="btn" type="submit">Ellenőrzés</button>
+    </div>
+  </form>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Fiók felülvizsgálata{% endblock %}
+{% block content %}
+  <div class="page-head">
+    <div>
+      <h1>Fiók felülvizsgálata</h1>
+      <p class="muted">A beküldött adatokat jóváhagyás előtt módosíthatod.</p>
+    </div>
+    <a class="btn text" href="{% url 'manual-review-list' %}">Vissza a listához</a>
+  </div>
+
+  <section class="panel highlight">
+    <div class="row">
+      <div>
+        <h2>{{ review_user.get_full_name|default:"Nincs megadva" }}</h2>
+        <p class="muted">{{ review_user.email }} · {{ review_request.get_applicant_type_display }} · {{ review_request.submitted_at|date:"Y. F j. H:i" }}</p>
+      </div>
+      {% include "partials/review_status_badge.html" with review_status=review_user.account_review_status %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Jelentkező adatai</h2>
+    <p class="lead muted">Módosítás után válaszd a mentést, vagy mentsd az adatokat jóváhagyással / elutasítással együtt.</p>
+    {% for error in form.non_field_errors %}<p class="flash error" role="alert">{{ error }}</p>{% endfor %}
+    <form method="post">
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="fld{% if field.errors %} has-error{% endif %}">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<div class="hint">{{ field.help_text }}</div>{% endif %}
+          {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+      {% endfor %}
+      <div class="actions review-actions">
+        <button class="btn outline" type="submit" name="action" value="save">Adatok mentése</button>
+        <button class="btn danger" type="submit" name="action" value="reject">Elutasítás</button>
+        <button class="btn" type="submit" name="action" value="approve">Jóváhagyás</button>
+      </div>
+    </form>
+  </section>
+{% endblock %}

@@ -42,6 +42,7 @@
         <a href="{% url 'user-import' %}"{% if section == "user-import" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="users" %}Felhasználó-import</a>
       {% endif %}
       {% if request.user.is_staff %}
+        <a href="{% url 'manual-review-list' %}"{% if section == "manual-review" %} aria-current="page"{% endif %}>{% include "partials/icon.html" with name="shield" %}Manuális Felülvizsgálat</a>
         <a href="{% url 'admin:index' %}">{% include "partials/icon.html" with name="settings" %}Adminisztráció</a>
       {% endif %}
     </nav>

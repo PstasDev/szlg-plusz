@@ -11,7 +11,8 @@
   {% elif email_sent %}
     <p class="success" role="status">Megerősítő levelet küldtünk {{ email|decide_prefix_a_or_az }} <strong>{{ email }}</strong> címre. A fiók a megerősítésig nem használható bejelentkezésre.</p>
   {% else %}
-    <p class="error" role="alert">A fiók létrejött, de a megerősítő levelet most nem sikerült elküldeni. Kérd a levél újbóli küldését, vagy fordulj az SZLG+ rendszergazdáihoz.</p>
+    <p class="error" role="alert">A fiók létrejött, de a megerősítő levelet most nem sikerült elküldeni. Kérd a levél újbóli küldését, vagy keresd az alábbi SZLG+ kapcsolattartók egyikét.</p>
+    {% include "partials/administrator_contacts.html" %}
   {% endif %}
   <p class="muted">A levélben található hivatkozás 3 napig érvényes. Ha nem találod, ellenőrizd a levélszemét mappát is.</p>
   <div class="actions">

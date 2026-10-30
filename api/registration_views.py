@@ -15,6 +15,7 @@ from django_ratelimit.decorators import ratelimit
 from .forms import RegistrationForm
 from .models import CustomUser, email_info
 from .privacy import privacy_context
+from .school_account_views import PREFILL_SESSION_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +123,10 @@ def register(request):
                     **privacy_context(),
                 },
             )
+
+    if request.method == "POST" and form.school_domain_attempted:
+        request.session[PREFILL_SESSION_KEY] = request.POST.get("email", "").strip().lower()
+        return redirect("school-account-setup")
 
     return render(
         request,

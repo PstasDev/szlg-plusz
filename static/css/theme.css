@@ -16,6 +16,8 @@
   --crest: #e9e4df;
   --danger: #f2b8b5;
   --danger-bg: rgb(242 184 181 / 0.12);
+  --warning: #f2d394;
+  --warning-bg: rgb(242 211 148 / 0.12);
   --success: #a8dab5;
   --success-bg: rgb(168 218 181 / 0.12);
   --font: "Segoe UI", Roboto, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
@@ -37,6 +39,8 @@
   --crest: #333C3E;
   --danger: #b3261e;
   --danger-bg: #fce8e6;
+  --warning: #805600;
+  --warning-bg: #fff3cd;
   --success: #146c2e;
   --success-bg: #e6f4ea;
 }
@@ -111,6 +115,26 @@ a:hover { text-decoration: underline; }
   border-radius: .5rem;
   transition: border-color .15s, box-shadow .15s;
 }
+.field select, .field textarea {
+  width: 100%;
+  min-height: 3.5rem;
+  padding: .8rem .9rem;
+  font: inherit;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: .5rem;
+}
+.field textarea { min-height: 6rem; resize: vertical; }
+.field select option { color: var(--text); background: var(--surface); }
+.field .field-static-label {
+  position: static;
+  display: block;
+  margin-bottom: .4rem;
+  color: var(--muted);
+  pointer-events: auto;
+  transform: none;
+}
 .field input:hover { border-color: var(--muted); }
 .field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .field label {
@@ -173,6 +197,29 @@ a:hover { text-decoration: underline; }
 .error { color: var(--danger); background: var(--danger-bg); }
 .error p { color: inherit; margin: 0; }
 .success { color: var(--success); background: var(--success-bg); }
+
+.review-notice {
+  margin-top: 1rem;
+  padding: .9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: .75rem;
+  background: var(--surface);
+}
+.review-notice p { margin-top: .5rem; }
+.review-state {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .12rem .65rem;
+  border-radius: 999px;
+  font-size: .82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.review-state .icon { width: .95rem; height: .95rem; }
+.review-state.review-pending { color: var(--warning); background: var(--warning-bg); }
+.review-state.review-approved { color: var(--success); background: var(--success-bg); }
+.review-state.review-rejected { color: var(--danger); background: var(--danger-bg); }
 
 .or {
   display: flex; align-items: center; gap: 1rem;
@@ -330,6 +377,7 @@ body.auth-page {
 .auth-content .auth-form { margin: 0; }
 .auth-content .field { margin-top: 0; }
 .auth-form-links { margin-top: .45rem; font-size: .9rem; font-weight: 500; }
+.auth-form-links a + br + a { display: inline-block; margin-top: .35rem; }
 .auth-note { margin-top: 2.7rem; font-size: .9rem; }
 .auth-shell .actions { margin-top: 2rem; }
 .auth-back-link { margin: -.35rem 0 1.25rem; }

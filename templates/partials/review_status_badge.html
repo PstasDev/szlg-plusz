@@ -1,0 +1,9 @@
+{% if review_status == "pending" %}
+  <span class="badge review-state review-pending">{% include "partials/icon.html" with name="clock" %} Felülvizsgálatra vár</span>
+{% elif review_status == "approved" %}
+  <span class="badge review-state review-approved">{% include "partials/icon.html" with name="check" %} Jóváhagyva</span>
+{% elif review_status == "rejected" %}
+  <span class="badge review-state review-rejected">{% include "partials/icon.html" with name="x" %} Elutasítva</span>
+{% else %}
+  <span class="badge">Nincs szükség felülvizsgálatra</span>
+{% endif %}

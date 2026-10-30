@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Iskolai fiók regisztrációja · SZLG+{% endblock %}
+{% block shell_class %}wide{% endblock %}
+{% block head_text %}
+  {% if registration_kind == "student" %}
+    <h1>Diákfiók regisztrációja</h1>
+    <p class="subtitle">Iskolai e-mail-cím: {{ school_email }}</p>
+  {% else %}
+    <h1>Tanári vagy munkatársi fiók regisztrációja</h1>
+    <p class="subtitle">Iskolai e-mail-cím: {{ school_email }}</p>
+  {% endif %}
+{% endblock %}
+{% block content %}
+  <p class="muted">A fiókot az adminisztrátorok ellenőrzik, mielőtt hozzáférést kap az SZLG+ szolgáltatásaihoz. Ez a lépés a fiókod és a platform biztonságát szolgálja.</p>
+  {% if class_display %}<p class="muted">Az e-mail-cím alapján megállapított osztály: <strong>{{ class_display }}</strong></p>{% endif %}
+  {% for error in form.non_field_errors %}<p class="error" role="alert">{{ error }}</p>{% endfor %}
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+      {% if field.name != "privacy_consent" %}
+        <div class="field">
+          {% if field.name == "applicant_type" or field.name == "tagozat" or field.name == "date_of_birth" %}
+            <label class="field-static-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+          {% else %}
+            {{ field }}
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {% endif %}
+          {% if field.help_text %}<p class="muted">{{ field.help_text|safe }}</p>{% endif %}
+        </div>
+        {% for error in field.errors %}<p class="error" role="alert">{{ error }}</p>{% endfor %}
+      {% endif %}
+    {% endfor %}
+    <p class="muted privacy-link"><a href="{% url 'privacy' %}">Adatkezelési tájékoztató</a></p>
+    <div class="check-row">
+      {{ form.privacy_consent }}
+      <label for="{{ form.privacy_consent.id_for_label }}">{{ form.privacy_consent.label }}</label>
+    </div>
+    {% for error in form.privacy_consent.errors %}<p class="error" role="alert">{{ error }}</p>{% endfor %}
+    <div class="actions">
+      <a class="btn text" href="{% url 'school-account-setup' %}">Másik e-mail-cím</a>
+      <button class="btn" type="submit">Felülvizsgálat kérése</button>
+    </div>
+  </form>
+{% endblock %}

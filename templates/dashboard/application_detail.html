@@ -31,7 +31,10 @@
   {% endif %}
 
   {% if not application.profile.verified %}
-    <div class="flash error" role="note">Ez az alkalmazás még nem ellenőrzött: az engedélyezéskor a felhasználók figyelmeztetést látnak. Ellenőrzést az iskola adminisztrátorától kérhetsz.</div>
+    <div class="flash error" role="note">
+      Ez az alkalmazás még nem ellenőrzött: az engedélyezéskor a felhasználók figyelmeztetést látnak. Ellenőrzést az alábbi SZLG+ kapcsolattartóktól kérhetsz.
+      {% include "partials/administrator_contacts.html" %}
+    </div>
   {% endif %}
 
   <div class="two">

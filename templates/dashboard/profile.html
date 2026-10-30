@@ -4,9 +4,14 @@
   <div class="page-head">
     <div>
       <h1>Profil</h1>
-      <p class="muted">Az SZLG+ fiókodhoz tárolt összes adat egy helyen. Az adatokat az iskola adminisztrátora kezeli; módosításért fordulj hozzá.</p>
+      <p class="muted">Az SZLG+ fiókodhoz tárolt összes adat egy helyen. Az adatokat az iskola adminisztrátora kezeli; módosításért keresd az alábbi kapcsolattartók egyikét.</p>
     </div>
   </div>
+
+  <section class="panel">
+    <h2>SZLG+ kapcsolattartók</h2>
+    {% include "partials/administrator_contacts.html" %}
+  </section>
 
   <div class="stats">
     <a class="stat" href="{% url 'security' %}"><b>{{ passkey_count }}</b><span>jelkulcs</span></a>

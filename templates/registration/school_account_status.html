@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Iskolai fiók állapota · SZLG+{% endblock %}
+{% block head_text %}
+  <h1>Iskolai fiók állapota</h1>
+  <p class="subtitle">{{ email }}</p>
+{% endblock %}
+{% block content %}
+  {% if review_status == "pending" %}
+    <div class="review-notice">
+      <span class="review-state review-pending">{% include "partials/icon.html" with name="clock" %} Felülvizsgálatra vár</span>
+      <p>A fiókod adminisztratív felülvizsgálat alatt áll. A jóváhagyásig nem tudsz bejelentkezni, és nem férsz hozzá az SZLG+ szolgáltatásaihoz.</p>
+    </div>
+  {% elif review_status == "rejected" %}
+    <div class="review-notice">
+      <span class="review-state review-rejected">{% include "partials/icon.html" with name="x" %} Elutasítva</span>
+      <p>A fiók regisztrációját az adminisztrátorok nem hagyták jóvá. Ha kérdésed van, keresd az alábbi SZLG+ kapcsolattartók egyikét.</p>
+    </div>
+  {% else %}
+    <p class="error" role="status">Ez a fiók jelenleg nem aktív. További segítségért keresd az SZLG+ kapcsolattartók egyikét.</p>
+  {% endif %}
+  {% include "partials/administrator_contacts.html" %}
+  <div class="actions"><a class="btn text" href="{% url 'school-account-setup' %}">Vissza</a><a class="btn" href="{% url 'login' %}">Bejelentkezés</a></div>
+{% endblock %}

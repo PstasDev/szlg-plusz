@@ -8,14 +8,8 @@
     <li>Központi e-mail cím adatvédelmi kérdésekben: <a href="mailto:molnar.attila@szlgbp.hu">molnar.attila@szlgbp.hu</a></li>
     <li>Kapcsolattartó személy: Molnár Attila (informatikatanár)</li>
   </ul>
-  {% if administrator_contacts %}
-    <p>SZLG+ kapcsolattartók:</p>
-    <ul>
-      {% for contact in administrator_contacts %}
-        <li>{{ contact.get_full_name|default:contact.email }} — <a href="mailto:{{ contact.email }}">{{ contact.email }}</a></li>
-      {% endfor %}
-    </ul>
-  {% endif %}
+  <p>SZLG+ kapcsolattartók:</p>
+  {% include "partials/administrator_contacts.html" %}
 
   <h3 id="sso">2. Az SZLG+ központi azonosító rendszer szerepe</h3>
   <p>Az SZLG+ a gimnázium központi felhasználói adatbázisa és egységes bejelentkezési rendszere (SSO — Single Sign-On). Ennek célja, hogy a felhasználóknak ne kelljen minden egyes iskolai alkalmazáshoz külön regisztrálniuk, és adataikat egyetlen, biztonságos központi felületen kezelhessék.</p>
@@ -27,6 +21,8 @@
   <p>Az SZLG+ központi adatbázisán keresztül jellemzően kezelt alapadatok:</p>
   <ul>
     <li>Teljes név és iskolai e-mail-cím.</li>
+    <li>Regisztrációkor megadható telefonszám és születési dátum, diákoknál OM azonosító és tagozat, tanároknál vagy más munkatársaknál pedig a szerepkör, beosztás és munkatársi azonosító.</li>
+    <li>Az adminisztratív felülvizsgálat állapota, a felülvizsgáló és a döntéshez kapcsolódó megjegyzés.</li>
     <li>Jelszó, kizárólag visszafejthetetlen, hashelt/sózott formában tárolva.</li>
     <li>Az utolsó bejelentkezés időpontja, biztonsági és üzemeltetési okokból.</li>
   </ul>
@@ -45,6 +41,7 @@
     <li><strong>Diákok esetében:</strong> az adatkezelés elsődleges jogalapja a gimnáziummal fennálló tanulói jogviszony, az intézmény Házirendje, valamint a beiratkozáskor kitöltött és a törvényes képviselő által aláírt dokumentumok.</li>
     <li><strong>Egyéb felhasználók és specifikus, hozzájáruláson alapuló funkciók esetében:</strong> az érintett kifejezett, önkéntes hozzájárulása, amelyet az SZLG+ felületén a regisztráció, illetve az első bejelentkezés során ad meg.</li>
   </ul>
+  <p>Az újonnan regisztráló iskolai fiókokat az adminisztrátorok a hozzáférés engedélyezése előtt manuálisan felülvizsgálják. A fiók a jóváhagyásig inaktív; az ellenőrzés a fiók és az SZLG+ szolgáltatásainak biztonságát szolgálja.</p>
 
   <h3 id="megorzes">5. Adatmegőrzési idő (adattárolás időtartama)</h3>
   <p>Az adatkezelés főszabály szerint a felhasználó törlési kérelméig tart. A tanulói jogviszony megszűnése után is megőrizhetünk adatokat az alábbi okokból:</p>

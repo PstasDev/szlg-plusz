@@ -182,12 +182,27 @@ class CustomUserManager(BaseUserManager):
             raise ValueError("A superuser must have is_superuser=True.")
         return self.create_user(email, password, **extra_fields)
 
+
+class AccountReviewStatus(models.TextChoices):
+    NOT_REQUIRED = "not_required", "Nincs szükség felülvizsgálatra"
+    PENDING = "pending", "Felülvizsgálatra vár"
+    APPROVED = "approved", "Jóváhagyva"
+    REJECTED = "rejected", "Elutasítva"
+
+
 class CustomUser(AbstractUser):
     username = None
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=32, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
     email_verified = models.BooleanField(default=False)
+    account_review_status = models.CharField(
+        "fiókfelülvizsgálati állapot",
+        max_length=20,
+        choices=AccountReviewStatus.choices,
+        default=AccountReviewStatus.NOT_REQUIRED,
+        db_index=True,
+    )
     privacy_consent_at = models.DateTimeField(
         "adatkezelési hozzájárulás időpontja",
         null=True,
@@ -348,16 +363,93 @@ class CustomUser(AbstractUser):
     def save(self, *args, **kwargs):
         self.email = self.email.strip().lower()
 
+        if self.account_review_status in {
+            AccountReviewStatus.PENDING,
+            AccountReviewStatus.REJECTED,
+        }:
+            self.is_active = False
+            self.email_verified = False
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None:
+                kwargs["update_fields"] = set(update_fields) | {
+                    "is_active",
+                    "email_verified",
+                }
+
         school_domain = (get_school_domain() or "").strip().lower()
         if school_domain and not school_domain.startswith("@"):
             school_domain = "@" + school_domain.lstrip("@")
-        if school_domain and self.email.endswith(school_domain):
+        if (
+            school_domain
+            and self.email.endswith(school_domain)
+            and self.account_review_status
+            not in {AccountReviewStatus.PENDING, AccountReviewStatus.REJECTED}
+        ):
             self.email_verified = True
 
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return self.email
+
+
+class ManualReviewRequest(models.Model):
+    class ApplicantType(models.TextChoices):
+        STUDENT = "student", "Diák"
+        TEACHER = "teacher", "Tanár"
+        SCHOOL_EMPLOYEE = "school_employee", "Egyéb iskolai munkatárs"
+
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="manual_review_request",
+        verbose_name="felhasználó",
+    )
+    applicant_type = models.CharField(
+        "jelentkező típusa",
+        max_length=24,
+        choices=ApplicantType.choices,
+    )
+    position = models.CharField("beosztás / munkakör", max_length=120, blank=True)
+    employee_number = models.CharField("munkatársi azonosító", max_length=32, blank=True)
+    reviewer_note = models.TextField("adminisztrátori megjegyzés", blank=True)
+    submitted_at = models.DateTimeField("jelentkezés ideje", auto_now_add=True)
+    reviewed_at = models.DateTimeField("felülvizsgálat ideje", null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="manual_reviews_performed",
+        verbose_name="felülvizsgáló",
+    )
+
+    class Meta:
+        ordering = ("-submitted_at",)
+        verbose_name = "manuális felülvizsgálat"
+        verbose_name_plural = "manuális felülvizsgálatok"
+
+    def __str__(self) -> str:
+        return f"{self.user.email} · {self.get_applicant_type_display()}"
+
+
+class SchoolAccountOTP(models.Model):
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name="school_account_otp",
+    )
+    challenge_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    code_hash = models.CharField(max_length=128)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "iskolai fiók e-mail-kód"
+        verbose_name_plural = "iskolai fiók e-mail-kódok"
 
 
 class StudentProfile(models.Model):
@@ -769,7 +861,8 @@ class GlobalConfig(SingletonModel):
         related_name="administrator_contact_for",
         help_text=(
             "Az itt kiválasztott felhasználók elérhetősége megjelenik az adatkezelési "
-            "tájékoztatóban és az iskolai címmel regisztrálóknak szóló üzenetben."
+            "tájékoztatóban és minden olyan felületen, ahol a felhasználót SZLG+ "
+            "adminisztrátor megkeresésére kérjük."
         ),
     )
 

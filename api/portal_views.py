@@ -1,5 +1,8 @@
+from django.db.models import Q
+from django.db.models.functions import Lower
 from django.shortcuts import render
 from django.views.decorators.http import require_GET
+from oauth2_provider.models import Application
 
 from .privacy import privacy_context
 
@@ -396,6 +399,35 @@ DOC_LINKS = [
 @require_GET
 def landing(request):
     return render(request, "portal/landing.html", {"rollout": LANDING_ROLLOUT})
+
+
+@require_GET
+def supported_applications(request):
+    search_query = request.GET.get("q", "").strip()
+    verified_only = request.GET.get("verified") == "1"
+    applications = Application.objects.filter(
+        authorization_grant_type=Application.GRANT_AUTHORIZATION_CODE
+    ).select_related("profile")
+
+    if search_query:
+        applications = applications.filter(
+            Q(name__icontains=search_query)
+            | Q(profile__developer__icontains=search_query)
+            | Q(profile__short_description__icontains=search_query)
+        )
+    if verified_only:
+        applications = applications.filter(profile__verified=True)
+
+    applications = applications.order_by(Lower("name"), "name", "pk")
+    return render(
+        request,
+        "portal/supported_applications.html",
+        {
+            "applications": applications,
+            "search_query": search_query,
+            "verified_only": verified_only,
+        },
+    )
 
 
 @require_GET

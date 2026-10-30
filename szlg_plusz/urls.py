@@ -5,6 +5,7 @@ from django.views.generic.base import RedirectView
 from api import dashboard_views, password_reset_views
 from api import portal_views
 from api import registration_views
+from api import school_account_views
 from api import student_profile_views
 from api import user_import_views
 from api.web_views import (
@@ -21,6 +22,11 @@ from api.web_views import (
 
 urlpatterns = [
     path("", portal_views.landing, name="home"),
+    path(
+        "tamogatott-alkalmazasok/",
+        portal_views.supported_applications,
+        name="supported-applications",
+    ),
     path("dashboard/", dashboard_views.dashboard, name="dashboard"),
     path("docs/", portal_views.docs, name="docs"),
     path("adatvedelem/", portal_views.privacy, name="privacy"),
@@ -58,9 +64,44 @@ urlpatterns = [
         user_import_views.user_import_one,
         name="user-import-one",
     ),
+    path(
+        "admin/manual-review/",
+        school_account_views.manual_review_list,
+        name="manual-review-list",
+    ),
+    path(
+        "admin/manual-review/<int:pk>/",
+        school_account_views.manual_review_detail,
+        name="manual-review-detail",
+    ),
     path("admin/", admin.site.urls),
     path("login/", login_page, name="login"),
     path("register/", registration_views.register, name="register"),
+    path(
+        "account/school/",
+        school_account_views.school_account_setup,
+        name="school-account-setup",
+    ),
+    path(
+        "account/school/otp/",
+        school_account_views.school_account_otp,
+        name="school-account-otp",
+    ),
+    path(
+        "account/school/password/",
+        school_account_views.school_account_password,
+        name="school-account-password",
+    ),
+    path(
+        "account/school/register/",
+        school_account_views.school_account_register,
+        name="school-account-register",
+    ),
+    path(
+        "account/school/submitted/",
+        school_account_views.school_account_submitted,
+        name="school-account-submitted",
+    ),
     path(
         "email/confirm/resend/",
         registration_views.resend_confirmation,

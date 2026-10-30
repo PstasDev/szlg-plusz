@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Iskolai fiók · SZLG+{% endblock %}
+{% block head_text %}
+  <h1>Iskolai fiókom van és még nincs jelszavam</h1>
+  <p class="subtitle">Add meg az iskolai e-mail-címedet a folytatáshoz.</p>
+{% endblock %}
+{% block content %}
+  {% for error in form.non_field_errors %}<p class="error" role="alert">{{ error }}</p>{% endfor %}
+  <form method="post">
+    {% csrf_token %}
+    <div class="field">
+      {{ form.email }}
+      <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+    </div>
+    {% for error in form.email.errors %}<p class="error" role="alert">{{ error }}</p>{% endfor %}
+    <p class="muted">Ha már van fiókod, e-mailben küldünk egy kódot. Ha még nincs, az adataid megadása után a fiók adminisztrátori felülvizsgálatra kerül.</p>
+    <div class="actions">
+      <a class="btn text" href="{% url 'login' %}">Vissza a bejelentkezéshez</a>
+      <button class="btn" type="submit">Tovább</button>
+    </div>
+  </form>
+{% endblock %}

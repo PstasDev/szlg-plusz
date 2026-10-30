@@ -33,19 +33,4 @@
     </div>
   </form>
 
-  {% if school_domain_attempted %}
-  <aside class="contact-box" role="note">
-    <strong>{{ school_domain }} e-mail-címed van?</strong>
-    <p>Az SZLG+ fiókodat az iskola automatikusan létrehozhatta. Próbálj meg <a href="{% url 'login' %}">bejelentkezni</a> vagy <a href="{% url 'password-reset' %}">jelszó-visszaállítást kérni</a>. Ha nem találsz fiókot, vedd fel a kapcsolatot az alábbi SZLG+ adminisztrátorokkal.</p>
-    {% if administrator_contacts %}
-      <ul class="list">
-        {% for contact in administrator_contacts %}
-          <li><a href="mailto:{{ contact.email }}">{{ contact.get_full_name|default:contact.email }} · {{ contact.email }}</a></li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p>Jelenleg nincs kapcsolattartó beállítva. Kérjük, jelezd a problémát az iskola adminisztrációjának.</p>
-    {% endif %}
-  </aside>
-  {% endif %}
 {% endblock %}
