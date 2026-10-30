@@ -17,7 +17,7 @@ from oauth2_provider.models import (
     RefreshToken,
 )
 
-from .forms import ApplicationForm
+from api.utils import decide_prefix_a_or_az
 from .models import Passkey, UserAppConnection, email_info
 from .scopes import describe_scopes
 
@@ -207,7 +207,7 @@ def application_delete(request, pk):
         if hasattr(application, "profile") and application.profile.logo:
             application.profile.logo.delete(save=False)
         application.delete()
-    messages.success(request, f"A(z) „{name}” alkalmazást töröltük.")
+    messages.success(request, f"{decide_prefix_a_or_az(name, uppercase=True)} „{name}” alkalmazást töröltük.")
     return redirect("applications")
 
 
@@ -277,7 +277,7 @@ def grant_revoke(request, pk):
         for model in (RefreshToken, AccessToken, IDToken, Grant):
             model.objects.filter(user=user, application=application).delete()
         UserAppConnection.objects.filter(user=user, application=application).delete()
-    messages.success(request, f"A(z) „{application.name}” hozzáférését visszavontuk.")
+    messages.success(request, f"{decide_prefix_a_or_az(application.name, uppercase=True)} „{application.name}” hozzáférését visszavontuk.")
     return redirect("grants")
 
 
@@ -297,6 +297,6 @@ def grant_interaction_update(request, pk):
         connection.save(update_fields=["interaction_mode"])
         messages.success(
             request,
-            f"A(z) „{connection.application.name}” belépési beállítását frissítettük.",
+            f"{decide_prefix_a_or_az(connection.application.name, uppercase=True)} „{connection.application.name}” belépési beállítását frissítettük.",
         )
     return redirect("grants")

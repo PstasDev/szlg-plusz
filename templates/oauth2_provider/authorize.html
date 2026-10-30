@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load api_utils %}
 {% load szlg_extras %}
 {% block title %}{% if error %}Hibás kérés{% elif application %}{{ application.name }} · Hozzáférés engedélyezése{% else %}Hozzáférés engedélyezése{% endif %} · SZLG+{% endblock %}
 {% block body_class %}auth-page oauth-page{% endblock %}
@@ -21,7 +22,7 @@
         {% if application.profile.developer %}<p class="app-dev">Fejlesztő: {{ application.profile.developer }}</p>{% endif %}
       </div>
     </div>
-    <h1>Bejelentkezés a(z) {{ application.name }} szolgáltatásba</h1>
+    <h1>Bejelentkezés {{ decide_prefix_a_or_az(application.name, uppercase=False) }} {{ application.name }} szolgáltatásba</h1>
     <div class="user-chip">
       <span class="avatar" aria-hidden="true">{{ request.user.get_full_name|default:request.user.email|slice:":1"|upper }}</span>
       {{ request.user.get_full_name|default:request.user.email }} · {{ request.user.email }}
@@ -50,7 +51,7 @@
     <p class="muted">Átirányítási URI: <code>{{ request.GET.redirect_uri|default:"–" }}</code></p>
     <div class="actions"><a class="btn" href="{% url 'dashboard' %}">Vissza a fiókomhoz</a></div>
   {% else %}
-    <h2 class="consent-heading">Az SZLG+ a következő adatokat osztja meg{% if application %} a(z) {{ application.name }} alkalmazással{% endif %}:</h2>
+    <h2 class="consent-heading">Az SZLG+ a következő adatokat osztja meg{% if application %} {{ decide_prefix_a_or_az(application.name, uppercase=False) }} {{ application.name }} alkalmazással{% endif %}:</h2>
 
     {% if application %}
       {% if application.profile.verified %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load api_utils %}
 {% block title %}{{ application.name }} · Bejelentkezés megerősítése · SZLG+{% endblock %}
 {% block body_class %}auth-page oauth-page{% endblock %}
 {% block shell_class %}wide oauth-shell{% endblock %}
@@ -14,7 +15,7 @@
       {% if application.profile.developer %}<p class="app-dev">Fejlesztő: {{ application.profile.developer }}</p>{% endif %}
     </div>
   </div>
-  <h1>Bejelentkezés a(z) {{ application.name }} szolgáltatásba</h1>
+  <h1>Bejelentkezés {{ decide_prefix_a_or_az(application.name, uppercase=False) }} {{ application.name }} szolgáltatásba</h1>
   <div class="user-chip">
     <span class="avatar" aria-hidden="true">{{ request.user.get_full_name|default:request.user.email|slice:":1"|upper }}</span>
     {{ request.user.get_full_name|default:request.user.email }} · {{ request.user.email }}

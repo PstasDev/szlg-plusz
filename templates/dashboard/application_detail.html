@@ -1,4 +1,5 @@
 {% extends "dashboard/base.html" %}
+{% load api_utils %}
 {% block title %}{{ application.name }}{% endblock %}
 {% block content %}
   <div class="page-head">
@@ -11,7 +12,7 @@
     </div>
     <div class="form-actions" style="margin:0">
       <a class="btn outline" href="{% url 'application-edit' application.pk %}">Szerkesztés</a>
-      <form method="post" action="{% url 'application-delete' application.pk %}" data-confirm="Biztosan törlöd a(z) {{ application.name }} alkalmazást? Minden felhasználó hozzáférése megszűnik.">
+      <form method="post" action="{% url 'application-delete' application.pk %}" data-confirm="Biztosan törlöd {{ decide_prefix_a_or_az(application.name, uppercase=False) }} {{ application.name }} alkalmazást? Minden felhasználó hozzáférése megszűnik.">
         {% csrf_token %}
         <button type="submit" class="btn danger">Törlés</button>
       </form>

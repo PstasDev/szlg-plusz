@@ -18,6 +18,8 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 from oauth2_provider.models import Application
 
+from api.utils import decide_prefix_a_or_az
+
 from .models import (
     CustomUser,
     SchoolClass,
@@ -200,13 +202,13 @@ def _text_value(record, key, label, errors, *, max_length, uppercase=False):
     if value is None:
         return None
     if not isinstance(value, str):
-        errors.append(f"A(z) „{label}” értéke szöveg legyen.")
+        errors.append(f"{decide_prefix_a_or_az(label, uppercase=True)} „{label}” értéke szöveg legyen.")
         return None
     value = value.strip()
     if not value:
         return None
     if len(value) > max_length:
-        errors.append(f"A(z) „{label}” legfeljebb {max_length} karakter lehet.")
+        errors.append(f"{decide_prefix_a_or_az(label, uppercase=True)} „{label}” legfeljebb {max_length} karakter lehet.")
         return None
     return value.upper() if uppercase else value
 
@@ -418,9 +420,9 @@ def _normalize_record(
             elif allow_unresolved_tagozat:
                 pass
             elif tagozatok:
-                errors.append(f"A(z) „{tagozat_value}” tagozatnév nem egyértelmű.")
+                errors.append(f"{decide_prefix_a_or_az(tagozat_value, uppercase=True)} „{tagozat_value}” tagozatnév nem egyértelmű.")
             else:
-                errors.append(f"Nem található ilyen tagozat: „{tagozat_value}”.")
+                errors.append(f"{decide_prefix_a_or_az(tagozat_value, uppercase=True)} „{tagozat_value}” tagozat nem található.")
     if TEACHER_ROLE in roles:
         employee_number = _text_value(
             record,
@@ -517,7 +519,7 @@ def _preview_records(records, school_domain=None):
                 "profile_warnings": profile_warnings,
                 "unresolved_tagozat": unresolved_tagozat,
                 "tagozat_warning": (
-                    f"A(z) „{raw_tagozat}” tagozat nem azonosítható; válassz helyette tagozatot bulkban."
+                    f"{decide_prefix_a_or_az(raw_tagozat, uppercase=True)} „{raw_tagozat}” tagozat nem azonosítható; válassz helyette tagozatot bulkban."
                     if unresolved_tagozat
                     else ""
                 ),
@@ -603,7 +605,7 @@ def _preview_records(records, school_domain=None):
             and not normalized.get("tagozat")
         )
         row["tagozat_warning"] = (
-            f"A(z) „{original_record.get('tagozat')}” tagozat nem azonosítható; válassz helyette tagozatot bulkban."
+            f"{decide_prefix_a_or_az(original_record.get('tagozat'), uppercase=True)} „{original_record.get('tagozat')}” tagozat nem azonosítható; válassz helyette tagozatot bulkban."
             if row["unresolved_tagozat"]
             else ""
         )
