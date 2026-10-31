@@ -9,7 +9,6 @@ from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.auth.admin import GroupAdmin, UserAdmin
 from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.core.mail import EmailMultiAlternatives, send_mail
 from django.core.validators import validate_email
 from django.db import transaction
 from django.http import HttpResponseRedirect
@@ -24,6 +23,7 @@ from oauth2_provider.models import get_application_model
 from solo.admin import SingletonModelAdmin
 
 from .directory import SMART_DIRECTORY_GROUPS
+from .email_utils import send_html_email
 from .models import (
     AccountReviewStatus,
     ApplicationProfile,
@@ -75,22 +75,21 @@ def _send_unverified_account_deletion_notice(request, user):
     except ValidationError:
         return False
 
-    body = render_to_string(
-        "emails/unverified_account_deleted.txt",
-        {
-            "name": user.get_full_name() or recipient,
-            "email": recipient,
-            "register_url": request.build_absolute_uri(reverse("register")),
-        },
-    ).strip()
+    context = {
+        "name": user.get_full_name() or recipient,
+        "email": recipient,
+        "register_url": request.build_absolute_uri(reverse("register")),
+    }
+    body = render_to_string("emails/unverified_account_deleted.txt", context).strip()
     try:
         return bool(
-            send_mail(
-                "Az SZLG+ fiókodat töröltük",
-                body,
-                settings.DEFAULT_FROM_EMAIL,
-                [recipient],
-                fail_silently=False,
+            send_html_email(
+                subject="Az SZLG+ fiókodat töröltük",
+                text_body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[recipient],
+                template_name="emails/unverified_account_deleted.html",
+                context=context,
             )
         )
     except (OSError, SMTPException, ValueError):
@@ -300,15 +299,14 @@ class CustomUserAdmin(UserAdmin):
                 skipped_count += 1
                 continue
 
-            message = EmailMultiAlternatives(
-                subject=SZLG_PLUS_MIGRATION_SUBJECT,
-                body=text_body,
-                from_email=SZLG_PLUS_MIGRATION_FROM_EMAIL,
-                to=[recipient],
-            )
-            message.attach_alternative(html_body, "text/html")
             try:
-                if message.send():
+                if send_html_email(
+                    subject=SZLG_PLUS_MIGRATION_SUBJECT,
+                    text_body=text_body,
+                    from_email=SZLG_PLUS_MIGRATION_FROM_EMAIL,
+                    recipient_list=[recipient],
+                    html_body=html_body,
+                ):
                     sent_count += 1
                 else:
                     failed_count += 1

@@ -5,7 +5,6 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.core.mail import send_mail
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -15,6 +14,7 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from django_ratelimit.decorators import ratelimit
 from oauth2_provider.models import Application
 
+from .email_utils import send_html_email
 from .application_verification import (
     application_verification_snapshot,
     verification_missing_requirements,
@@ -67,12 +67,18 @@ def _send_admin_notification(request, verification_request):
     )
     try:
         return bool(
-            send_mail(
-                "[SZLG+] Alkalmazás vár ellenőrzésre",
-                body,
-                settings.DEFAULT_FROM_EMAIL,
-                recipients,
-                fail_silently=False,
+            send_html_email(
+                subject="[SZLG+] Alkalmazás vár ellenőrzésre",
+                text_body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=recipients,
+                template_name="emails/application_review_notification.html",
+                context={
+                    "application_name": application.name,
+                    "developer": application.profile.developer,
+                    "owner_email": application.user.email,
+                    "review_url": review_url,
+                },
             )
         )
     except (SMTPException, OSError):
@@ -126,12 +132,19 @@ def _send_developer_decision(request, verification_request):
     )
     try:
         return bool(
-            send_mail(
-                subject,
-                body,
-                settings.DEFAULT_FROM_EMAIL,
-                [owner.email],
-                fail_silently=False,
+            send_html_email(
+                subject=subject,
+                text_body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[owner.email],
+                template_name="emails/application_review_decision.html",
+                context={
+                    "owner_name": owner.get_full_name() or owner.email,
+                    "application_name": application.name,
+                    "decision": decision,
+                    "reviewer_note": verification_request.reviewer_note,
+                    "detail_url": detail_url,
+                },
             )
         )
     except (SMTPException, OSError):
@@ -159,12 +172,17 @@ def _send_submission_confirmation(request, verification_request):
     )
     try:
         return bool(
-            send_mail(
-                "Az SZLG+ megkapta az alkalmazás-ellenőrzési kérelmedet",
-                body,
-                settings.DEFAULT_FROM_EMAIL,
-                [owner.email],
-                fail_silently=False,
+            send_html_email(
+                subject="Az SZLG+ megkapta az alkalmazás-ellenőrzési kérelmedet",
+                text_body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[owner.email],
+                template_name="emails/application_review_submitted.html",
+                context={
+                    "owner_name": owner.get_full_name() or owner.email,
+                    "application_name": application.name,
+                    "detail_url": detail_url,
+                },
             )
         )
     except (SMTPException, OSError):

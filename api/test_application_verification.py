@@ -146,6 +146,9 @@ class ApplicationVerificationTests(TestCase):
         self.assertEqual(verification_request.submitted_by, self.owner)
         self.assertFalse(self.application.profile.verified)
         self.assertEqual(len(mail.outbox), 2)
+        for message in mail.outbox:
+            self.assertEqual(message.alternatives[0][1], "text/html")
+            self.assertIn("SZLG+", message.alternatives[0][0])
 
         self.client.force_login(self.reviewer)
         queue = self.client.get(reverse("application-review-list"))
@@ -172,6 +175,12 @@ class ApplicationVerificationTests(TestCase):
         self.assertEqual(
             verification_request.status,
             ApplicationVerificationRequest.Status.APPROVED,
+        )
+        self.assertEqual(mail.outbox[-1].to, [self.owner.email])
+        self.assertEqual(mail.outbox[-1].alternatives[0][1], "text/html")
+        self.assertIn(
+            "Alkalmazás-ellenőrzési döntés",
+            mail.outbox[-1].alternatives[0][0],
         )
         self.assertEqual(verification_request.reviewed_by, self.reviewer)
         catalog = self.client.get(reverse("supported-applications"))

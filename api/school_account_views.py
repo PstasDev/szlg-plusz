@@ -9,7 +9,6 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import SetPasswordForm
 from django.core.exceptions import PermissionDenied
-from django.core.mail import send_mail
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -19,6 +18,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django_ratelimit.decorators import ratelimit
 
+from .email_utils import send_html_email
 from .forms import (
     ManualReviewForm,
     SchoolAccountEmailForm,
@@ -75,12 +75,16 @@ def _send_setup_otp(user, code):
     )
     try:
         return bool(
-            send_mail(
-                "SZLG+ – e-mail-ellenőrző kód",
-                body,
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=False,
+            send_html_email(
+                subject="SZLG+ – e-mail-ellenőrző kód",
+                text_body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                template_name="emails/school_account_otp.html",
+                context={
+                    "name": user.get_full_name() or user.email,
+                    "code": code,
+                },
             )
         )
     except (SMTPException, OSError):
@@ -118,12 +122,18 @@ def _send_admin_review_notification(request, user, review_request):
     )
     try:
         return bool(
-            send_mail(
-                "[SZLG+] Új fiók vár manuális felülvizsgálatra",
-                body,
-                settings.DEFAULT_FROM_EMAIL,
-                recipients,
-                fail_silently=False,
+            send_html_email(
+                subject="[SZLG+] Új fiók vár manuális felülvizsgálatra",
+                text_body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=recipients,
+                template_name="emails/school_account_review_notification.html",
+                context={
+                    "name": user.get_full_name() or "Nincs megadva",
+                    "email": user.email,
+                    "applicant_type": review_request.get_applicant_type_display(),
+                    "review_url": review_url,
+                },
             )
         )
     except (SMTPException, OSError):
@@ -132,12 +142,15 @@ def _send_admin_review_notification(request, user, review_request):
 
 
 def _send_review_decision(request, user, approved, reviewer_note=""):
+    login_url = None
+    contacts = None
     if approved:
         subject = "Az SZLG+ fiókodat jóváhagytuk"
+        login_url = request.build_absolute_uri(reverse("login"))
         body = (
             f"Kedves {user.get_full_name() or user.email}!\n\n"
             "Az SZLG+ fiókodat az adminisztrátorok jóváhagyták. Most már bejelentkezhetsz:\n"
-            f"{request.build_absolute_uri(reverse('login'))}\n"
+            f"{login_url}\n"
         )
     else:
         subject = "Az SZLG+ fiókodat nem hagytuk jóvá"
@@ -155,14 +168,30 @@ def _send_review_decision(request, user, approved, reviewer_note=""):
         body += "\n"
         if reviewer_note:
             body += f"\nAz adminisztrátor megjegyzése: {reviewer_note}\n"
+    context = {
+        "approved": approved,
+        "name": user.get_full_name() or user.email,
+        "email_title": subject,
+        "preview_text": (
+            "Most már bejelentkezhetsz az SZLG+ fiókoddal."
+            if approved
+            else "Tájékoztatás az SZLG+ fiók jelentkezéséről."
+        ),
+        "reviewer_note": reviewer_note,
+    }
+    if approved:
+        context["login_url"] = login_url
+    else:
+        context["contacts"] = contacts
     try:
         return bool(
-            send_mail(
-                subject,
-                body,
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=False,
+            send_html_email(
+                subject=subject,
+                text_body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                template_name="emails/school_account_review_decision.html",
+                context=context,
             )
         )
     except (SMTPException, OSError):

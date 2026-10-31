@@ -11,6 +11,7 @@ from .forms import SZLGPasswordResetForm
 class PasswordResetRequestView(auth_views.PasswordResetView):
     template_name = "registration/password_reset_form.html"
     email_template_name = "registration/password_reset_email.txt"
+    html_email_template_name = "emails/password_reset.html"
     subject_template_name = "registration/password_reset_subject.txt"
     form_class = SZLGPasswordResetForm
     success_url = reverse_lazy("password-reset-done")

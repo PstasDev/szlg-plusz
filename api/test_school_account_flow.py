@@ -130,6 +130,10 @@ class SchoolAccountFlowTests(TestCase):
         )
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [user.email])
+        html_body, mime_type = mail.outbox[0].alternatives[0]
+        self.assertEqual(mime_type, "text/html")
+        self.assertIn("E-mail-cím ellenőrzése", html_body)
+        self.assertIn("#102a2b", html_body)
         code = re.search(r"(?<!\d)\d{6}(?!\d)", mail.outbox[0].body).group(0)
         challenge = SchoolAccountOTP.objects.get(user=user)
         self.assertNotEqual(challenge.code_hash, code)
@@ -184,6 +188,11 @@ class SchoolAccountFlowTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [self.admin.email])
         self.assertIn(reverse("manual-review-list"), mail.outbox[0].body)
+        self.assertEqual(mail.outbox[0].alternatives[0][1], "text/html")
+        self.assertIn(
+            "Új fiók vár manuális felülvizsgálatra",
+            mail.outbox[0].alternatives[0][0],
+        )
         self.assertContains(self.client.get(response["Location"]), self.admin.email)
 
         denied = self.client.post(
@@ -282,6 +291,8 @@ class SchoolAccountFlowTests(TestCase):
         self.assertIsNotNone(review.reviewed_at)
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [user.email])
+        self.assertEqual(mail.outbox[0].alternatives[0][1], "text/html")
+        self.assertIn("Fiók jóváhagyva", mail.outbox[0].alternatives[0][0])
 
         login = self.client.post(
             reverse("password-login"),
@@ -310,6 +321,8 @@ class SchoolAccountFlowTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [user.email])
         self.assertIn(self.admin.email, mail.outbox[0].body)
+        self.assertEqual(mail.outbox[0].alternatives[0][1], "text/html")
+        self.assertIn(self.admin.email, mail.outbox[0].alternatives[0][0])
 
         denied = self.client.post(
             reverse("password-login"),

@@ -1,0 +1,29 @@
+{% extends "emails/base.html" %}
+{% block document_title %}{{ email_title }}{% endblock %}
+{% block preview_text %}{{ preview_text }}{% endblock %}
+{% block content %}
+  <p style="margin:0 0 22px;">Kedves {{ name }}!</p>
+  {% if approved %}
+    <h1 style="margin:0 0 12px; color:#174746; font-size:24px; line-height:1.3;">Fiók jóváhagyva</h1>
+    <p style="margin:0 0 24px;">Az SZLG+ fiókodat az adminisztrátorok jóváhagyták. Most már bejelentkezhetsz:</p>
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 22px;">
+      <tr><td align="center" style="border-radius:8px; background-color:#174746;"><a href="{{ login_url }}" style="display:inline-block; padding:13px 22px; border:1px solid #174746; border-radius:8px; color:#ffffff; font-size:16px; font-weight:700; text-decoration:none;">Bejelentkezés az SZLG+-ba</a></td></tr>
+    </table>
+    <p style="margin:0; color:#52615b; font-size:14px;">Ha a gomb nem működik, nyisd meg ezt a címet: <a href="{{ login_url }}" style="color:#174746; font-weight:600;">{{ login_url }}</a></p>
+  {% else %}
+    <h1 style="margin:0 0 12px; color:#174746; font-size:24px; line-height:1.3;">A fiók jelentkezését nem hagytuk jóvá</h1>
+    <p style="margin:0 0 20px;">Az SZLG+ fiókodat az adminisztrátorok nem hagyták jóvá. Ha kérdésed van, keresd az alábbi SZLG+ kapcsolattartók egyikét:</p>
+    {% if contacts %}
+      <ul style="margin:0 0 20px; padding-left:22px;">
+        {% for contact in contacts %}
+          <li style="margin:0 0 8px;"><a href="mailto:{{ contact.email }}" style="color:#174746; font-weight:600;">{{ contact.get_full_name|default:contact.email }}</a> · {{ contact.email }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p style="margin:0 0 20px;">Az iskola adminisztrációját.</p>
+    {% endif %}
+    {% if reviewer_note %}
+      <p style="margin:0; padding:16px 18px; border-left:4px solid #174746; background-color:#e9f3ee;"><strong>Az adminisztrátor megjegyzése:</strong><br>{{ reviewer_note|linebreaksbr }}</p>
+    {% endif %}
+  {% endif %}
+{% endblock %}

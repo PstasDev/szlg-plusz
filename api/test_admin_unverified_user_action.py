@@ -83,6 +83,10 @@ class DeleteUnverifiedUsersAdminActionTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [old_delete.email])
         self.assertIn("http://testserver/register/", mail.outbox[0].body)
+        html_body, mime_type = mail.outbox[0].alternatives[0]
+        self.assertEqual(mime_type, "text/html")
+        self.assertIn("A fiókodat töröltük", html_body)
+        self.assertIn("http://testserver/register/", html_body)
 
     def test_account_verified_after_preview_is_not_deleted(self):
         user = self.create_user("changed@example.net", days_old=100)

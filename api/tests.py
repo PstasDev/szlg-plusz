@@ -481,6 +481,10 @@ class RegistrationTests(TestCase):
         self.assertTrue(user.check_password(self.PASSWORD))
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [user.email])
+        html_body, mime_type = mail.outbox[0].alternatives[0]
+        self.assertEqual(mime_type, "text/html")
+        self.assertIn("E-mail-cím megerősítése", html_body)
+        self.assertIn("background-color:#f7f8f4", html_body)
 
         denied = self.client.post(
             "/login/password/", {"email": user.email, "password": self.PASSWORD}
@@ -884,6 +888,9 @@ class DashboardTests(TestCase):
         response = self.client.post("/password/reset/", {"email": "STUDENT@example.org"})
         self.assertRedirects(response, "/password/reset/sent/", fetch_redirect_response=False)
         self.assertEqual(len(mail.outbox), 1)
+        html_body, mime_type = mail.outbox[0].alternatives[0]
+        self.assertEqual(mime_type, "text/html")
+        self.assertIn("Új jelszó beállítása", html_body)
         link = re.search(r"https?://[^/\s]+(/password/reset/\S+)", mail.outbox[0].body).group(1)
 
         # Django swaps the token for a session-bound URL on the first visit.

@@ -4,7 +4,6 @@ from smtplib import SMTPException
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import signing
-from django.core.mail import send_mail
 from django.db import IntegrityError, transaction
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -12,6 +11,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django_ratelimit.decorators import ratelimit
 
+from .email_utils import send_html_email
 from .forms import RegistrationForm
 from .models import BotRegistrationAttempt, CustomUser, email_info
 from .privacy import privacy_context
@@ -48,12 +48,16 @@ def _send_confirmation_email(request, user: CustomUser) -> bool:
     )
     try:
         return bool(
-            send_mail(
-                "SZLG+ e-mail-cím megerősítése",
-                body,
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=False,
+            send_html_email(
+                subject="SZLG+ e-mail-cím megerősítése",
+                text_body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                template_name="emails/account_confirmation.html",
+                context={
+                    "name": user.get_full_name() or user.email,
+                    "confirmation_url": confirmation_url,
+                },
             )
         )
     except (SMTPException, OSError):
