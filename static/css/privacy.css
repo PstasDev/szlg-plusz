@@ -20,8 +20,25 @@
   font-size: 1.05rem;
   font-weight: 650;
   line-height: 1.45;
+  scroll-margin-top: 6rem;
+}
+.privacy-policy-content h4 {
+  margin: 1.25rem 0 .5rem;
+  color: var(--text, #102a2b);
+  font-size: .98rem;
+  font-weight: 650;
+  line-height: 1.45;
+  scroll-margin-top: 6rem;
 }
 .privacy-policy-content p { margin: .65rem 0; color: inherit; }
+.privacy-policy-content .policy-meta {
+  margin: 1.2rem 0 1.5rem;
+  padding: .8rem 1rem;
+  border: 1px solid rgb(16 42 43 / .1);
+  border-radius: 1rem;
+  background: #f7f8f4;
+}
+.privacy-policy-content .policy-meta p { margin: .25rem 0; }
 .privacy-policy-content ul { margin: .6rem 0 1rem; padding: 0; list-style: none; }
 .privacy-policy-content li { position: relative; margin: .4rem 0; padding-left: 1.35rem; }
 .privacy-policy-content li::before {
@@ -39,7 +56,40 @@
   font-size: .7rem;
   font-weight: 700;
 }
+.privacy-policy-content ol { margin: .6rem 0 1rem; padding-left: 1.45rem; list-style: decimal; }
+.privacy-policy-content ol li { position: static; margin: .4rem 0; padding-left: .25rem; }
+.privacy-policy-content ol li::before { display: none; }
+.privacy-policy-content ol li::marker { color: #174746; font-weight: 700; }
 .privacy-policy-content a { color: var(--accent, #174746); text-decoration: underline; text-underline-offset: .15em; }
+.terms-of-service-content {
+  max-width: 75ch;
+  color: var(--muted, #536466);
+  font-size: .94rem;
+  line-height: 1.75;
+}
+.terms-of-service-content h2 {
+  margin: 2rem 0 0;
+  padding: 1.75rem 0 .7rem;
+  border-top: 1px solid rgb(16 42 43 / .1);
+  color: var(--text, #102a2b);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.45;
+  scroll-margin-top: 6rem;
+}
+.terms-of-service-content h3 {
+  margin: 1.2rem 0 .5rem;
+  color: var(--text, #102a2b);
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.45;
+  scroll-margin-top: 6rem;
+}
+.terms-of-service-content p { margin: .65rem 0; color: inherit; }
+.terms-of-service-content ul { margin: .6rem 0 1rem; padding-left: 1.35rem; list-style: disc; }
+.terms-of-service-content li { margin: .4rem 0; padding-left: .25rem; }
+.terms-of-service-content li::marker { color: #174746; }
+.terms-of-service-content a { color: var(--accent, #174746); text-decoration: underline; text-underline-offset: .15em; }
 .auth-register, .privacy-link { margin-top: 1rem; }
 .footer .privacy-footer-link { color: inherit; text-decoration: underline; text-underline-offset: .15em; }
 .check-row {
@@ -67,4 +117,5 @@
 @media (max-width: 36rem) {
   .privacy-notice { padding: .8rem; }
   .privacy-policy-content { font-size: .88rem; }
+  .terms-of-service-content { font-size: .88rem; }
 }

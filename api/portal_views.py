@@ -444,6 +444,11 @@ def privacy(request):
 
 
 @require_GET
+def terms_of_service(request):
+    return render(request, "portal/terms.html")
+
+
+@require_GET
 def docs(request, slug="felhasznalok"):
     if slug not in DOCS:
         slug = "felhasznalok"

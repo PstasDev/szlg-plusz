@@ -31,6 +31,7 @@ urlpatterns = [
     path("dashboard/", dashboard_views.dashboard, name="dashboard"),
     path("docs/", portal_views.docs, name="docs"),
     path("adatvedelem/", portal_views.privacy, name="privacy"),
+    path("aszf/", portal_views.terms_of_service, name="terms"),
     path("docs/felhasznalok/", portal_views.docs, {"slug": "felhasznalok"}, name="docs-users"),
     path("docs/adminisztratorok/", portal_views.docs, {"slug": "adminok"}, name="docs-admins"),
     path(

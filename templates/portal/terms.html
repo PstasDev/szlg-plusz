@@ -1,0 +1,35 @@
+{% extends "portal/base.html" %}
+{% load static %}
+
+{% block title %}Általános Szerződési Feltételek · SZLG+{% endblock %}
+{% block meta_description %}Az SZLG+ központi felhasználói rendszer és a kapcsolódó webalkalmazások használati feltételei.{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'css/privacy.css' %}">{% endblock %}
+
+{% block content %}
+  <div class="mx-auto grid max-w-7xl gap-10 px-5 py-10 md:grid-cols-[17rem_minmax(0,1fr)] md:px-8 md:py-14">
+    <aside class="self-start md:sticky md:top-24">
+      <p class="px-3 text-xs font-bold uppercase tracking-[.18em] text-ink/40">Jogi dokumentum</p>
+      <nav class="mt-4 grid grid-cols-2 gap-1 md:grid-cols-1" aria-label="Általános Szerződési Feltételek fejezetei">
+        <a href="#regisztracio" class="rounded-xl px-3 py-3 text-sm leading-5 text-ink/65 transition hover:bg-white hover:text-forest">Regisztráció</a>
+        <a href="#kotelezettsegek" class="rounded-xl px-3 py-3 text-sm leading-5 text-ink/65 transition hover:bg-white hover:text-forest">Felhasználói kötelezettségek</a>
+        <a href="#rendelesek" class="rounded-xl px-3 py-3 text-sm leading-5 text-ink/65 transition hover:bg-white hover:text-forest">Alkalmazás-specifikus szolgáltatások</a>
+        <a href="#bufe" class="rounded-xl px-3 py-3 text-sm leading-5 text-ink/55 transition hover:bg-white hover:text-forest md:pl-6">Büfé rendelés</a>
+        <a href="#polorendeles" class="rounded-xl px-3 py-3 text-sm leading-5 text-ink/55 transition hover:bg-white hover:text-forest md:pl-6">Pólórendelés</a>
+        <a href="#szerzoi-jogok" class="rounded-xl px-3 py-3 text-sm leading-5 text-ink/65 transition hover:bg-white hover:text-forest">Szerzői jogok és tartalom</a>
+        <a href="#moderacio" class="rounded-xl px-3 py-3 text-sm leading-5 text-ink/65 transition hover:bg-white hover:text-forest">Moderáció</a>
+        <a href="#rendelkezesre-allas" class="rounded-xl px-3 py-3 text-sm leading-5 text-ink/65 transition hover:bg-white hover:text-forest">Felelősség és rendelkezésre állás</a>
+        <a href="#sso-integracio" class="rounded-xl px-3 py-3 text-sm leading-5 text-ink/65 transition hover:bg-white hover:text-forest">SSO és személyes adatok</a>
+      </nav>
+      <div class="mt-8 rounded-2xl border border-ink/10 bg-white p-5">
+        <p class="text-sm font-bold">Jelzés vagy panasz</p>
+        <p class="mt-2 text-sm leading-6 text-ink/55">Illegális, sértő vagy kéretlen tartalmat az iskolai titkárságnak jelezhetsz.</p>
+        <a class="mt-3 inline-block text-sm font-semibold text-forest underline underline-offset-4" href="mailto:titkarsag@szlgbp.hu">titkarsag@szlgbp.hu</a>
+      </div>
+    </aside>
+    <main id="main-content" aria-labelledby="terms-title" class="min-w-0 rounded-3xl border border-ink/10 bg-white px-6 py-8 shadow-sm sm:px-10 sm:py-11">
+      <p class="text-xs font-bold uppercase tracking-[.2em] text-copper">SZLG+ · Jogi dokumentum</p>
+      <h1 id="terms-title" class="mt-4 text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-3xl">Általános Szerződési Feltételek (ÁSZF) – SZLG+ és kapcsolódó webalkalmazások</h1>
+      {% include "partials/terms_of_service.html" %}
+    </main>
+  </div>
+{% endblock %}

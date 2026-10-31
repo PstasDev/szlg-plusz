@@ -424,6 +424,42 @@ class RegistrationTests(TestCase):
             with self.subTest(privacy_link=path):
                 self.assertContains(self.client.get(path), "Adatkezelési tájékoztató")
 
+    def test_updated_privacy_policy_shows_revision_date_and_new_sections(self):
+        response = self.client.get("/adatvedelem/")
+
+        self.assertEqual(response.status_code, 200)
+        for text in (
+            "Utoljára módosítva:",
+            "2026.10.31.",
+            "2026. október 31. napjától",
+            "Balla Botond",
+            "3. A kezelt adatok köre és az alkalmazások",
+            "6. Integrációk, Fejlesztői Irányelvek és Adatfeldolgozók",
+            "8. Adatbiztonság és Incidenskezelés",
+            "10. Jogérvényesítési lehetőségek",
+        ):
+            with self.subTest(text=text):
+                self.assertContains(response, text)
+
+    def test_terms_of_service_page_is_public_and_linked(self):
+        response = self.client.get("/aszf/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/aszf/"')
+        for section in (
+            "Regisztráció és Felhasználói kategóriák",
+            "Felhasználói kötelezettségek és Szankciók",
+            "3.1. Büfé rendelés",
+            "3.2. Pólórendelés",
+            "Szerzői jogok és Tartalomkezelés",
+            "Moderáció és Tartalmi felelősség",
+            "Felelősségkorlátozás és Rendelkezésre állás",
+            "SZLG+ SSO Integráció és Személyes Adatok Kezelése",
+            "Fizetős rendszerekbe történő integráció tilalma",
+        ):
+            with self.subTest(section=section):
+                self.assertContains(response, section)
+
     def test_registration_requires_policy_consent(self):
         response = self.client.post(
             "/register/", self._registration_data(privacy_consent="")
