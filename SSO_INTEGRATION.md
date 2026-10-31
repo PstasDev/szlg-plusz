@@ -380,9 +380,10 @@ application. Provide your own sign-out and session-expiry behavior.
 The local provider uses `http://localhost:8002` by default. In local SZLG+
 development only, `DEBUG=True` permits HTTP redirect URIs; WebAuthn still
 requires the configured relying-party ID and origins to match the local host.
-Use a separate test registration and configuration from production. Do not
-point production clients at the local issuer or disable token validation to
-make a test pass.
+For a `localhost` callback, also enable `ALLOW_LOCALHOST_LOOPBACK=True` in the
+local provider configuration. Use a separate test registration and configuration
+from production. Do not point production clients at the local issuer or disable
+token validation to make a test pass.
 
 For provider setup, operations, or contributing to SZLG+ itself, see the
 **SZLG+ fejlesztőknek** section in the site's documentation.

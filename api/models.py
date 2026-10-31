@@ -13,6 +13,23 @@ from mptt.models import MPTTModel
 from solo.models import SingletonModel
 
 
+class BotRegistrationAttempt(models.Model):
+    """Stores registration submissions that filled the hidden honeypot field."""
+
+    timestamp = models.DateTimeField(auto_now_add=True)
+    form_data = models.JSONField(
+        help_text="Submitted form fields (passwords and CSRF tokens excluded)"
+    )
+
+    class Meta:
+        verbose_name = "Bot Registration Attempt"
+        verbose_name_plural = "Bot Registration Attempts"
+        ordering = ["-timestamp"]
+
+    def __str__(self):
+        return f"Bot attempt at {self.timestamp}"
+
+
 def year_szekcio_to_str(startYear: int, szekcio: str) -> str:
     current_year = datetime.date.today().year
     current_month = datetime.date.today().month

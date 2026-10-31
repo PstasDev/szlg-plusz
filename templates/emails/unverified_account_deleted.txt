@@ -1,0 +1,7 @@
+Kedves {{ name }}!
+
+Tájékoztatunk, hogy az SZLG+ fiókodat ({{ email }}) töröltük, mert a regisztrációt követő két hónapon belül nem erősítetted meg az e-mail-címedet.
+
+Ha továbbra is szeretnéd használni az SZLG+-t, regisztrálj újra: {{ register_url }}
+
+Ha szerinted tévedés történt, kérjük, vedd fel a kapcsolatot az SZLG+ ügyfélszolgálatával.

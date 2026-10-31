@@ -9,6 +9,10 @@
   {% if form.non_field_errors %}<div class="error" role="alert">{{ form.non_field_errors }}</div>{% endif %}
   <form method="post" action="{% url 'register' %}">
     {% csrf_token %}
+    <div style="display:none" aria-hidden="true">
+      <label for="id_website">Website</label>
+      <input id="id_website" name="website" type="text" tabindex="-1" autocomplete="off">
+    </div>
     {% for field in form %}
       {% if field.name != "privacy_consent" %}
         <div class="field">

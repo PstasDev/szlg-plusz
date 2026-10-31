@@ -1,13 +1,15 @@
 import logging
+from calendar import monthrange
 from smtplib import SMTPException
 
 from django import forms
+from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.auth.admin import GroupAdmin, UserAdmin
 from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives, send_mail
 from django.core.validators import validate_email
 from django.db import transaction
 from django.http import HttpResponseRedirect
@@ -26,6 +28,7 @@ from .models import (
     AccountReviewStatus,
     ApplicationProfile,
     ApplicationVerificationRequest,
+    BotRegistrationAttempt,
     CustomUser,
     GlobalConfig,
     ManualReviewRequest,
@@ -44,6 +47,55 @@ SZLG_PLUS_MIGRATION_SUBJECT = (
     "SZLG+ Fiókra állítottunk át az SZLG alkalmazásaiban."
 )
 SZLG_PLUS_MIGRATION_FROM_EMAIL = "SZLG Plusz <szlghonlap.ftv@gmail.com>"
+
+
+def _two_months_before(value):
+    month = value.month - 2
+    year = value.year
+    while month <= 0:
+        month += 12
+        year -= 1
+    day = min(value.day, monthrange(year, month)[1])
+    return value.replace(year=year, month=month, day=day)
+
+
+def _unverified_user_candidates(queryset, *, now=None):
+    cutoff = _two_months_before(now or timezone.now())
+    return queryset.filter(
+        is_active=False,
+        email_verified=False,
+        date_joined__lt=cutoff,
+    )
+
+
+def _send_unverified_account_deletion_notice(request, user):
+    recipient = (user.email or "").strip()
+    try:
+        validate_email(recipient)
+    except ValidationError:
+        return False
+
+    body = render_to_string(
+        "emails/unverified_account_deleted.txt",
+        {
+            "name": user.get_full_name() or recipient,
+            "email": recipient,
+            "register_url": request.build_absolute_uri(reverse("register")),
+        },
+    ).strip()
+    try:
+        return bool(
+            send_mail(
+                "Az SZLG+ fiókodat töröltük",
+                body,
+                settings.DEFAULT_FROM_EMAIL,
+                [recipient],
+                fail_silently=False,
+            )
+        )
+    except (OSError, SMTPException, ValueError):
+        logger.exception("Could not notify deleted SZLG+ user %s", user.pk)
+        return False
 
 
 class BulkMoveManualGroupsForm(forms.Form):
@@ -141,9 +193,27 @@ class TeacherProfileInline(admin.StackedInline):
     extra = 0
 
 
+@admin.register(BotRegistrationAttempt)
+class BotRegistrationAttemptAdmin(admin.ModelAdmin):
+    list_display = ("timestamp", "submitted_email")
+    list_filter = ("timestamp",)
+    readonly_fields = ("timestamp", "form_data")
+    ordering = ("-timestamp",)
+
+    @admin.display(description="E-mail")
+    def submitted_email(self, obj):
+        return obj.form_data.get("email", "—")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
-    actions = ("send_szlg_plus_migration_notice",)
+    actions = ("send_szlg_plus_migration_notice", "delete_unverified_users")
     ordering = ("email",)
     list_display = (
         "email",
@@ -262,6 +332,65 @@ class CustomUserAdmin(UserAdmin):
             request,
             " ".join(details),
             level=message_level,
+        )
+
+    @admin.action(
+        description="Régi, e-mail-címüket meg nem erősítő fiókok törlése…",
+        permissions=("delete",),
+    )
+    def delete_unverified_users(self, request, queryset):
+        if request.POST.get("confirm") == "yes":
+            selected_ids = set(request.POST.getlist("user_ids"))
+            keep_ids = set(request.POST.getlist("keep_ids"))
+            delete_ids = selected_ids - keep_ids
+            users_to_delete = _unverified_user_candidates(
+                self.get_queryset(request)
+            ).filter(pk__in=delete_ids).order_by("date_joined", "pk")
+
+            deleted_count = 0
+            notification_failed_count = 0
+            for user in users_to_delete:
+                if not _send_unverified_account_deletion_notice(request, user):
+                    notification_failed_count += 1
+                    continue
+                user.delete()
+                deleted_count += 1
+
+            details = f"{deleted_count} megerősítetlen fiókot töröltünk."
+            if notification_failed_count:
+                details += (
+                    f" {notification_failed_count} fiókot nem töröltünk, "
+                    "mert az értesítő e-mailt nem sikerült elküldeni."
+                )
+            self.message_user(
+                request,
+                details,
+                level=(
+                    messages.WARNING
+                    if notification_failed_count
+                    else messages.SUCCESS
+                ),
+            )
+            return None
+
+        now = timezone.now()
+        cutoff = _two_months_before(now)
+        users = list(
+            _unverified_user_candidates(queryset, now=now).order_by(
+                "date_joined", "pk"
+            )
+        )
+        return render(
+            request,
+            "admin/api/customuser/delete_unverified_confirmation.html",
+            {
+                **self.admin_site.each_context(request),
+                "opts": self.model._meta,
+                "title": "Megerősítetlen felhasználók törlésének megerősítése",
+                "users": users,
+                "cutoff": cutoff,
+                "action_name": "delete_unverified_users",
+            },
         )
 
     @admin.display(description="Felülvizsgálati állapot", ordering="account_review_status")

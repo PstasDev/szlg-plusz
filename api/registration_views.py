@@ -13,7 +13,7 @@ from django.views.decorators.http import require_http_methods
 from django_ratelimit.decorators import ratelimit
 
 from .forms import RegistrationForm
-from .models import CustomUser, email_info
+from .models import BotRegistrationAttempt, CustomUser, email_info
 from .privacy import privacy_context
 from .school_account_views import PREFILL_SESSION_KEY
 
@@ -91,6 +91,26 @@ def _user_from_confirmation_token(token: str):
 def register(request):
     if request.user.is_authenticated:
         return redirect("dashboard")
+
+    if request.method == "POST" and request.POST.get("website", ""):
+        # Match NodeWS's honeypot: record only non-sensitive fields and return
+        # the same confirmation page without creating a user or sending mail.
+        safe_fields = {"email", "first_name", "last_name", "privacy_consent"}
+        form_data = {
+            key: value[:500]
+            for key, value in request.POST.items()
+            if key in safe_fields
+        }
+        BotRegistrationAttempt.objects.create(form_data=form_data)
+        return render(
+            request,
+            "registration/registration_sent.html",
+            {
+                "email": request.POST.get("email", "").strip()[:254],
+                "email_sent": True,
+                **privacy_context(),
+            },
+        )
 
     form = RegistrationForm(request.POST or None)
     if request.method == "POST" and form.is_valid():

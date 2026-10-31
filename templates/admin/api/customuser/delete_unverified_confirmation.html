@@ -1,0 +1,58 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div id="content-main">
+  <h1>{{ title }}</h1>
+  {% if users %}
+    <p>
+      Csak a legalább két hónapja regisztrált, inaktív és meg nem erősített e-mail-című fiókok szerepelnek a listán.
+      A bejelölt fiókokat megtartjuk. A törölt felhasználók értesítő e-mailt kapnak.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+    <table class="change-list">
+      <thead>
+        <tr>
+          <th>E-mail-cím</th>
+          <th>Név</th>
+          <th>Regisztráció ideje</th>
+          <th>Megtartás</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+          <tr>
+            <td>{{ user.email }}</td>
+            <td>{{ user.get_full_name|default:"—" }}</td>
+            <td>{{ user.date_joined }}</td>
+            <td>
+              <label>
+                <input type="checkbox" name="keep_ids" value="{{ user.pk }}">
+                Ezt a fiókot megtartom
+              </label>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+      {% for user in users %}
+        <input type="hidden" name="user_ids" value="{{ user.pk }}">
+        <input type="hidden" name="_selected_action" value="{{ user.pk }}">
+      {% endfor %}
+      <input type="hidden" name="action" value="{{ action_name }}">
+      <input type="hidden" name="confirm" value="yes">
+      <input type="hidden" name="index" value="0">
+      <p>
+        <input type="submit" class="button" value="A kijelölt fiókok törlése">
+        &nbsp;
+        <a href="{% url 'admin:api_customuser_changelist' %}" class="button">Mégse</a>
+      </p>
+    </form>
+  {% else %}
+    <p>Nincs a kijelöltek között legalább két hónapja regisztrált, inaktív és megerősítetlen fiók.</p>
+    <p><a href="{% url 'admin:api_customuser_changelist' %}" class="button">Vissza a felhasználókhoz</a></p>
+  {% endif %}
+</div>
+{% endblock %}
