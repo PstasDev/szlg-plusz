@@ -1,0 +1,110 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Fejlesztőknek · SZLG+{% endblock %}
+{% block meta_description %}Készíts alkalmazást az SZLG+ szabványos OpenID Connect-integrációjára építve. Az informatika tagozatos diákok a saját ötleteik megvalósítására összpontosíthatnak.{% endblock %}
+
+{% block content %}
+<main id="main-content">
+  <section class="relative isolate overflow-hidden border-b border-ink/10 bg-white">
+    <div class="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_80%_15%,rgba(200,240,223,.8),transparent_42%),linear-gradient(180deg,#f7f8f4_0%,#ffffff_100%)]"></div>
+    <div class="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:px-10 lg:py-24">
+      <p class="text-xs font-bold uppercase tracking-[.18em] text-copper">SZLG+ · Diákfejlesztőknek</p>
+      <h1 class="mt-4 max-w-4xl text-4xl font-semibold leading-tight tracking-[-.035em] sm:text-5xl lg:text-6xl">
+        Te építed az appot.<br><span class="text-forest">Az SZLG+ intézi a belépést.</span>
+      </h1>
+      <p class="mt-6 max-w-3xl text-base leading-8 text-ink/65 sm:text-lg">
+        Informatika tagozatos diák vagy? Valósítsd meg az ötleted az iskolai közösségnek. Nem kell saját iskolai beléptetést és jogosultságkezelést nulláról építened: az SZLG+ adja a szabványos azonosítást, kezeli a felhasználói hozzájárulásokat, és továbbítja az alkalmazásodnak a jóváhagyott hozzáféréseket. A kreatív energiádat fordítsd az innovatív ötleted megvalósítására.
+      </p>
+      <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <a href="{% if request.user.is_authenticated %}{% url 'application-new' %}{% else %}{% url 'login' %}?next=/apps/new/{% endif %}" class="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-forest px-6 font-semibold text-white shadow-lg shadow-forest/15 transition hover:-translate-y-0.5 hover:bg-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest">
+          Alkalmazás regisztrálása <span aria-hidden="true">→</span>
+        </a>
+        <a href="{% url 'docs-app-developers' %}" class="inline-flex min-h-12 items-center justify-center rounded-xl border border-ink/15 bg-white/80 px-6 font-semibold text-ink transition hover:border-forest hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest">
+          OIDC-integrációs útmutató
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-paper py-16 sm:py-20" aria-labelledby="technical-foundation">
+    <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+      <div class="max-w-3xl">
+        <p class="text-xs font-bold uppercase tracking-[.18em] text-copper">A technikai alapok</p>
+        <h2 id="technical-foundation" class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Nyílt szabványok, kész infrastruktúra.</h2>
+        <p class="mt-4 text-base leading-7 text-ink/60">Az SZLG+ OpenID Connect-szolgáltatóként elvégzi a központi hitelesítést. Az alkalmazásod szabványos OIDC-könyvtárral kapcsolódhat hozzá, így nem kell iskolai jelszavakat kezelned.</p>
+      </div>
+
+      <div class="mt-9 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <article class="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
+          <span class="grid h-10 w-10 place-items-center rounded-xl bg-mint font-mono text-sm font-bold text-forest" aria-hidden="true">01</span>
+          <h3 class="mt-4 text-lg font-semibold">OIDC és PKCE</h3>
+          <p class="mt-2 text-sm leading-6 text-ink/60">OAuth 2.0 Authorization Code folyamat kötelező PKCE-vel (S256) — böngészős és szerveroldali alkalmazásokhoz is.</p>
+        </article>
+        <article class="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
+          <span class="grid h-10 w-10 place-items-center rounded-xl bg-mint font-mono text-sm font-bold text-forest" aria-hidden="true">02</span>
+          <h3 class="mt-4 text-lg font-semibold">Discovery és aláírás</h3>
+          <p class="mt-2 text-sm leading-6 text-ink/60">A discovery dokumentumból töltsd be a végpontokat és a JWKS-kulcsokat. Az ID tokeneket az SZLG+ RS256-tal írja alá.</p>
+          <code class="mt-3 block break-all rounded-lg bg-paper px-3 py-2 text-xs text-forest">https://sso.szlg.info/o/.well-known/openid-configuration</code>
+        </article>
+        <article class="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
+          <span class="grid h-10 w-10 place-items-center rounded-xl bg-mint font-mono text-sm font-bold text-forest" aria-hidden="true">03</span>
+          <h3 class="mt-4 text-lg font-semibold">Adatok hozzájárulással</h3>
+          <p class="mt-2 text-sm leading-6 text-ink/60">Csak a szükséges scope-okat kérd: például <code>openid</code>, <code>profile</code>, <code>email</code> vagy <code>groups</code>. A felhasználó jóváhagyhatja és később visszavonhatja a hozzáférést.</p>
+        </article>
+        <article class="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
+          <span class="grid h-10 w-10 place-items-center rounded-xl bg-mint font-mono text-sm font-bold text-forest" aria-hidden="true">04</span>
+          <h3 class="mt-4 text-lg font-semibold">Iskolai csoportok</h3>
+          <p class="mt-2 text-sm leading-6 text-ink/60">A <code>groups</code> scope SmartGroup-, kézi és iskolai csoportadatokat, valamint alkalmazásszintű hozzáférési jelzést adhat.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-white py-16 sm:py-20" aria-labelledby="how-it-works">
+    <div class="mx-auto grid max-w-7xl gap-10 px-5 sm:px-8 lg:grid-cols-[.8fr_1.2fr] lg:px-10">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[.18em] text-copper">Hogyan indulj el?</p>
+        <h2 id="how-it-works" class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Három lépés az ötlettől az integrációig.</h2>
+        <p class="mt-4 text-base leading-7 text-ink/60">A teljes folyamat részletes példákkal és biztonsági szempontokkal szerepel az alkalmazásfejlesztői dokumentációban.</p>
+        <a href="{% url 'docs-app-developers' %}" class="mt-5 inline-flex items-center gap-2 font-semibold text-forest underline decoration-forest/30 underline-offset-4 hover:decoration-forest">Fejlesztői dokumentáció megnyitása <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="grid gap-4">
+        <article class="flex gap-4 rounded-2xl border border-ink/10 bg-paper/70 p-5 sm:p-6">
+          <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-forest font-mono text-sm font-bold text-white" aria-hidden="true">01</span>
+          <div>
+            <h3 class="font-semibold">Regisztráld az alkalmazást</h3>
+            <p class="mt-1 text-sm leading-6 text-ink/60">Az Alkalmazásaim oldalon add meg az app adatait és a pontos visszairányítási címet. Válassz nyilvános klienst böngészős vagy mobilapphoz, bizalmas klienst szerveroldali alkalmazáshoz.</p>
+          </div>
+        </article>
+        <article class="flex gap-4 rounded-2xl border border-ink/10 bg-paper/70 p-5 sm:p-6">
+          <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-forest font-mono text-sm font-bold text-white" aria-hidden="true">02</span>
+          <div>
+            <h3 class="font-semibold">Bízd a belépést az SZLG+-ra</h3>
+            <p class="mt-1 text-sm leading-6 text-ink/60">Használj karbantartott OIDC-klienskönyvtárat. Az SZLG+ kezeli a bejelentkezést és az engedélyező képernyőt; az alkalmazásod ne kérje el és ne tárolja az iskolai jelszót.</p>
+          </div>
+        </article>
+        <article class="flex gap-4 rounded-2xl border border-ink/10 bg-paper/70 p-5 sm:p-6">
+          <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-forest font-mono text-sm font-bold text-white" aria-hidden="true">03</span>
+          <div>
+            <h3 class="font-semibold">Ellenőrizd a kapott hozzáférést</h3>
+            <p class="mt-1 text-sm leading-6 text-ink/60">Validáld az ID tokent a könyvtáraddal. Ha az app csoporttagsághoz kötött, ellenőrizd az <code>application_group_access</code> claim értékét is; a <code>false</code> értékű hozzáférést utasítsd el.</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="border-y border-ink/10 bg-ink py-16 text-white sm:py-20" aria-labelledby="focus-on-ideas">
+    <div class="mx-auto grid max-w-7xl gap-8 px-5 sm:px-8 lg:grid-cols-[1fr_auto] lg:items-center lg:px-10">
+      <div class="max-w-3xl">
+        <p class="text-xs font-bold uppercase tracking-[.18em] text-mint">A jogosultságkezelés alapja készen áll</p>
+        <h2 id="focus-on-ideas" class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">A kreatív energiád az ötletre fordítsd.</h2>
+        <p class="mt-4 text-base leading-7 text-white/70">Az SZLG+ kezeli a központi azonosítást, a hozzájárulásokat és az alkalmazáshoz beállított csoportfeltételek alapján kiadott hozzáférési jelzést. Neked nem kell saját beléptetési vagy jogosultság-igénylési rendszert építened — az alkalmazásodban a kapott hozzáférési információt kell ellenőrizned.</p>
+      </div>
+      <a href="{% if request.user.is_authenticated %}{% url 'application-new' %}{% else %}{% url 'login' %}?next=/apps/new/{% endif %}" class="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-mint px-6 font-semibold text-forest transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mint">
+        Mutasd meg az ötleted <span aria-hidden="true">→</span>
+      </a>
+    </div>
+  </section>
+</main>
+{% endblock %}

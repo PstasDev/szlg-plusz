@@ -21,8 +21,8 @@
             {% if request.user.is_authenticated %}Dashboard megnyitása{% else %}Bejelentkezés{% endif %}
             <svg viewBox="0 0 20 20" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.5 10h13m-5-5 5 5-5 5"></path></svg>
           </a>
-          <a href="{% url 'docs-app-developers' %}" class="inline-flex min-h-14 items-center justify-center rounded-xl border border-ink/15 bg-white/80 px-7 py-4 font-semibold text-ink transition hover:border-forest hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest">
-            Fejlesztői dokumentáció
+          <a href="{% url 'developers' %}" class="inline-flex min-h-14 items-center justify-center rounded-xl border border-ink/15 bg-white/80 px-7 py-4 font-semibold text-ink transition hover:border-forest hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest">
+            Fejlesztőknek
           </a>
           <a href="{% url 'supported-applications' %}" class="inline-flex min-h-14 items-center justify-center rounded-xl border border-forest/20 bg-mint/40 px-7 py-4 font-semibold text-forest transition hover:border-forest hover:bg-mint/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest">
             Támogatott alkalmazások
@@ -80,100 +80,18 @@
 
   <section id="fejlesztoknek" class="scroll-mt-24 border-y border-ink/10 bg-paper py-20 sm:py-24">
     <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-      <div class="grid gap-10 lg:grid-cols-[.85fr_1.15fr] lg:items-end">
-        <div>
-          <p class="text-xs font-bold uppercase tracking-[.18em] text-copper">Fejlesztőknek</p>
-          <h2 class="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">Szabványos belépés. Iskolai jogosultságok.</h2>
-        </div>
-        <p class="max-w-2xl text-base leading-7 text-ink/60">
-          Az alkalmazásod az SZLG+-ra bízhatja a felhasználó azonosítását, és — a szükséges engedélyekkel — megkaphatja a működéséhez szükséges iskolai csoportadatokat.
-        </p>
-      </div>
-
-      <div class="mt-10 grid gap-5 lg:grid-cols-2">
-        <article class="rounded-3xl bg-ink p-7 text-white shadow-soft sm:p-9">
-          <span class="inline-flex rounded-full border border-white/15 bg-white/[.07] px-3 py-1 text-xs font-semibold uppercase tracking-[.12em] text-mint">Nyílt szabvány</span>
-          <h3 class="mt-5 text-2xl font-semibold">OpenID Connect</h3>
-          <p class="mt-3 text-sm leading-7 text-white/65">Integrálj szabványos OIDC-könyvtárral. Az SZLG+ kezeli a központi hitelesítést, az alkalmazás pedig a saját szolgáltatására összpontosíthat.</p>
-          <a href="{% url 'docs-app-developers' %}" class="mt-6 inline-flex items-center gap-2 font-semibold text-mint underline decoration-white/25 underline-offset-4 hover:decoration-mint">
-            OIDC-integrációs útmutató <span aria-hidden="true">→</span>
-          </a>
-        </article>
-        <article class="rounded-3xl border border-ink/10 bg-white p-7 shadow-sm sm:p-9">
-          <span class="inline-flex rounded-full bg-mint/60 px-3 py-1 text-xs font-semibold uppercase tracking-[.12em] text-forest">Csoportalapú hozzáférés</span>
-          <h3 class="mt-5 text-2xl font-semibold">SmartGroup és ManualGroup</h3>
-          <p class="mt-3 text-sm leading-7 text-ink/60">A SmartGroup-ok a fiók szerepét jelzik, a ManualGroup-ok pedig az iskola által kezelt csoporttagságokat írják le. Az alkalmazás a szükséges csoport-hozzáféréseket szabályozottan kérheti.</p>
-          <a href="{% url 'docs-app-developers' %}" class="mt-6 inline-flex items-center gap-2 font-semibold text-forest underline decoration-forest/25 underline-offset-4 hover:decoration-forest">
-            Csoportclaim-ek a fejlesztői útmutatóban <span aria-hidden="true">→</span>
-          </a>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <section id="rollout" class="scroll-mt-24 bg-white py-20 sm:py-24">
-    <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
-      <div class="max-w-2xl">
-        <p class="text-xs font-bold uppercase tracking-[.18em] text-copper">Fokozatos bevezetés</p>
-        <h2 class="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">Az SZLG+ ökoszisztéma bővül.</h2>
-        <p class="mt-4 leading-7 text-ink/60">A bevezetés alkalmazásonként halad. Az alábbi állapotok különválasztják a már elkészült integrációkat a még előttünk álló tervektől.</p>
-      </div>
-
-      <div class="mt-10 grid gap-6 lg:grid-cols-2">
-        <article class="rounded-3xl border border-forest/15 bg-paper/70 p-6 sm:p-8">
-          <div class="flex items-center gap-3">
-            <span class="grid h-10 w-10 place-items-center rounded-xl bg-forest text-white" aria-hidden="true">✓</span>
-            <div>
-              <p class="text-xs font-bold uppercase tracking-[.14em] text-forest">Elérhető</p>
-              <h3 class="mt-1 text-xl font-semibold">Már elkészült</h3>
-            </div>
-          </div>
-          <ul class="mt-6 space-y-4">
-            {% for item in rollout.available %}
-              <li class="flex gap-3 text-sm leading-6 text-ink/70">
-                <span class="mt-0.5 text-forest" aria-hidden="true">✓</span><span>{{ item }}</span>
-              </li>
-            {% endfor %}
-          </ul>
-        </article>
-
-        <article class="rounded-3xl border border-ink/10 bg-white p-6 shadow-sm sm:p-8">
-          <div class="flex items-center gap-3">
-            <span class="grid h-10 w-10 place-items-center rounded-xl bg-copper/15 text-copper" aria-hidden="true">→</span>
-            <div>
-              <p class="text-xs font-bold uppercase tracking-[.14em] text-copper">Tervezett</p>
-              <h3 class="mt-1 text-xl font-semibold">Következő integrációk</h3>
-            </div>
-          </div>
-          <ul class="mt-6 grid gap-3 sm:grid-cols-2">
-            {% for app in rollout.planned_apps %}
-              <li class="rounded-xl border border-ink/10 bg-paper/70 px-4 py-3 text-sm font-semibold text-ink/75">{{ app }}</li>
-            {% endfor %}
-          </ul>
-          <p class="mt-5 text-sm leading-6 text-ink/55">Ezek még nem elkészült integrációk; a bevezetésük hátravan.</p>
-        </article>
-      </div>
-
-      <div class="mt-6 grid gap-5 lg:grid-cols-2">
-        <aside class="rounded-2xl border border-copper/20 bg-copper/5 p-6">
-          <h3 class="font-bold">Különálló bejelentkezés</h3>
-          <p class="mt-2 text-sm leading-6 text-ink/65"><strong>kampany.szlg.info</strong> a belátható jövőben továbbra is Google SSO-t fog használni.</p>
-        </aside>
-        <aside class="rounded-2xl border border-ink/10 bg-paper/70 p-6">
-          <h3 class="font-bold">Fiókok és adatbázis-migráció</h3>
-          <p class="mt-2 text-sm leading-6 text-ink/65">A kisebb alkalmazás-adatbázisok átmigrálása még nem kezdődött el. Közvetlenül regisztrálni jelenleg csak külsős fiókok tudnak.</p>
-          <a href="{% url 'register' %}" class="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-forest underline decoration-forest/30 underline-offset-4 hover:decoration-forest">Külsős fiók regisztrációja <span aria-hidden="true">→</span></a>
-        </aside>
-      </div>
-
-      <article class="mt-6 overflow-hidden rounded-3xl bg-forest p-6 text-white sm:flex sm:items-center sm:justify-between sm:gap-8 sm:p-8">
+      <div class="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
         <div class="max-w-3xl">
-          <p class="text-xs font-bold uppercase tracking-[.16em] text-mint">Tervben</p>
-          <h3 class="mt-2 text-xl font-semibold">SZLG+ bejelentkezés Django Adminhoz</h3>
-          <p class="mt-2 text-sm leading-6 text-white/70">Egy készülő Django app a szükséges titkok megadása után automatizálja az integrációt, és „Bejelentkezés SZLG+-szal” gombot jelenít meg a Django Admin bejelentkezési oldalán.</p>
+          <p class="text-xs font-bold uppercase tracking-[.18em] text-copper">Informatika tagozatos diákoknak</p>
+          <h2 class="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">Az ötlet a tiéd. A belépés már megvan.</h2>
+          <p class="mt-4 text-base leading-7 text-ink/60">
+            Építs olyan alkalmazást, amelyre az iskolai közösségnek szüksége van. Az SZLG+ elintézi a központi bejelentkezést és a jogosultságok kezelésének alapjait, te pedig a kreatív energiádat az ötleted megvalósítására fordíthatod.
+          </p>
         </div>
-        <span class="mt-5 inline-flex shrink-0 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-mint sm:mt-0">Fejlesztésre vár</span>
-      </article>
+        <a href="{% url 'developers' %}" class="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-forest px-5 font-semibold text-white transition hover:bg-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest">
+          Fejlesztői lehetőségek <span aria-hidden="true">→</span>
+        </a>
+      </div>
     </div>
   </section>
 
@@ -186,7 +104,7 @@
       </div>
       <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
         <a href="{% url 'docs-users' %}" class="inline-flex min-h-12 items-center justify-center rounded-xl border border-ink/15 bg-white px-5 font-semibold text-ink transition hover:border-forest">Felhasználói súgó</a>
-        <a href="{% url 'docs-app-developers' %}" class="inline-flex min-h-12 items-center justify-center rounded-xl bg-ink px-5 font-semibold text-white transition hover:bg-forest">Fejlesztőknek</a>
+        <a href="{% url 'developers' %}" class="inline-flex min-h-12 items-center justify-center rounded-xl bg-ink px-5 font-semibold text-white transition hover:bg-forest">Fejlesztőknek</a>
       </div>
     </div>
   </section>

@@ -9,6 +9,7 @@ from api import registration_views
 from api import school_account_views
 from api import student_profile_views
 from api import user_import_views
+from api.error_views import page_not_found
 from api.web_views import (
     login_page,
     logout_view,
@@ -21,8 +22,11 @@ from api.web_views import (
     password_login,
 )
 
+handler404 = page_not_found
+
 urlpatterns = [
     path("", portal_views.landing, name="home"),
+    path("fejlesztoknek/", portal_views.developers, name="developers"),
     path(
         "tamogatott-alkalmazasok/",
         portal_views.supported_applications,

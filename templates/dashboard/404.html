@@ -1,0 +1,22 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Az oldal nem található{% endblock %}
+
+{% block content %}
+  <div class="page-head">
+    <div>
+      <p class="muted">404 · NEM TALÁLHATÓ</p>
+      <h1 id="not-found-title">Ezt az oldalt nem találjuk.</h1>
+      <p class="muted">A hivatkozás hibás lehet, vagy az oldal már nem érhető el. Innen visszatérhetsz a fiókodhoz.</p>
+    </div>
+  </div>
+
+  <section class="panel" aria-labelledby="not-found-title">
+    <h2>Merre tovább?</h2>
+    <p>Nyisd meg a profilodat vagy az alkalmazásaidat a Dashboardból.</p>
+    <div class="form-actions">
+      <a class="btn" href="{% url 'dashboard' %}">Vissza a Dashboardra</a>
+      <a class="btn outline" href="{% url 'applications' %}">Alkalmazásaim</a>
+    </div>
+  </section>
+{% endblock %}

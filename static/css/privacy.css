@@ -67,28 +67,50 @@
   font-size: .94rem;
   line-height: 1.75;
 }
+.terms-of-service-intro {
+  margin: 1.5rem 0 1rem;
+  padding: .9rem 1.15rem;
+  border: 1px solid rgb(16 42 43 / .1);
+  border-left: 3px solid #c98454;
+  border-radius: .5rem 1rem 1rem .5rem;
+  background: #f7f8f4;
+}
+.terms-of-service-intro p { margin: .35rem 0; }
+.terms-of-service-intro p:last-child { color: #102a2b; font-weight: 650; }
 .terms-of-service-content h2 {
-  margin: 2rem 0 0;
-  padding: 1.75rem 0 .7rem;
+  margin: 2.25rem 0 0;
+  padding: 1.35rem 0 .65rem;
   border-top: 1px solid rgb(16 42 43 / .1);
   color: var(--text, #102a2b);
-  font-size: 1.05rem;
+  font-size: 1.12rem;
   font-weight: 700;
-  line-height: 1.45;
+  line-height: 1.4;
   scroll-margin-top: 6rem;
 }
 .terms-of-service-content h3 {
-  margin: 1.2rem 0 .5rem;
+  margin: 1.4rem 0 .65rem;
+  padding: .15rem 0 .15rem .75rem;
+  border-left: 3px solid #c98454;
+  border-radius: 2px;
   color: var(--text, #102a2b);
-  font-size: 1rem;
+  font-size: 1.02rem;
   font-weight: 650;
-  line-height: 1.45;
+  line-height: 1.5;
   scroll-margin-top: 6rem;
 }
 .terms-of-service-content p { margin: .65rem 0; color: inherit; }
-.terms-of-service-content ul { margin: .6rem 0 1rem; padding-left: 1.35rem; list-style: disc; }
-.terms-of-service-content li { margin: .4rem 0; padding-left: .25rem; }
-.terms-of-service-content li::marker { color: #174746; }
+.terms-of-service-content ul { margin: .75rem 0 1.2rem; padding: 0; list-style: none; }
+.terms-of-service-content li { position: relative; margin: .55rem 0; padding-left: 1.4rem; }
+.terms-of-service-content li::before {
+  position: absolute;
+  top: .72em;
+  left: .15rem;
+  width: .45rem;
+  height: .45rem;
+  border-radius: 999px;
+  background: #c98454;
+  content: "";
+}
 .terms-of-service-content a { color: var(--accent, #174746); text-decoration: underline; text-underline-offset: .15em; }
 .auth-register, .privacy-link { margin-top: 1rem; }
 .footer .privacy-footer-link { color: inherit; text-decoration: underline; text-underline-offset: .15em; }

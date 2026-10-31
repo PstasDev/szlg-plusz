@@ -715,30 +715,16 @@ class DashboardTests(TestCase):
     def test_landing_page_and_docs_are_public(self):
         landing = self.client.get("/")
         docs = self.client.get("/docs/")
+        developers = self.client.get("/fejlesztoknek/")
 
         self.assertEqual(landing.status_code, 200)
         self.assertContains(landing, "Dashboard megnyitása")
         self.assertContains(landing, "Egyetlen fiók.")
         self.assertContains(landing, "Belépés jelkulccsal")
         self.assertContains(landing, "Jelkulcsos belépés, jelszó nélkül")
-        self.assertContains(landing, "SmartGroup és ManualGroup")
-        self.assertContains(landing, "nyilvánosan elérhető")
-        for rollout_item in (
-            "Igazoláskezelő",
-            "FTV alkalmazás",
-            "sport.szlg.info",
-            "Stúdió",
-            "app.szlg.info",
-            "NodeWS",
-            "szlg.info",
-            "zsuri.szlg.info",
-            "kampany.szlg.info",
-            "Google SSO",
-            "külsős fiókok",
-            "Django Admin",
-        ):
-            with self.subTest(rollout_item=rollout_item):
-                self.assertContains(landing, rollout_item)
+        self.assertContains(landing, "Informatika tagozatos diákoknak")
+        self.assertNotContains(landing, "Fokozatos bevezetés")
+        self.assertNotContains(landing, "Az SZLG+ ökoszisztéma bővül.")
         self.assertEqual(docs.status_code, 200)
         self.assertContains(docs, "Mi az az SZLG+?")
         self.assertContains(docs, "Fejlesztőknek")
@@ -756,15 +742,58 @@ class DashboardTests(TestCase):
                 page = self.client.get(path)
                 self.assertEqual(page.status_code, 200)
                 self.assertContains(page, title)
+        self.assertEqual(developers.status_code, 200)
+        for detail in (
+            "Te építed az appot.",
+            "informatika tagozatos",
+            "Authorization Code",
+            "PKCE",
+            "RS256",
+            "application_group_access",
+            "kreatív energiádat",
+        ):
+            with self.subTest(developer_detail=detail):
+                self.assertContains(developers, detail)
 
     def test_landing_shows_login_cta_for_signed_out_users(self):
         self.client.logout()
 
         response = self.client.get("/")
+        developers = self.client.get("/fejlesztoknek/")
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Bejelentkezés")
         self.assertContains(response, 'href="/login/"')
+        self.assertEqual(developers.status_code, 200)
+        self.assertContains(developers, 'href="/login/?next=/apps/new/"')
+
+    def test_signed_out_404_uses_the_public_error_page(self):
+        self.client.logout()
+
+        with self.settings(DEBUG=False):
+            response = self.client.get("/this-page-does-not-exist/")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTemplateUsed(response, "portal/404.html")
+        self.assertContains(response, "Ezt az oldalt nem találjuk.", status_code=404)
+
+    def test_anonymous_dashboard_404_uses_the_public_error_page(self):
+        self.client.logout()
+
+        with self.settings(DEBUG=False):
+            response = self.client.get("/apps/not-a-number/")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTemplateUsed(response, "portal/404.html")
+
+    def test_authenticated_dashboard_404_uses_the_dashboard_error_page(self):
+        with self.settings(DEBUG=False):
+            response = self.client.get("/apps/999999999/")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTemplateUsed(response, "dashboard/404.html")
+        self.assertContains(response, self.user.email, status_code=404)
+        self.assertContains(response, "Vissza a Dashboardra", status_code=404)
 
     def test_dashboard_shows_the_account_profile(self):
         response = self.client.get("/dashboard/")

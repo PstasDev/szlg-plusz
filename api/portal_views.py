@@ -369,23 +369,6 @@ DOCS = {
     },
 }
 
-LANDING_ROLLOUT = {
-    "available": [
-        "Az SZLG+ projekt és a dokumentáció nyilvánosan elérhető.",
-        "Az SZLG+-bejelentkezés elkészült az Igazoláskezelő alkalmazásban.",
-        "Az SZLG+-bejelentkezés elkészült az FTV alkalmazásban.",
-    ],
-    "planned_apps": [
-        "sport.szlg.info",
-        "Stúdió",
-        "app.szlg.info",
-        "NodeWS",
-        "szlg.info",
-        "zsuri.szlg.info",
-    ],
-}
-
-
 DOC_LINKS = [
     {"slug": "felhasznalok", "label": "Felhasználóknak", "name": "docs-users"},
     {"slug": "adminok", "label": "SZLG+ adminisztrátoroknak", "name": "docs-admins"},
@@ -404,7 +387,12 @@ DOC_LINKS = [
 
 @require_GET
 def landing(request):
-    return render(request, "portal/landing.html", {"rollout": LANDING_ROLLOUT})
+    return render(request, "portal/landing.html")
+
+
+@require_GET
+def developers(request):
+    return render(request, "portal/developers.html")
 
 
 @require_GET
