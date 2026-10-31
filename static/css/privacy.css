@@ -99,18 +99,37 @@
   scroll-margin-top: 6rem;
 }
 .terms-of-service-content p { margin: .65rem 0; color: inherit; }
-.terms-of-service-content ul { margin: .75rem 0 1.2rem; padding: 0; list-style: none; }
-.terms-of-service-content li { position: relative; margin: .55rem 0; padding-left: 1.4rem; }
+.terms-of-service-content ul {
+  display: grid;
+  gap: .65rem;
+  margin: .85rem 0 1.35rem;
+  padding: 0;
+  list-style: none;
+}
+.terms-of-service-content li {
+  position: relative;
+  margin: 0;
+  padding: .85rem 1rem .85rem 2.85rem;
+  border: 1px solid rgb(16 42 43 / .1);
+  border-radius: .9rem;
+  background: #fbfcf9;
+}
 .terms-of-service-content li::before {
   position: absolute;
-  top: .72em;
-  left: .15rem;
-  width: .45rem;
-  height: .45rem;
+  top: 1rem;
+  left: 1rem;
+  display: grid;
+  width: 1.2rem;
+  height: 1.2rem;
+  place-items: center;
   border-radius: 999px;
-  background: #c98454;
-  content: "";
+  background: #c8f0df;
+  color: #174746;
+  content: "•";
+  font-size: 1rem;
+  line-height: 1;
 }
+.terms-of-service-content li > strong:first-child { display: block; margin-bottom: .2rem; color: var(--text, #102a2b); }
 .terms-of-service-content a { color: var(--accent, #174746); text-decoration: underline; text-underline-offset: .15em; }
 .auth-register, .privacy-link { margin-top: 1rem; }
 .footer .privacy-footer-link { color: inherit; text-decoration: underline; text-underline-offset: .15em; }
