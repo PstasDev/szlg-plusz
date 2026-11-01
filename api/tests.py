@@ -32,11 +32,13 @@ from .models import (
     ManualGroup,
     Passkey,
     StudentProfile,
+    TeacherProfile,
     UserAppConnection,
     email_info,
 )
 from .oauth import SZLGPlusOAuth2Validator
 from .scopes import describe_scopes
+from .utils import Colors
 
 
 class RunserverDefaultTests(TestCase):
@@ -149,6 +151,61 @@ class IdentityModelTests(TestCase):
         self.assertEqual(claims["sub"], str(self.user.oidc_subject))
         self.assertNotIn("smart_groups", claims)
         self.assertNotIn("manual_groups", claims)
+        self.assertNotIn("picture", claims)
+
+    def test_profile_picture_claim_uses_profile_scope(self):
+        request = SimpleNamespace(user=self.user, scopes=["openid", "profile"])
+
+        claims = SZLGPlusOAuth2Validator().get_oidc_claims(None, None, request)
+
+        self.assertEqual(claims["picture"], self.user.profile_picture)
+        self.assertIn("api.dicebear.com/10.x/shadows/svg", claims["picture"])
+
+    def test_profile_picture_permissions_colors_and_stable_placeholder(self):
+        for letter, color in {
+            "A": "#66bb6a",
+            "B": "#ffca28",
+            "C": "#ba68c8",
+            "D": "#ef5350",
+            "E": "#bdbdbd",
+            "F": "#5c6bc0",
+        }.items():
+            with self.subTest(section=letter):
+                self.assertEqual(Colors.get_color(letter.lower()), color)
+        self.assertEqual(Colors.get_color("unknown"), None)
+        self.assertFalse(self.user.is_allowed_to_have_profile_picture)
+
+        placeholder = urlparse(self.user.generated_profile_picture_url)
+        placeholder_query = parse_qs(placeholder.query)
+        self.assertEqual(placeholder.netloc, "api.dicebear.com")
+        self.assertEqual(placeholder.path, "/10.x/shadows/svg")
+        self.assertEqual(placeholder_query["seed"], [str(self.user.oidc_subject)])
+        self.assertEqual(placeholder_query["backgroundColor"], ["ede3e9"])
+
+        StudentProfile.objects.create(user=self.user, szekcio="a")
+        self.user.refresh_from_db()
+        student_query = parse_qs(urlparse(self.user.generated_profile_picture_url).query)
+        self.assertEqual(student_query["backgroundColor"], ["66bb6a"])
+        self.assertEqual(student_query["inkColor"], ["345945"])
+
+        TeacherProfile.objects.create(user=self.user)
+        self.user.refresh_from_db()
+        teacher_query = parse_qs(urlparse(self.user.generated_profile_picture_url).query)
+        self.assertEqual(teacher_query["backgroundColor"], ["d0edec"])
+        self.assertEqual(teacher_query["inkColor"], ["345757"])
+
+        self.user.profile_picture_url = "https://images.example/avatar.png"
+        self.user.save(update_fields=["profile_picture_url"])
+        self.assertNotEqual(self.user.profile_picture, self.user.profile_picture_url)
+
+        self.user.is_superuser = True
+        self.assertTrue(self.user.is_allowed_to_have_profile_picture)
+        self.assertEqual(self.user.profile_picture, self.user.profile_picture_url)
+
+        self.user.is_superuser = False
+        self.user.profile_picture_allowed = True
+        self.assertTrue(self.user.is_allowed_to_have_profile_picture)
+        self.assertEqual(self.user.profile_picture, self.user.profile_picture_url)
 
     def test_email_patterns_are_parsed_from_the_local_part(self):
         with patch("api.models.get_school_domain", return_value="@szlgbp.hu"):
@@ -381,6 +438,7 @@ class LoginAndOIDCTests(TestCase):
         claims = json.loads(signed_id_token.claims)
         self.assertEqual(claims["aud"], application.client_id)
         self.assertEqual(claims["nonce"], "test-nonce")
+        self.assertIn("api.dicebear.com/10.x/shadows/svg", claims["picture"])
         self.assertTrue(claims["smart_groups"]["student"])
         self.assertEqual(claims["manual_groups"], ["studiosok"])
 
@@ -430,8 +488,10 @@ class RegistrationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         for text in (
             "Utoljára módosítva:",
-            "2026.10.31.",
+            "2026.11.01.",
             "2026. október 31. napjától",
+            "api.dicebear.com",
+            "profilkép URL-jét",
             "Balla Botond",
             "3. A kezelt adatok köre és az alkalmazások",
             "6. Integrációk, Fejlesztői Irányelvek és Adatfeldolgozók",
@@ -831,6 +891,44 @@ class DashboardTests(TestCase):
         ):
             self.assertContains(page, expected)
         self.assertNotContains(page, "<form method=\"post\" novalidate>")
+
+    def test_profile_picture_can_be_updated_only_when_allowed(self):
+        denied = self.client.post(
+            "/account/profile/picture/",
+            {"profile_picture_url": "https://images.example/avatar.png"},
+        )
+        self.assertEqual(denied.status_code, 403)
+
+        self.user.profile_picture_allowed = True
+        self.user.save(update_fields=["profile_picture_allowed"])
+        page = self.client.get("/account/profile/")
+        self.assertContains(page, "Profilkép URL-je")
+
+        invalid = self.client.post(
+            "/account/profile/picture/",
+            {"profile_picture_url": "ftp://images.example/avatar.png"},
+        )
+        self.assertContains(
+            invalid,
+            "Csak HTTP- vagy HTTPS-kép-URL adható meg.",
+            status_code=400,
+        )
+
+        saved = self.client.post(
+            "/account/profile/picture/",
+            {"profile_picture_url": "https://images.example/avatar.png"},
+        )
+        self.assertRedirects(saved, "/account/profile/", fetch_redirect_response=False)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.profile_picture, "https://images.example/avatar.png")
+
+        cleared = self.client.post(
+            "/account/profile/picture/", {"profile_picture_url": ""}
+        )
+        self.assertRedirects(cleared, "/account/profile/", fetch_redirect_response=False)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.profile_picture_url, "")
+        self.assertIn("api.dicebear.com", self.user.profile_picture)
 
     def test_personal_data_cannot_be_changed_by_the_user(self):
         response = self.client.post(

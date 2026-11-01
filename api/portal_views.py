@@ -174,7 +174,7 @@ DOCS = {
                 ],
                 "bullets": [
                     "openid: stabil, alkalmazásonkénti user-azonosító sub formában.",
-                    "profile: név, keresztnév, vezetéknév, születési dátum.",
+                    "profile: név, keresztnév, vezetéknév, születési dátum és profilkép-URL (egyedi kép vagy automatikus DiceBear-helyettesítő).",
                     "email: e-mail-cím és email_verified; phone: telefonszám.",
                     "groups: smart_groups, manual_groups, school_groups, application_required_groups és application_group_access.",
                     "A smart_groups közé tartozhat a student, teacher, staff, part_time_student és további fióktípus-jelző. A Django adminisztrációs jogosultsági csoportokat az SZLG+ nem küldi ki.",
@@ -190,6 +190,7 @@ DOCS = {
                     {"scope": "profile", "claim": "given_name", "type": "string", "details": "Keresztnév. Üres szöveg is előfordulhat."},
                     {"scope": "profile", "claim": "family_name", "type": "string", "details": "Vezetéknév. Üres szöveg is előfordulhat."},
                     {"scope": "profile", "claim": "birthdate", "type": "string (YYYY-MM-DD)", "details": "ISO 8601 szerinti dátum; csak akkor szerepel, ha a fiókban meg van adva."},
+                    {"scope": "profile", "claim": "picture", "type": "string (URL)", "details": "A profilkép címe. Egyedi kép csak adminisztrátori engedély után állítható be; egyébként egy szekcióhoz vagy szerepkörhöz igazított DiceBear Shadows-kép URL-je érkezik."},
                     {"scope": "email", "claim": "email", "type": "string", "details": "A fiók e-mail-címe."},
                     {"scope": "email", "claim": "email_verified", "type": "boolean", "details": "A cím megerősítettsége; a false értéket ne kezeld hiányzóként."},
                     {"scope": "phone", "claim": "phone_number", "type": "string", "details": "Telefonszám; üres profilmező esetén a claim kimarad."},

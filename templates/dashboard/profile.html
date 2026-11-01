@@ -4,7 +4,7 @@
   <div class="page-head">
     <div>
       <h1>Profil</h1>
-      <p class="muted">Az SZLG+ fiókodhoz tárolt összes adat egy helyen. Az adatokat az iskola adminisztrátora kezeli; módosításért keresd az alábbi kapcsolattartók egyikét.</p>
+      <p class="muted">Az SZLG+ fiókodhoz tárolt összes adat egy helyen. A személyes adatokat az iskola adminisztrátora kezeli; profilképet adminisztrátori engedély után állíthatsz be.</p>
     </div>
   </div>
 
@@ -19,6 +19,32 @@
     <a class="stat" href="{% url 'applications' %}"><b>{{ application_count }}</b><span>saját alkalmazás</span></a>
     <a class="stat" href="{% url 'security' %}"><b>{% if has_password %}Beállítva{% else %}Nincs{% endif %}</b><span>jelszó</span></a>
   </div>
+
+  <section class="panel profile-picture-panel">
+    <img
+      class="profile-picture-preview"
+      src="{{ request.user.profile_picture }}"
+      alt="Profilkép"
+      width="96"
+      height="96"
+      loading="lazy"
+      referrerpolicy="no-referrer">
+    <div class="profile-picture-settings">
+      <h2>Profilkép</h2>
+      {% if request.user.is_allowed_to_have_profile_picture %}
+        <p class="muted">A profilképed URL-jét az SZLG+ a <code>profile</code> jogosultságot kérő alkalmazásoknak is továbbítja.</p>
+        <form method="post" action="{% url 'profile-picture-update' %}" novalidate>
+          {% csrf_token %}
+          {% include "partials/form_fields.html" with form=profile_picture_form %}
+          <div class="form-actions">
+            <button type="submit" class="btn">Profilkép mentése</button>
+          </div>
+        </form>
+      {% else %}
+        <p class="muted">Jelenleg automatikus, a szekciódhoz vagy szerepkörödhöz igazított DiceBear profilképet használsz. Egyedi kép URL-jét az adminisztrátor engedélyezheti.</p>
+      {% endif %}
+    </div>
+  </section>
 
   <div class="two">
     <section class="panel">

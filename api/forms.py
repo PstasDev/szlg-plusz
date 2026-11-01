@@ -1,3 +1,5 @@
+from urllib.parse import urlsplit
+
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
@@ -24,6 +26,27 @@ from .models import (
 MAX_LOGO_BYTES = 1024 * 1024
 MAX_LOGO_PIXELS = 2048
 ALLOWED_LOGO_FORMATS = {"PNG", "JPEG", "WEBP"}
+
+
+class ProfilePictureForm(forms.Form):
+    profile_picture_url = forms.URLField(
+        label="Profilkép URL-je",
+        required=False,
+        max_length=500,
+        help_text=(
+            "Adj meg egy nyilvánosan elérhető kép-URL-t. Üresen hagyva az SZLG+ "
+            "automatikus profilképe jelenik meg."
+        ),
+        widget=forms.URLInput(
+            attrs={"autocomplete": "url", "placeholder": "https://pelda.hu/kep.jpg"}
+        ),
+    )
+
+    def clean_profile_picture_url(self):
+        url = self.cleaned_data["profile_picture_url"].strip()
+        if url and urlsplit(url).scheme.lower() not in {"http", "https"}:
+            raise forms.ValidationError("Csak HTTP- vagy HTTPS-kép-URL adható meg.")
+        return url
 
 
 class RegistrationForm(forms.Form):

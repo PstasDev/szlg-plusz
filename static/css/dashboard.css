@@ -85,6 +85,19 @@ body.dash {
 .stat b { display: block; font-size: 1.6rem; font-weight: 500; line-height: 1.2; }
 .stat span { color: var(--muted); font-size: .88rem; }
 
+.profile-picture-panel { display: flex; align-items: flex-start; gap: 1.25rem; }
+.profile-picture-preview {
+  flex: none;
+  width: 6rem;
+  height: 6rem;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--tint);
+}
+.profile-picture-settings { flex: 1; min-width: 0; }
+.profile-picture-settings > h2 { margin: 0 0 .25rem; font-size: 1.05rem; font-weight: 600; }
+.profile-picture-settings > p { margin: 0 0 .75rem; }
+
 .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; align-items: start; }
 
 dl.data { margin: 0; }
@@ -323,6 +336,8 @@ dl.data code { font-size: .85rem; }
   .sidenav a { flex: none; padding: .55rem .8rem; }
   .sidenav .sep { display: none; }
   .two { grid-template-columns: minmax(0, 1fr); }
+  .profile-picture-panel { gap: .9rem; padding: 1rem; }
+  .profile-picture-preview { width: 4.5rem; height: 4.5rem; }
   .topbar .who { display: none; }
   dl.data > div { grid-template-columns: minmax(0, 1fr); gap: .15rem; }
   .import-fields > div { grid-template-columns: minmax(0, 1fr); gap: .2rem; }

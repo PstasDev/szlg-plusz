@@ -222,7 +222,12 @@ class CustomUserAdmin(UserAdmin):
         "is_staff",
         "account_review_badge",
     )
-    list_filter = ("is_active", "is_staff", "account_review_status")
+    list_filter = (
+        "is_active",
+        "is_staff",
+        "account_review_status",
+        "profile_picture_allowed",
+    )
     search_fields = ("email", "last_name", "first_name")
     filter_horizontal = ("groups", "user_permissions", "manual_groups")
     readonly_fields = ("privacy_consent_at", "import_sources", "account_review_status")
@@ -240,6 +245,12 @@ class CustomUserAdmin(UserAdmin):
                     "email_verified",
                     "privacy_consent_at",
                 )
+            },
+        ),
+        (
+            "Profilkép",
+            {
+                "fields": ("profile_picture_allowed", "profile_picture_url"),
             },
         ),
         ("Importálási előzmények", {"fields": ("import_sources",)}),
@@ -267,6 +278,7 @@ class CustomUserAdmin(UserAdmin):
                     "email",
                     "last_name",
                     "first_name",
+                    "profile_picture_allowed",
                     "password1",
                     "password2",
                     "is_active",

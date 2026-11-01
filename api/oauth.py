@@ -29,6 +29,8 @@ class SZLGPlusOAuth2Validator(OAuth2Validator):
             "email_verified": user.email_verified,
             "phone_number": user.phone or None,
         }
+        if "profile" in getattr(request, "scopes", []):
+            claims["picture"] = user.profile_picture
         if "groups" in getattr(request, "scopes", []):
             school_access = can_access_school_features(user)
             school_groups = user_school_group_keys(user) if school_access else []

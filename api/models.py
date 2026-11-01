@@ -1,6 +1,7 @@
-import uuid
 import datetime
 import re
+import uuid
+from urllib.parse import urlencode
 
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser, Group
@@ -11,6 +12,8 @@ from django.utils.text import slugify
 from mptt.fields import TreeForeignKey
 from mptt.models import MPTTModel
 from solo.models import SingletonModel
+
+from .utils import Colors
 
 
 class BotRegistrationAttempt(models.Model):
@@ -214,6 +217,20 @@ class CustomUser(AbstractUser):
     phone = models.CharField(max_length=32, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
     email_verified = models.BooleanField(default=False)
+    profile_picture_allowed = models.BooleanField(
+        "profilkép használata engedélyezve",
+        default=False,
+        help_text=(
+            "Ha be van kapcsolva, a felhasználó saját profilkép-URL-t állíthat be. "
+            "A szuperfelhasználók automatikusan jogosultak erre."
+        ),
+    )
+    profile_picture_url = models.URLField(
+        "profilkép URL-je",
+        max_length=500,
+        blank=True,
+        help_text="A felhasználó által megadott kép címe; csak engedélyezett profilképnél használjuk.",
+    )
     account_review_status = models.CharField(
         "fiókfelülvizsgálati állapot",
         max_length=20,
@@ -269,6 +286,46 @@ class CustomUser(AbstractUser):
     REQUIRED_FIELDS: list[str] = []
 
     objects = CustomUserManager()
+
+    @property
+    def is_allowed_to_have_profile_picture(self) -> bool:
+        """Whether this user may replace their generated avatar with a URL."""
+        return self.is_superuser or self.profile_picture_allowed
+
+    @property
+    def generated_profile_picture_url(self) -> str:
+        """Build a stable, role-colored Dicebear Shadows avatar URL."""
+        is_teacher = self.is_teacher
+        is_student = self.is_student
+        section = None
+        if is_student:
+            student_profile = getattr(self, "student_profile", None)
+            section = (student_profile.szekcio or "").strip() if student_profile else ""
+            if not section:
+                class_from_email = email_info(self.email).class_from_email
+                section = class_from_email[1] if class_from_email else None
+
+        background_color, ink_color = Colors.get_dicebear_colors(
+            class_letter=section,
+            is_teacher=is_teacher,
+            is_student=is_student,
+        )
+        query = urlencode(
+            {
+                "backgroundColor": background_color,
+                "inkColor": ink_color,
+                "seed": str(self.oidc_subject),
+            }
+        )
+        return f"https://api.dicebear.com/10.x/shadows/svg?{query}"
+
+    @property
+    def profile_picture(self) -> str:
+        """The custom picture when permitted, otherwise this user's placeholder."""
+        custom_url = (self.profile_picture_url or "").strip()
+        if self.is_allowed_to_have_profile_picture and custom_url:
+            return custom_url
+        return self.generated_profile_picture_url
 
     @property
     def is_student(self) -> bool:

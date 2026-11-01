@@ -11,7 +11,9 @@ SCOPE_DETAILS = {
     },
     "profile": {
         "title": "Alapadatok",
-        "description": "A neved (vezeték- és keresztnév) és a születési dátumod.",
+        "description": (
+            "A neved (vezeték- és keresztnév), a születési dátumod és a profilképed URL-je."
+        ),
         "icon": "user",
     },
     "email": {

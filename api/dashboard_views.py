@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -23,7 +24,7 @@ from .application_verification import (
     verification_checked_at_subquery,
     verification_missing_requirements,
 )
-from .forms import ApplicationForm
+from .forms import ApplicationForm, ProfilePictureForm
 from .models import (
     ApplicationProfile,
     ApplicationVerificationRequest,
@@ -46,25 +47,58 @@ def _own_application(request, pk):
 @require_GET
 def dashboard(request):
     user = request.user
+    return render(request, "dashboard/profile.html", _profile_context(user))
+
+
+def _profile_context(user, profile_picture_form=None):
     student_profile = getattr(user, "student_profile", None)
     teacher_profile = getattr(user, "teacher_profile", None)
     if not email_info(user.email).is_in_school_domain:
         student_profile = None
         teacher_profile = None
+    if profile_picture_form is None:
+        profile_picture_form = ProfilePictureForm(
+            initial={"profile_picture_url": user.profile_picture_url}
+        )
+    return {
+        "section": "profile",
+        "student_profile": student_profile,
+        "teacher_profile": teacher_profile,
+        "school_groups": user.manual_groups.all(),
+        "permission_groups": user.groups.all(),
+        "has_password": user.has_usable_password(),
+        "passkey_count": Passkey.objects.filter(user=user).count(),
+        "grant_count": len(_active_grants(user)),
+        "application_count": Application.objects.filter(user=user).count(),
+        "profile_picture_form": profile_picture_form,
+    }
+
+
+@login_required
+@require_POST
+@ratelimit(key="user", rate="10/m", method="POST", block=True)
+def profile_picture_update(request):
+    user = request.user
+    if not user.is_allowed_to_have_profile_picture:
+        raise PermissionDenied
+
+    form = ProfilePictureForm(request.POST)
+    if form.is_valid():
+        user.profile_picture_url = form.cleaned_data["profile_picture_url"]
+        user.save(update_fields=["profile_picture_url"])
+        messages.success(
+            request,
+            "A profilképedet frissítettük."
+            if user.profile_picture_url
+            else "A saját profilképet eltávolítottuk; az automatikus kép jelenik meg.",
+        )
+        return redirect("profile")
+
     return render(
         request,
         "dashboard/profile.html",
-        {
-            "section": "profile",
-            "student_profile": student_profile,
-            "teacher_profile": teacher_profile,
-            "school_groups": user.manual_groups.all(),
-            "permission_groups": user.groups.all(),
-            "has_password": user.has_usable_password(),
-            "passkey_count": Passkey.objects.filter(user=user).count(),
-            "grant_count": len(_active_grants(user)),
-            "application_count": Application.objects.filter(user=user).count(),
-        },
+        _profile_context(user, profile_picture_form=form),
+        status=400,
     )
 
 

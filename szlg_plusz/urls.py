@@ -176,6 +176,11 @@ urlpatterns = [
     path("account/", RedirectView.as_view(pattern_name="profile", permanent=False), name="account"),
     path("account/profile/", dashboard_views.dashboard, name="profile"),
     path(
+        "account/profile/picture/",
+        dashboard_views.profile_picture_update,
+        name="profile-picture-update",
+    ),
+    path(
         "account/student-profile/complete/",
         student_profile_views.student_profile_completion,
         name="student-profile-completion",

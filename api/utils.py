@@ -1,5 +1,51 @@
 # HUN Grammar Utilities
 
+
+class Colors:
+    """Section and role palettes for generated DiceBear avatars."""
+
+    CLASS_COLORS = {
+        "A": "#66bb6a",
+        "B": "#ffca28",
+        "C": "#ba68c8",
+        "D": "#ef5350",
+        "E": "#bdbdbd",
+        "F": "#5c6bc0",
+    }
+    CLASS_INK_COLORS = {
+        "A": "345945",
+        "B": "5b4e30",
+        "C": "5e3b87",
+        "D": "7b373f",
+        "E": "3b3b42",
+        "F": "33477f",
+    }
+    TEACHER_COLORS = ("d0edec", "345757")
+    OTHER_COLORS = ("ede3e9", "733662")
+
+    @staticmethod
+    def get_color(classLetter):
+        """Return the SZLG+ section color, or None for an unknown section."""
+        if not classLetter:
+            return None
+        return Colors.CLASS_COLORS.get(str(classLetter).strip().upper())
+
+    @classmethod
+    def get_dicebear_colors(
+        cls, *, class_letter=None, is_teacher=False, is_student=False
+    ):
+        """Choose one stable DiceBear background/ink pair for a user's role."""
+        if is_teacher:
+            return cls.TEACHER_COLORS
+
+        section = str(class_letter or "").strip().upper()
+        color = cls.get_color(section)
+        if is_student and color:
+            return color.lstrip("#"), cls.CLASS_INK_COLORS[section]
+
+        return cls.OTHER_COLORS
+
+
 number_pronunciation_map = [
     (1, "egy"),
     (2, "kettő"),
