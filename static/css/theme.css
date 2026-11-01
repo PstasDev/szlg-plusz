@@ -275,6 +275,18 @@ a:hover { text-decoration: underline; }
   background: var(--primary); color: var(--on-primary);
   font-size: .75rem; font-weight: 600;
 }
+.avatar-picture { position: relative; overflow: hidden; }
+.avatar-picture .avatar-initials { position: relative; z-index: 0; }
+.avatar-picture .avatar-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  z-index: 1;
+}
+.avatar-picture .avatar-image[hidden] { display: none; }
 
 .account-list { display: grid; gap: .6rem; margin-top: 1rem; }
 .account-choice {

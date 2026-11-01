@@ -1,0 +1,11 @@
+<span class="avatar avatar-picture" aria-hidden="true">
+  <span class="avatar-initials">{{ avatar_user.get_full_name|default:avatar_user.email|slice:":1"|upper }}</span>
+  <img
+    class="avatar-image"
+    data-avatar-image
+    src="{{ avatar_user.profile_picture }}"
+    alt=""
+    loading="lazy"
+    decoding="async"
+    referrerpolicy="no-referrer">
+</span>

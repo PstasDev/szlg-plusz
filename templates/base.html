@@ -7,6 +7,13 @@
   <title>{% block title %}SZLG+{% endblock %}</title>
   {% load static %}
   <script>
+    document.addEventListener("error", function (event) {
+      var image = event.target;
+      if (image.tagName === "IMG" && image.hasAttribute("data-avatar-image")) {
+        image.hidden = true;
+      }
+    }, true);
+
     try {
       if (localStorage.getItem("szlg-theme") === "light") {
         document.documentElement.setAttribute("data-theme", "light");

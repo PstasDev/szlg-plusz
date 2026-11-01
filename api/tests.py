@@ -692,6 +692,17 @@ class ConsentScreenTests(TestCase):
         )
         self.assertNotContains(response, "Fejlesztő:")
 
+    def test_consent_screen_displays_the_signed_in_users_profile_picture(self):
+        self.user.profile_picture_allowed = True
+        self.user.profile_picture_url = "https://images.example/avatar.png"
+        self.user.save(update_fields=["profile_picture_allowed", "profile_picture_url"])
+
+        response = self.client.get(self.authorize_url)
+
+        self.assertContains(response, 'src="https://images.example/avatar.png"')
+        self.assertContains(response, "data-avatar-image")
+        self.assertContains(response, "avatar-initials")
+
     def test_pages_are_dark_by_default(self):
         self.client.logout()
 
@@ -1777,6 +1788,22 @@ class AccountChooserTests(TestCase):
         self.assertContains(chooser, "Minta Anna")
         self.assertNotContains(chooser, 'id="email"')
 
+    def test_account_chooser_and_selected_account_display_profile_picture(self):
+        self.first.profile_picture_allowed = True
+        self.first.profile_picture_url = "https://images.example/account.png"
+        self.first.save(update_fields=["profile_picture_allowed", "profile_picture_url"])
+        self._password_login(self.first.email)
+        self.client.post("/logout/")
+
+        chooser = self.client.get("/login/")
+        selected = self.client.get(f"/login/?account={self.first.pk}")
+
+        for response in (chooser, selected):
+            with self.subTest(status=response.status_code):
+                self.assertContains(response, 'src="https://images.example/account.png"')
+                self.assertContains(response, "data-avatar-image")
+                self.assertContains(response, "avatar-initials")
+
     def test_oauth_account_chooser_identifies_the_requested_application(self):
         application = Application.objects.create(
             name="Canva",
@@ -1880,6 +1907,9 @@ class DurableOAuthGrantTests(TestCase):
         return self.client.post(parser.form_action, {**parser.values, "allow": "true"})
 
     def test_approved_grant_is_persistent_and_returns_to_confirmation_not_consent(self):
+        self.user.profile_picture_allowed = True
+        self.user.profile_picture_url = "https://images.example/confirmed.png"
+        self.user.save(update_fields=["profile_picture_allowed", "profile_picture_url"])
         approval = self._approve_first_grant()
         self.assertEqual(approval.status_code, 302)
         connection = UserAppConnection.objects.get(user=self.user, application=self.application)
@@ -1890,6 +1920,7 @@ class DurableOAuthGrantTests(TestCase):
         self.assertEqual(confirmation.status_code, 200)
         self.assertContains(confirmation, "A következő applikációba tervezel újra bejelentkezni")
         self.assertContains(confirmation, "Fiókportál")
+        self.assertContains(confirmation, 'src="https://images.example/confirmed.png"')
         self.assertNotContains(confirmation, "Hozzáférés engedélyezése")
 
         parser = HiddenInputParser()

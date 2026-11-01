@@ -10,7 +10,7 @@
   {% elif password_step and selected_account %}
     <h1>{{ selected_account.get_full_name|default:selected_account.email }}</h1>
     <div class="user-chip auth-user-chip">
-      <span class="avatar" aria-hidden="true">{{ selected_account.email|slice:":1"|upper }}</span>
+      {% include "partials/user_avatar.html" with avatar_user=selected_account %}
       {{ selected_account.email }}
     </div>
   {% elif password_step %}
@@ -100,7 +100,7 @@
     <div class="account-list google-account-list" role="group" aria-label="Fiókválasztó">
       {% for account in remembered_accounts %}
         <a class="account-choice" href="{% url 'login' %}?account={{ account.pk }}&amp;next={{ next_url|urlencode }}">
-          <span class="avatar" aria-hidden="true">{{ account.get_full_name|default:account.email|slice:":1"|upper }}</span>
+          {% include "partials/user_avatar.html" with avatar_user=account %}
           <span><strong>{{ account.get_full_name|default:account.email }}</strong><small>{{ account.email }}</small></span>
           <span class="account-chevron" aria-hidden="true">›</span>
         </a>
